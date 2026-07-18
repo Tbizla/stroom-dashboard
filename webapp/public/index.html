@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Werfpop — Stroomdashboard</title>
+<title>Stroomdashboard</title>
 <style>
   :root{
     --bg:#12151a; --panel:#1a1e26; --panel2:#20242e; --border:#2a2f3a;
@@ -105,11 +105,12 @@
 <body>
 <div class="app">
   <header>
-    <h1>WERFPOP <span>/ stroomdashboard</span></h1>
+    <h1><img id="headerLogo" alt="logo" style="display:none;height:26px;vertical-align:middle;margin-right:10px;border-radius:4px"><span>Stroomdashboard</span></h1>
     <div class="modeswitch">
       <button id="modeBeheer" class="active">Beheer</button>
       <button id="modeCal">Kalibreren</button>
       <button id="modeLive">Live</button>
+      <button id="modeTest">Testdata</button>
     </div>
     <div class="connbar" id="liveControls" style="display:none">
       <input id="brokerHost" placeholder="broker host" value="">
@@ -151,9 +152,38 @@
         <button id="addKastBtn">+ Kast</button>
       </div>
 
+      <h2 style="margin-top:22px">Evenementlogo</h2>
+      <div class="addform">
+        <label class="uploadbtn">Logo uploaden<input type="file" id="logoFile" style="display:none" accept="image/*"></label>
+        <span id="logoStatus" style="font-size:12px;color:var(--text2)"></span>
+      </div>
+
       <div style="margin-top:24px">
         <button id="resetAllBtn" style="border-color:var(--red);color:var(--red)">Alles wissen</button>
       </div>
+    </div>
+  </div>
+
+  <div class="beheer" id="testPanel" style="display:none">
+    <div class="beheercol">
+      <h2>Testdata</h2>
+      <p style="font-size:13px;color:var(--text2);max-width:520px">
+        Laadt een voorbeeldtopologie (2 generators, 6 kasten) om de werking van het dashboard te demonstreren
+        tijdens de testfase. Dit overschrijft de huidige generators en kasten.
+      </p>
+      <p style="font-size:12px;color:var(--text3);max-width:520px">
+        Let op: dit tabblad hoort, net als de simulator, alleen tijdens de testfase beschikbaar te zijn en
+        wordt daarna achter dezelfde <code>--profile simulator</code>-vlag gezet.
+      </p>
+      <button id="loadTestBtn">Laad testtopologie</button>
+
+      <h2 style="margin-top:26px">Meetdata wissen</h2>
+      <p style="font-size:13px;color:var(--text2);max-width:520px">
+        Wist alle meetdata (stroom/spanning/vermogen) uit InfluxDB — de topologie (generators/kasten) blijft
+        staan. Handig om na een korte test met een schone grafiek te beginnen.
+      </p>
+      <button id="resetMetingenBtn" style="border-color:var(--red);color:var(--red)">Wis meetdata</button>
+      <span id="resetMetingenStatus" style="font-size:12px;color:var(--text2);margin-left:8px"></span>
     </div>
   </div>
 
@@ -220,6 +250,14 @@ function loadMap(){
     noMapMsg.style.display = 'block';
   };
   img.src = '/api/map?t=' + Date.now();
+}
+
+function loadLogo(){
+  const headerLogo = document.getElementById('headerLogo');
+  const img = new Image();
+  img.onload = ()=>{ headerLogo.src = '/api/logo?t=' + Date.now(); headerLogo.style.display = 'inline'; };
+  img.onerror = ()=>{ headerLogo.style.display = 'none'; };
+  img.src = '/api/logo?t=' + Date.now();
 }
 
 function statusClass(kast){
@@ -372,6 +410,18 @@ document.getElementById('mapFile').onchange = async (ev)=>{
   loadMap();
 };
 
+document.getElementById('logoFile').onchange = async (ev)=>{
+  const file = ev.target.files[0];
+  if(!file) return;
+  const fd = new FormData();
+  fd.append('logo', file);
+  const status = document.getElementById('logoStatus');
+  status.textContent = 'uploaden...';
+  await fetch('/api/logo', { method:'POST', body: fd });
+  loadLogo();
+  status.textContent = 'logo geupload';
+};
+
 // ---------- export / import ----------
 document.getElementById('exportBtn').onclick = ()=>{ window.location.href = '/api/export'; };
 document.getElementById('importFile').onchange = (ev)=>{
@@ -390,7 +440,7 @@ document.getElementById('importFile').onchange = (ev)=>{
 
 // ---------- mode switching ----------
 function setActiveModeButton(id){
-  ['modeBeheer','modeCal','modeLive'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
+  ['modeBeheer','modeCal','modeLive','modeTest'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
 }
 document.getElementById('modeBeheer').onclick = ()=>{
   mode='beheer';
@@ -399,6 +449,7 @@ document.getElementById('modeBeheer').onclick = ()=>{
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
   document.getElementById('mainBody').style.display='none';
+  document.getElementById('testPanel').style.display='none';
   document.getElementById('beheerPanel').style.display='flex';
   renderBeheer();
 };
@@ -409,6 +460,7 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('calControls').style.display='flex';
   document.getElementById('calbar').style.display='flex';
   document.getElementById('beheerPanel').style.display='none';
+  document.getElementById('testPanel').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   renderPins();
 };
@@ -419,9 +471,39 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
+  document.getElementById('testPanel').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   document.getElementById('brokerHost').value = document.getElementById('brokerHost').value || location.hostname || 'localhost';
   renderPins();
+};
+document.getElementById('modeTest').onclick = ()=>{
+  mode='test';
+  setActiveModeButton('modeTest');
+  document.getElementById('liveControls').style.display='none';
+  document.getElementById('calControls').style.display='none';
+  document.getElementById('calbar').style.display='none';
+  document.getElementById('beheerPanel').style.display='none';
+  document.getElementById('mainBody').style.display='none';
+  document.getElementById('testPanel').style.display='flex';
+};
+
+document.getElementById('loadTestBtn').onclick = async ()=>{
+  if(!confirm('Testtopologie laden? Dit overschrijft de huidige generators en kasten.')) return;
+  try{
+    await apiCall('/api/topology/test-data', 'POST');
+    await loadTopology();
+    alert('Testtopologie geladen. Ga naar "Beheer" of "Kalibreren" om verder te gaan.');
+  }catch(e){ alert(e.message); }
+};
+
+document.getElementById('resetMetingenBtn').onclick = async ()=>{
+  if(!confirm('Alle meetdata in InfluxDB wissen? De topologie blijft staan. Dit kan niet ongedaan gemaakt worden.')) return;
+  const status = document.getElementById('resetMetingenStatus');
+  status.textContent = 'bezig...';
+  try{
+    await apiCall('/api/metingen/reset', 'POST');
+    status.textContent = 'meetdata gewist';
+  }catch(e){ status.textContent = ''; alert(e.message); }
 };
 
 // ---------- Beheer: generators & kasten aanmaken, bewerken, koppelen, verwijderen ----------
@@ -601,6 +683,7 @@ setInterval(async ()=>{
 }, 5000);
 
 loadTopology().then(loadMap);
+loadLogo();
 </script>
 </body>
 </html>

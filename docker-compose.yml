@@ -55,8 +55,15 @@ services:
     build: ./webapp
     container_name: webapp
     restart: unless-stopped
+    depends_on:
+      - influxdb
     ports:
       - "8080:8080"
+    environment:
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - INFLUX_ORG=festival
+      - INFLUX_BUCKET=stroomdata
     volumes:
       - webapp-data:/data
 

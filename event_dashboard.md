@@ -125,6 +125,11 @@ Zodra je een kanaal kiest, voeg je die toe onder Alerting > Contact points, en k
 
 - [ ] Notificatiekanaal voor alerting naar telefoon (opties: Telegram / Pushover / ntfy.sh / e-mail) — nog te kiezen
 - [ ] **Simulator terug achter een flag zetten na de testfase.** Momenteel start `simulator` standaard mee in `docker-compose.yml`. Zodra het testen klaar is: voeg `profiles: ["simulator"]` weer toe aan de simulator-service, zodat 'm alleen bewust met `docker compose --profile simulator up -d` gestart wordt en nooit per ongeluk meedraait tijdens een echt evenement.
+- [ ] **Testdata-tabblad in de webapp achter dezelfde flag zetten.** Het tabblad "Testdata" bevat twee knoppen die alleen tijdens de testfase bedoeld zijn:
+  - "Laad testtopologie" (endpoint `POST /api/topology/test-data`) — laadt een voorbeeldtopologie.
+  - "Wis meetdata" (endpoint `POST /api/metingen/reset`) — wist alle meetdata uit InfluxDB (topologie blijft staan), handig om na een korte test met een schone grafiek te beginnen.
+
+  Zodra het testen klaar is: verberg de tab/knoppen (of laat de endpoints een 404 geven) tenzij dezelfde `simulator`-profile actief is, zodat niemand tijdens een echt evenement per ongeluk de topologie overschrijft of meetdata wist.
 
 ## 12. Dashboard-indeling, voorstel
 

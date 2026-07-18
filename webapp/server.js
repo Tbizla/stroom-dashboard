@@ -6,7 +6,14 @@ const path = require('path');
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
 const MAP_FILE = path.join(DATA_DIR, 'kaart.png');
+const LOGO_FILE = path.join(DATA_DIR, 'logo.png');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
+const TEST_TOPO = path.join(__dirname, 'test_topologie.json');
+
+const INFLUX_URL = process.env.INFLUX_URL || 'http://influxdb:8086';
+const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
+const INFLUX_ORG = process.env.INFLUX_ORG || 'festival';
+const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(TOPO_FILE)) fs.copyFileSync(DEFAULT_TOPO, TOPO_FILE);
@@ -163,6 +170,39 @@ app.post('/api/reset', (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- testtopologie laden ----------
+// Bedoeld om de werking te demonstreren tijdens de testfase. Zet dit, net als de
+// simulator (zie docker-compose.yml), na de testfase achter de "simulator"-profile-flag
+// zodat 'm niet per ongeluk tijdens een echt evenement gebruikt kan worden.
+app.post('/api/topology/test-data', (req, res) => {
+  const test = JSON.parse(fs.readFileSync(TEST_TOPO, 'utf8'));
+  writeTopo(test);
+  res.json({ ok: true });
+});
+
+// ---------- simulatie-meetdata wissen ----------
+// Wist alle meetdata (stroom/spanning/vermogen) uit InfluxDB — niet de topologie. Handig om na
+// een korte test met een schone lei te beginnen. Hoort, net als de simulator en de testtopologie-
+// knop hierboven, alleen tijdens de testfase beschikbaar te zijn (zie backlog in event_dashboard.md).
+app.post('/api/metingen/reset', async (req, res) => {
+  if (!INFLUX_TOKEN) return res.status(500).json({ error: 'INFLUX_TOKEN niet geconfigureerd op de webapp-service' });
+  try {
+    const url = INFLUX_URL + '/api/v2/delete?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET);
+    const influxRes = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start: '1970-01-01T00:00:00Z', stop: new Date(Date.now() + 1000).toISOString() }),
+    });
+    if (!influxRes.ok) {
+      const text = await influxRes.text();
+      return res.status(502).json({ error: 'InfluxDB gaf een fout (' + influxRes.status + '): ' + text });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(502).json({ error: 'kon InfluxDB niet bereiken: ' + e.message });
+  }
+});
+
 // ---------- plattegrond ----------
 const upload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 } });
 app.post('/api/map', upload.single('kaart'), (req, res) => {
@@ -173,6 +213,17 @@ app.post('/api/map', upload.single('kaart'), (req, res) => {
 app.get('/api/map', (req, res) => {
   if (!fs.existsSync(MAP_FILE)) return res.status(404).send('nog geen plattegrond geupload');
   res.sendFile(MAP_FILE);
+});
+
+// ---------- evenementlogo ----------
+app.post('/api/logo', upload.single('logo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'geen bestand ontvangen (veldnaam moet "logo" zijn)' });
+  fs.renameSync(req.file.path, LOGO_FILE);
+  res.json({ ok: true });
+});
+app.get('/api/logo', (req, res) => {
+  if (!fs.existsSync(LOGO_FILE)) return res.status(404).send('nog geen logo geupload');
+  res.sendFile(LOGO_FILE);
 });
 
 // ---------- export / import ----------
@@ -189,4 +240,4 @@ app.post('/api/import', (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log('Werfpop stroomdashboard luistert op poort ' + PORT));
+app.listen(PORT, () => console.log('Stroomdashboard luistert op poort ' + PORT));
