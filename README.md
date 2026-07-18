@@ -21,8 +21,17 @@ Op elke Shelly Pro 3EM: Settings > MQTT
 - Custom MQTT prefix: de waarde die de webapp voor die kast heeft gegenereerd (zichtbaar in de kasten-tabel in Beheer-modus, en in een export)
 
 Na deze stap publiceert elke Shelly automatisch naar o.a.:
-- `fest/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase, elke paar seconden of bij verandering
-- `fest/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh)
+- `fest/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).
+- `fest/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh), ongeveer eens per minuut
+
+### Optioneel: sneller dan 15s met een Shelly Script
+
+Voor een responsievere Live-weergave in de webapp (die zelf al direct reageert op elk binnenkomend MQTT-bericht, zonder eigen vertraging) kun je het vaste 15s-interval omzeilen met een **Shelly Script** — de ingebouwde scripting-engine van de Shelly, dus géén custom firmware nodig (en dat raden we ook af: Tasmota/ESPHome ondersteunen de Pro 3EM-hardware niet goed en kunnen 'm onbruikbaar maken).
+
+Het script staat kant-en-klaar in [`shelly/em-fast-publish.js`](shelly/em-fast-publish.js) en publiceert elke seconde de actuele meting naar hetzelfde topic, in dezelfde vorm als de standaard-push — dus zonder dat Telegraf of de webapp aangepast hoeven te worden. Installatie per Shelly (identiek script, niets aan te passen):
+1. Stel eerst de "Custom MQTT prefix" in zoals hierboven — het script leest die zelf uit.
+2. Settings > Scripts > "+ Add script", plak de inhoud van `em-fast-publish.js`, Save.
+3. Zet "Run on startup" aan en start het script.
 
 ## 3. Stack starten
 
