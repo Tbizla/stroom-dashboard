@@ -71,8 +71,9 @@ async function main() {
       fractie = Math.max(0.05, Math.min(1.15, fractie));
       state[k.id] = fractie;
 
-      const totaal = fractie * k.rating_a;
-      const perFase = totaal / 3;
+      // rating_a is de stroom die de aansluiting PER FASE aankan (CEE-norm), dus elke fase
+      // benadert bij fractie=1.0 de volle rating — niet de rating gedeeld door 3
+      const perFase = fractie * k.rating_a;
       const a = maakFasePayload(perFase + rand(-0.3, 0.3));
       const b = maakFasePayload(perFase + rand(-0.3, 0.3));
       const c = maakFasePayload(perFase + rand(-0.3, 0.3));

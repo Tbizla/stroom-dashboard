@@ -292,10 +292,20 @@ function loadLogo(){
   img.src = '/api/logo?t=' + Date.now();
 }
 
+// rating_a is de stroom die de aansluiting PER FASE aankan (standaard bij CEE-koppelingen,
+// bijv. een "63A"-kast mag 63A op elke fase dragen) — dus vergelijken we de zwaarst belaste
+// fase met de rating, niet total_current (dat is de som van alle drie de fasen en zou bij
+// gebalanceerde belasting pas rond de 300% van rating_a een probleem lijken)
+function maxFaseStroom(d){
+  if(!d) return null;
+  const fasen = [d.a_current, d.b_current, d.c_current].filter(v=>v!=null);
+  return fasen.length ? Math.max(...fasen) : null;
+}
+
 function statusClass(kast){
-  const d = liveData[kast.id];
-  if(!d || d.total_current==null) return '';
-  const pct = (d.total_current / kast.rating_a) * 100;
+  const cur = maxFaseStroom(liveData[kast.id]);
+  if(cur==null) return '';
+  const pct = (cur / kast.rating_a) * 100;
   if(pct >= 90) return 'status-red';
   if(pct >= 70) return 'status-amber';
   return 'status-green';
@@ -329,7 +339,8 @@ function renderList(){
       const val = document.createElement('div');
       val.className = 'val';
       const d = liveData[k.id];
-      val.textContent = d && d.total_current!=null ? d.total_current.toFixed(1)+'A' : (k.positie && k.positie.x_pct!=null?'—':'niet geplaatst');
+      const maxFase = maxFaseStroom(d);
+      val.textContent = maxFase!=null ? maxFase.toFixed(1)+'A' : (k.positie && k.positie.x_pct!=null?'—':'niet geplaatst');
       row.appendChild(dot); row.appendChild(name); row.appendChild(val);
       row.onclick = ()=>{
         if(mode==='cal'){ armedId = k.id; renderList(); document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+k.naam+'" te plaatsen'; }
@@ -346,11 +357,11 @@ function renderDetail(){
   const d = liveData[n.id];
   let html = '<h2>'+n.naam+'</h2>';
   if(!isGen(n)){
-    html += '<div class="sub">'+genNaam(n.generator)+' · rating '+n.rating_a+'A'+(n.opmerking?(' · '+n.opmerking):'')+'</div>';
-    const cur = d && d.total_current!=null ? d.total_current : null;
-    const pct = cur!=null ? Math.min(100, (cur/n.rating_a)*100) : 0;
+    html += '<div class="sub">'+genNaam(n.generator)+' · rating '+n.rating_a+'A per fase'+(n.opmerking?(' · '+n.opmerking):'')+'</div>';
+    const maxFase = maxFaseStroom(d);
+    const pct = maxFase!=null ? Math.min(100, (maxFase/n.rating_a)*100) : 0;
     const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-    html += '<div class="metric"><span class="k">Totale stroom</span><span>'+(cur!=null?cur.toFixed(2)+' A':'geen data')+'</span></div>';
+    if(d && d.total_current!=null) html += '<div class="metric"><span class="k">Totale stroom (3 fasen)</span><span>'+d.total_current.toFixed(2)+' A</span></div>';
     if(d){
       ['a','b','c'].forEach(ph=>{
         if(d[ph+'_current']!=null) html += '<div class="metric"><span class="k">Fase '+ph.toUpperCase()+'</span><span>'+d[ph+'_current'].toFixed(2)+' A · '+(d[ph+'_voltage']?d[ph+'_voltage'].toFixed(0)+'V':'')+'</span></div>';
@@ -358,6 +369,7 @@ function renderDetail(){
       if(d.total_act_power!=null) html += '<div class="metric"><span class="k">Vermogen</span><span>'+d.total_act_power.toFixed(0)+' W</span></div>';
       html += '<div class="metric"><span class="k">Laatste update</span><span>'+new Date(d.ts).toLocaleTimeString('nl-NL')+'</span></div>';
     }
+    html += '<div class="metric"><span class="k">Belasting (hoogste fase / rating)</span><span>'+(maxFase!=null?Math.round(pct)+'%':'geen data')+'</span></div>';
     html += '<div class="barwrap"><div class="bar" style="width:'+pct+'%;background:'+cls+'"></div></div>';
   } else {
     html += '<div class="sub">Generator</div>';

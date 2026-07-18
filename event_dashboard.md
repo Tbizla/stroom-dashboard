@@ -61,7 +61,7 @@ zetten zonder code aan te passen.
 - InfluxDB-datasource en start-dashboard worden automatisch geprovisioned bij het opstarten
 - Panelen per kast (totale stroom, stroom per fase) herhalen automatisch via een `$kast`-variabele
 - `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket)
-- Alerting-condities (90%-drempel van `rating_a`) zijn per paneel handmatig toe te voegen
+- Alerting-condities (90%-drempel van `rating_a` per fase, niet van `total_current`) zijn per paneel handmatig toe te voegen
 
 ## Roadmap
 

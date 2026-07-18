@@ -54,41 +54,38 @@ from(bucket: "stroomdata")
 
 Voor stroom per fase (a/b/c) vervang je de laatste filter door `r._field == "a_current" or r._field == "b_current" or r._field == "c_current"` — zo krijg je drie lijnen in één paneel.
 
+**Let op:** `total_current` is de som van alle drie de fasen, en is dus alleen geschikt om een indruk te krijgen van het totale verbruik — niet om tegen `rating_a` af te zetten (zie sectie 6).
+
 ## 5. Voorbeeldquery — generator-totaal
 
 Belangrijk: alleen de kasten met `parent: null` in de JSON optellen (die rechtstreeks op de generator zitten), downstream-kasten NIET meetellen — hun verbruik zit al in de bovenliggende meting.
 
-Generator zuid (podium1 + foodtrucks_zuid + terreinverdeler):
+Ook belangrijk: `rating_a` is een stroom **per fase**, dus voor een generator-belasting die je tegen een rating wilt afzetten, moet je per fase optellen (alle a_current's bij elkaar, alle b_current's bij elkaar, enz.) en niet de kant-en-klare `total_current` (som van de 3 fasen per kast) van de kasten bij elkaar optellen — dat vermenigvuldigt de vertekening.
+
+Generator zuid (podium1 + foodtrucks_zuid + terreinverdeler), stroom per fase opgeteld:
 
 ```flux
 from(bucket: "stroomdata")
   |> range(start: -5m)
-  |> filter(fn: (r) => r._measurement == "shelly_em" and r._field == "total_current")
+  |> filter(fn: (r) => r._measurement == "shelly_em")
+  |> filter(fn: (r) => r._field == "a_current" or r._field == "b_current" or r._field == "c_current")
   |> filter(fn: (r) => r.kast == "podium1" or r.kast == "foodtrucks_zuid" or r.kast == "terreinverdeler")
   |> aggregateWindow(every: 10s, fn: last, createEmpty: false)
-  |> group(columns: ["_time"])
+  |> group(columns: ["_time", "_field"])
   |> sum()
 ```
 
-Generator noord (podium2 + bar2):
+Dit geeft drie lijnen (a/b/c) met de opgetelde stroom van die fase over alle drie de kasten — vergelijk elke lijn apart met de generator-rating (zie sectie 6), of neem er met een `max()`-transform in het paneel nog de zwaarst belaste fase uit.
 
-```flux
-from(bucket: "stroomdata")
-  |> range(start: -5m)
-  |> filter(fn: (r) => r._measurement == "shelly_em" and r._field == "total_current")
-  |> filter(fn: (r) => r.kast == "podium2" or r.kast == "bar2")
-  |> aggregateWindow(every: 10s, fn: last, createEmpty: false)
-  |> group(columns: ["_time"])
-  |> sum()
-```
+Generator noord (podium2 + bar2) werkt hetzelfde, met die twee kasten in de filter.
 
-Vermogen (kVA-schatting) werkt hetzelfde, maar met `r._field == "total_aprt_power"` in plaats van `total_current`.
+Vermogen (kVA-schatting) werkt hetzelfde, maar met `r._field == "total_aprt_power"` in plaats van de fase-velden — vermogen optellen over kasten heen is geen probleem, dat is al een 3-fasen-som per kast en dus prima cumulatief.
 
 ## 6. Alarmdrempels per kast
 
-Elke kast heeft in de webapp (Beheer-modus) een `rating_a`. Zet in Grafana per paneel een drempel op bijvoorbeeld 90% van die waarde, zodat je een waarschuwing krijgt vóórdat een kast echt overbelast raakt — bijvoorbeeld een 63A-kast op 56,7A, een 32A-kast op 28,8A. De ratings van al je eigen kasten zie je in één oogopslag terug in de kasten-tabel in Beheer-modus, of in de export (`/api/export`).
+Elke kast heeft in de webapp (Beheer-modus) een `rating_a` — dat is de stroom die de **aansluiting per fase** aankan (standaard bij CEE-koppelingen: een "63A"-kast mag op élke fase 63A dragen, niet 63A in totaal over de drie fasen samen). Zet in Grafana een drempel op bijvoorbeeld 90% van die waarde tegen de **zwaarst belaste fase** (`a_current`, `b_current` of `c_current`, per timestamp de hoogste van de drie) — bijvoorbeeld een 63A-kast op 56,7A, een 32A-kast op 28,8A. Gebruik hiervoor **niet** `total_current`: dat is de som van alle drie de fasen en zal bij een normale, redelijk gebalanceerde belasting al rond de 300% van `rating_a` liggen voordat er überhaupt een fase overbelast is — een drempel daarop levert dus valse rust (of, bij ongebalanceerde belasting, een gemiste waarschuwing). De ratings van al je eigen kasten zie je in één oogopslag terug in de kasten-tabel in Beheer-modus, of in de export (`/api/export`).
 
-Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie (kVA x 1000 / (3 x 230V) voor een driefasesysteem) en gebruik je diezelfde 90%-vuistregel, of je laat het gewoon bij een kVA-drempel op het totaalpaneel.
+Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie per fase (kVA x 1000 / (3 x 230V) voor een driefasesysteem) en gebruik je diezelfde 90%-vuistregel tegen de zwaarst belaste fase-som uit sectie 5, of je laat het gewoon bij een kVA-drempel op het totaalpaneel (vermogen mag wel cumulatief, zie hierboven).
 
 ## 7. Testen met fake data
 
@@ -119,10 +116,10 @@ Elke keer dat je de stack opnieuw start, vul je in `.env` de `EVENT_EDITION` in 
 
 ## 10. Alarmering (Grafana Alerting)
 
-Grafana kan per paneel een alert-regel krijgen die afgaat zodra `total_current` boven de 90%-drempel van `rating_a` komt (zie sectie 6 hierboven). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
+Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 6 hierboven — gebruik hiervoor niet `total_current`). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
 
 Voorbeeld alert-conditie in Grafana (per kast-paneel):
-- Query: `total_current` van de betreffende kast, laatste 1 minuut
+- Query: `a_current`, `b_current` en `c_current` van de betreffende kast, laatste 1 minuut, met een `max()`-transform (of Flux `pivot` + `map` om per timestamp de hoogste fase te berekenen) zodat je één "hoogste fase"-reeks overhoudt
 - Conditie: `is above` [90% van rating_a]
 - For: 30s (voorkomt vals alarm bij een korte piek)
 
