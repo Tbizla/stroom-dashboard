@@ -8,7 +8,8 @@ const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
 const MAP_FILE = path.join(DATA_DIR, 'kaart.png');
 const LOGO_FILE = path.join(DATA_DIR, 'logo.png');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
-const TEST_TOPO = path.join(__dirname, 'test_topologie.json');
+const TEST_TOPO_SIMPEL = path.join(__dirname, 'test_topologie_simpel.json');
+const TEST_TOPO_UITGEBREID = path.join(__dirname, 'test_topologie_uitgebreid.json');
 
 const INFLUX_URL = process.env.INFLUX_URL || 'http://influxdb:8086';
 const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
@@ -201,8 +202,16 @@ app.post('/api/reset', (req, res) => {
 // Bedoeld om de werking te demonstreren tijdens de testfase. Zet dit, net als de
 // simulator (zie docker-compose.yml), na de testfase achter de "test"-profile-flag
 // zodat 'm niet per ongeluk tijdens een echt evenement gebruikt kan worden.
-app.post('/api/topology/test-data', (req, res) => {
-  const test = JSON.parse(fs.readFileSync(TEST_TOPO, 'utf8'));
+// "simpel": 2 generators, 6 kasten, 3 niveaus — voor een snelle demo.
+// "uitgebreid": 5 generators, 120 kasten, tot 10 niveaus diep per generator — stresstest voor de UI (lijst, schema,
+// plattegrond, Sankey), Telegraf/InfluxDB-doorvoer en de simulator onder een realistische belasting.
+app.post('/api/topology/test-data/simpel', (req, res) => {
+  const test = JSON.parse(fs.readFileSync(TEST_TOPO_SIMPEL, 'utf8'));
+  writeTopo(test);
+  res.json({ ok: true });
+});
+app.post('/api/topology/test-data/uitgebreid', (req, res) => {
+  const test = JSON.parse(fs.readFileSync(TEST_TOPO_UITGEBREID, 'utf8'));
   writeTopo(test);
   res.json({ ok: true });
 });

@@ -53,13 +53,17 @@ zetten zonder code aan te passen.
 - Live meetwaarden (stroom per fase, spanning, vermogen) in het detailpaneel
 
 **Testdata-tabblad** *(tijdelijk, zie roadmap)*
-- Eén klik een voorbeeldtopologie laden (2 generators, 6 kasten) om de app te demonstreren
+- Eén klik een voorbeeldtopologie laden: **eenvoudig** (2 generators, 6 kasten, 3 niveaus) voor een
+  snelle demo, of **uitgebreid** (5 generators, 120 kasten, tot 10 niveaus diep) als stresstest van de
+  lijst/schema/plattegrond/Sankey en de Telegraf/InfluxDB/simulator-doorvoer
 - Meetdata in InfluxDB wissen (alleen `shelly_em`/`shelly_emdata`, niet de topologie of de
   `topology_edges`-reeks voor de Sankey) voor een schone start na een korte test
 
 **Simulator**
 - Publiceert realistische, langzaam variërende meetdata voor alle kasten in de huidige topologie,
   met incidentele belastingspieken — geen Shelly-hardware nodig om te testen
+- Ververst de topologie elke 5 seconden vanuit de webapp, dus wisselen tussen testtopologieën
+  (of wijzigingen tijdens een editie) werkt zonder de simulator-container te herstarten
 
 **Grafana-dashboards**
 - InfluxDB-datasource en start-dashboard worden automatisch geprovisioned bij het opstarten
@@ -77,10 +81,10 @@ zetten zonder code aan te passen.
 - [ ] **Simulator + Testdata-tabblad achter een profile-flag na de testfase.** Beide staan nu
       standaard aan zodat testen makkelijk is. Zodra een editie de testfase uit is: zet
       `profiles: ["test"]` weer op de simulator-service in `docker-compose.yml`, en verberg
-      (of laat 404 geven) het Testdata-tabblad — knoppen "Laad testtopologie"
-      (`POST /api/topology/test-data`), "Start/stop simulator" (`POST /api/simulator/start`
-      en `/stop`) en "Wis meetdata" (`POST /api/metingen/reset`) — tenzij dezelfde `test`-profile
-      actief is (`docker compose --profile test up -d`). Zo kan niemand tijdens een echt
+      (of laat 404 geven) het Testdata-tabblad — knoppen "Laad eenvoudige/uitgebreide testtopologie"
+      (`POST /api/topology/test-data/simpel` en `/uitgebreid`), "Start/stop simulator"
+      (`POST /api/simulator/start` en `/stop`) en "Wis meetdata" (`POST /api/metingen/reset`) —
+      tenzij dezelfde `test`-profile actief is (`docker compose --profile test up -d`). Zo kan niemand tijdens een echt
       evenement per ongeluk de topologie overschrijven, de simulator aanzetten of meetdata wissen.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:

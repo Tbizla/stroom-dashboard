@@ -98,11 +98,15 @@ Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie per fase (k
 
 ## 7. Testen met fake data
 
-Er zit een simulator bij die realistisch ogende meetdata voor alle kasten publiceert, zonder dat er Shelly's aangesloten hoeven te zijn. Hij haalt de kastenlijst automatisch op bij de webapp, dus je hoeft niets handmatig te synchroniseren. Elke kast krijgt een langzaam wisselende belasting, en af en toe (standaard ~1% kans per tik) een kunstmatige piek — handig om de groen/amber/rood-status en later de alerts te testen.
+Er zit een simulator bij die realistisch ogende meetdata voor alle kasten publiceert, zonder dat er Shelly's aangesloten hoeven te zijn. Hij haalt de kastenlijst automatisch op bij de webapp en ververst die elke 5 seconden, dus je hoeft niets handmatig te synchroniseren of te herstarten als je van testtopologie wisselt. Elke kast krijgt een langzaam wisselende belasting, en af en toe (standaard ~1% kans per tik) een kunstmatige piek — handig om de groen/amber/rood-status en later de alerts te testen.
 
-Op het **Testdata**-tabblad in de webapp:
-- **"Laad testtopologie"** zet in één klik een voorbeeldtopologie (2 generators, 6 kasten) neer, zodat de simulator meteen data heeft om te publiceren.
-- **"Wis meetdata"** wist alle meetdata uit InfluxDB (de topologie blijft staan) — handig om na een korte test met een schone grafiek te beginnen.
+Op het **Testdata**-tabblad in de webapp, twee varianten:
+- **"Laad eenvoudige testtopologie"** — 2 generators, 6 kasten, 3 niveaus diep. Snelle demo van de werking.
+- **"Laad uitgebreide testtopologie (stresstest)"** — 5 generators, 120 kasten, tot 10 niveaus diep per generator. Voor het testen van de lijst/schema/plattegrond/Sankey en de doorvoer van Telegraf/InfluxDB/de simulator onder realistische belasting.
+
+Beide overschrijven de huidige generators en kasten, en je kunt op elk moment tussen de twee wisselen — de simulator pikt de wijziging binnen enkele seconden op.
+
+**"Wis meetdata"** wist alle meetdata uit InfluxDB (de topologie blijft staan, inclusief de `topology_edges`-reeks voor de Sankey) — handig om na een korte test met een schone grafiek te beginnen.
 
 **Let op: de simulator staat momenteel standaard aan.** Een gewone `docker compose up -d --build` start de simulator dus nu gewoon mee, zodat je meteen kunt testen zonder Shelly's. Zie de roadmap in [event_dashboard.md](event_dashboard.md) — dit gaat samen met het Testdata-tabblad weer achter een flag zodra de testfase klaar is, zodat er nooit per ongeluk mee getest wordt tijdens een echt evenement.
 

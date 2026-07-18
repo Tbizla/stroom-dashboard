@@ -176,15 +176,25 @@
   <div class="beheer" id="testPanel" style="display:none">
     <div class="beheercol">
       <h2>Testdata</h2>
-      <p style="font-size:13px;color:var(--text2);max-width:520px">
-        Laadt een voorbeeldtopologie (2 generators, 6 kasten) om de werking van het dashboard te demonstreren
-        tijdens de testfase. Dit overschrijft de huidige generators en kasten.
-      </p>
       <p style="font-size:12px;color:var(--text3);max-width:520px">
         Let op: dit tabblad hoort, net als de simulator, alleen tijdens de testfase beschikbaar te zijn en
         wordt daarna achter dezelfde <code>--profile test</code>-vlag gezet.
       </p>
-      <button id="loadTestBtn">Laad testtopologie</button>
+
+      <p style="font-size:13px;color:var(--text2);max-width:520px">
+        <b>Eenvoudig</b> — 2 generators, 6 kasten, 3 niveaus diep. Snelle demo van de werking.
+        Dit overschrijft de huidige generators en kasten.
+      </p>
+      <button id="loadTestSimpelBtn">Laad eenvoudige testtopologie</button>
+
+      <p style="font-size:13px;color:var(--text2);max-width:520px;margin-top:14px">
+        <b>Uitgebreid</b> — 5 generators, 120 kasten, tot 10 niveaus diep per generator (een lange
+        verdeler-keten met zijtakken van onderverdelers/eindkasten). Voor een stresstest van de
+        lijst, het schema, de plattegrond, de Sankey-koppeling en de doorvoer van
+        Telegraf/InfluxDB/de simulator onder realistische belasting. Dit overschrijft de huidige
+        generators en kasten.
+      </p>
+      <button id="loadTestUitgebreidBtn">Laad uitgebreide testtopologie (stresstest)</button>
 
       <h2 style="margin-top:26px">Simulator</h2>
       <p style="font-size:13px;color:var(--text2);max-width:520px">
@@ -647,12 +657,21 @@ document.getElementById('modeTest').onclick = ()=>{
   refreshSimStatus();
 };
 
-document.getElementById('loadTestBtn').onclick = async ()=>{
-  if(!confirm('Testtopologie laden? Dit overschrijft de huidige generators en kasten.')) return;
+document.getElementById('loadTestSimpelBtn').onclick = async ()=>{
+  if(!confirm('Eenvoudige testtopologie laden? Dit overschrijft de huidige generators en kasten.')) return;
   try{
-    await apiCall('/api/topology/test-data', 'POST');
+    await apiCall('/api/topology/test-data/simpel', 'POST');
     await loadTopology();
-    alert('Testtopologie geladen. Ga naar "Beheer" of "Kalibreren" om verder te gaan.');
+    alert('Eenvoudige testtopologie geladen. Ga naar "Beheer" of "Kalibreren" om verder te gaan.');
+  }catch(e){ alert(e.message); }
+};
+
+document.getElementById('loadTestUitgebreidBtn').onclick = async ()=>{
+  if(!confirm('Uitgebreide testtopologie (5 generators, 120 kasten, tot 10 niveaus diep) laden? Dit overschrijft de huidige generators en kasten.')) return;
+  try{
+    await apiCall('/api/topology/test-data/uitgebreid', 'POST');
+    await loadTopology();
+    alert('Uitgebreide testtopologie geladen (5 generators, 120 kasten). Ga naar "Beheer", "Schema" of "Kalibreren" om verder te gaan.');
   }catch(e){ alert(e.message); }
 };
 

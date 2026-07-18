@@ -45,7 +45,7 @@ async function isIngeschakeld() {
 }
 
 async function main() {
-  const topo = await wachtOpTopologie();
+  let topo = await wachtOpTopologie();
   console.log('[simulator] topologie geladen: ' + topo.kasten.length + ' kasten. Verbinden met ' + MQTT_URL);
 
   const client = mqtt.connect(MQTT_URL);
@@ -55,6 +55,22 @@ async function main() {
   // per kast een startbelasting als fractie van de eigen rating_a, die random-walkt over tijd
   const state = {};
   topo.kasten.forEach(k => { state[k.id] = rand(0.2, 0.5); });
+
+  // topologie periodiek verversen (bijv. wisselen tussen de eenvoudige en uitgebreide
+  // testtopologie op het Testdata-tabblad) zonder dat de container herstart hoeft te worden
+  setInterval(async () => {
+    try {
+      const res = await fetch(TOPOLOGY_URL);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.kasten || !data.kasten.length) return;
+      if (data.kasten.length !== topo.kasten.length) {
+        console.log('[simulator] topologie gewijzigd: ' + topo.kasten.length + ' -> ' + data.kasten.length + ' kasten');
+      }
+      topo = data;
+      topo.kasten.forEach(k => { if (!(k.id in state)) state[k.id] = rand(0.2, 0.5); });
+    } catch (e) { /* webapp tijdelijk niet bereikbaar, volgende poging opnieuw */ }
+  }, 5000);
 
   let wasIngeschakeld = false;
   setInterval(async () => {
