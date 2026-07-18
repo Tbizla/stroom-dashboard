@@ -48,6 +48,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
     volumes:
       - grafana-data:/var/lib/grafana
 
@@ -77,7 +78,7 @@ services:
     environment:
       - MQTT_URL=mqtt://mosquitto:1883
       - TOPOLOGY_URL=http://webapp:8080/api/topology
-      - INTERVAL_MS=5000
+      - INTERVAL_MS=1000
       - PIEK_KANS=0.01
 
 volumes:
