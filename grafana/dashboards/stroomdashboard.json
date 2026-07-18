@@ -1,0 +1,116 @@
+{
+  "title": "Stroomdashboard - overzicht",
+  "uid": "stroomdashboard-overzicht",
+  "tags": ["stroom", "festival"],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "editie",
+        "label": "Editie",
+        "type": "query",
+        "datasource": { "type": "influxdb", "uid": "influxdb" },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"stroomdata\", tag: \"editie\")",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 3,
+        "current": {}
+      },
+      {
+        "name": "kast",
+        "label": "Kast",
+        "type": "query",
+        "datasource": { "type": "influxdb", "uid": "influxdb" },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"stroomdata\", tag: \"kast\")",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "sort": 1,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Per kast - toelichting",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "title": "",
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 1 },
+      "options": {
+        "mode": "markdown",
+        "content": "Deze panelen worden automatisch herhaald per kast in `$kast` (bron: MQTT-topic-tags in InfluxDB, niet de webapp-topologie). **Generator-totalen** (som van alleen de direct-gevoede kasten) staan hier bewust niet in, omdat dat kennis van de parent/child-keten uit de webapp vereist — zie `grafana-queries.md` sectie 5 om die handmatig toe te voegen. Alarmdrempels (90% van `rating_a`) zet je ook per paneel handmatig, want die rating staat in de webapp-topologie, niet in InfluxDB."
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Totale stroom - $kast",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "repeat": "kast",
+      "repeatDirection": "h",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "amp",
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r._field == \"total_current\")\n  |> filter(fn: (r) => r.kast == \"${kast}\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Stroom per fase - $kast",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "repeat": "kast",
+      "repeatDirection": "h",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "amp",
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r._field == \"a_current\" or r._field == \"b_current\" or r._field == \"c_current\")\n  |> filter(fn: (r) => r.kast == \"${kast}\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")",
+          "hide": false
+        }
+      ]
+    }
+  ]
+}

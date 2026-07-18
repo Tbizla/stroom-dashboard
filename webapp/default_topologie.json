@@ -1,0 +1,12 @@
+{
+  "generators": [],
+  "kasten": [],
+  "toelichting": {
+    "parent": "id van de kast waar deze kast STROOMTECHNISCH op doorgelust is; leeg betekent rechtstreeks op de generator",
+    "rating_a": "nominale stroomsterkte van de kast zelf, gebruikt voor de alarmdrempel op die kast",
+    "shelly_ip": "in te vullen met het lokale IP-adres van de Shelly Pro 3EM in deze kast",
+    "mqtt_topic_prefix": "automatisch gegenereerd als fest/<generator_id>/<kast_id>; vul deze waarde in de Shelly in onder Settings > MQTT > Custom MQTT prefix",
+    "positie": "x_pct/y_pct: locatie op de plattegrond als percentage van breedte/hoogte (0-100). Wordt ingevuld via de kalibratiemodus.",
+    "afkorting": "optionele korte naam zoals gebruikt op de plattegrond/in de crew-communicatie"
+  }
+}
