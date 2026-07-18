@@ -18,6 +18,10 @@ const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(TOPO_FILE)) fs.copyFileSync(DEFAULT_TOPO, TOPO_FILE);
 
+// niet-persistent: staat na elke herstart van de webapp weer standaard uit, zodat een
+// vergeten aan-gezette simulator nooit per ongeluk blijft doorlopen na een herstart.
+let simulatorEnabled = false;
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -172,13 +176,22 @@ app.post('/api/reset', (req, res) => {
 
 // ---------- testtopologie laden ----------
 // Bedoeld om de werking te demonstreren tijdens de testfase. Zet dit, net als de
-// simulator (zie docker-compose.yml), na de testfase achter de "simulator"-profile-flag
+// simulator (zie docker-compose.yml), na de testfase achter de "test"-profile-flag
 // zodat 'm niet per ongeluk tijdens een echt evenement gebruikt kan worden.
 app.post('/api/topology/test-data', (req, res) => {
   const test = JSON.parse(fs.readFileSync(TEST_TOPO, 'utf8'));
   writeTopo(test);
   res.json({ ok: true });
 });
+
+// ---------- simulator aan/uit ----------
+// De simulator-container draait continu, maar publiceert alleen fake meetdata zolang dit
+// hier op "aan" staat (hij polt dit endpoint). Zo is de simulator vanuit de webapp te
+// starten/stoppen zonder dat de webapp de container zelf hoeft te beheren. Hoort, net als
+// de rest van dit tabblad, alleen tijdens de testfase gebruikt te worden.
+app.get('/api/simulator/status', (req, res) => res.json({ enabled: simulatorEnabled }));
+app.post('/api/simulator/start', (req, res) => { simulatorEnabled = true; res.json({ ok: true, enabled: true }); });
+app.post('/api/simulator/stop', (req, res) => { simulatorEnabled = false; res.json({ ok: true, enabled: false }); });
 
 // ---------- simulatie-meetdata wissen ----------
 // Wist alle meetdata (stroom/spanning/vermogen) uit InfluxDB — niet de topologie. Handig om na

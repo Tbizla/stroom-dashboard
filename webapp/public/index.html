@@ -38,7 +38,13 @@
   .mapinner{position:relative;display:inline-block}
   .mapinner img{display:block;max-width:none}
   .noMap{color:var(--text3);padding:60px;text-align:center;font-size:13px}
+  .blankcanvas{position:relative;width:1600px;height:1000px;background-color:#0b0d10;cursor:crosshair;
+    background-image:radial-gradient(circle, var(--border) 1px, transparent 1px);background-size:32px 32px}
+  .blankcanvas-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;
+    color:var(--text3);font-size:13px;text-align:center;pointer-events:none}
   #svgoverlay{position:absolute;top:0;left:0;pointer-events:none}
+  #schemaSvg{display:block}
+  .schemawrap{padding:30px;flex-direction:column;align-items:center;gap:16px}
   .pin{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
        border:2px solid #0b0d10;cursor:pointer;background:var(--grey);z-index:5;
        box-shadow:0 0 0 2px rgba(255,255,255,.15)}
@@ -55,7 +61,9 @@
   .listhead{padding:12px 14px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}
   .list{overflow-y:auto;flex:1}
   .genrow{padding:10px 14px;background:var(--panel2);font-size:12.5px;font-weight:700;color:var(--accent);
-          display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+          display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;cursor:pointer}
+  .genrow .val{font-family:var(--mono);font-weight:400;color:var(--text2);font-size:12px}
+  .genrow.selected{box-shadow:inset 0 0 0 2px var(--accent)}
   .row{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px}
   .row:hover{background:var(--panel2)}
   .row.selected{background:var(--accent-dim)}
@@ -109,6 +117,7 @@
     <div class="modeswitch">
       <button id="modeBeheer" class="active">Beheer</button>
       <button id="modeCal">Kalibreren</button>
+      <button id="modeSchema">Schema</button>
       <button id="modeLive">Live</button>
       <button id="modeTest">Testdata</button>
     </div>
@@ -127,7 +136,7 @@
 
   <div class="calbar" id="calbar" style="display:none">
     <label class="uploadbtn">Plattegrond uploaden<input type="file" id="mapFile" style="display:none" accept="image/*"></label>
-    <span>Klik een kast in de lijst rechts, klik dan op de kaart om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
+    <span>Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
     <span class="hint" id="armedLabel"></span>
   </div>
 
@@ -173,9 +182,21 @@
       </p>
       <p style="font-size:12px;color:var(--text3);max-width:520px">
         Let op: dit tabblad hoort, net als de simulator, alleen tijdens de testfase beschikbaar te zijn en
-        wordt daarna achter dezelfde <code>--profile simulator</code>-vlag gezet.
+        wordt daarna achter dezelfde <code>--profile test</code>-vlag gezet.
       </p>
       <button id="loadTestBtn">Laad testtopologie</button>
+
+      <h2 style="margin-top:26px">Simulator</h2>
+      <p style="font-size:13px;color:var(--text2);max-width:520px">
+        De simulator-container draait altijd mee, maar publiceert pas fake meetdata zodra je 'm hier
+        expliciet start. Staat na elke herstart van de webapp weer standaard uit.
+      </p>
+      <div class="addform">
+        <button id="simStartBtn">Start simulator</button>
+        <button id="simStopBtn">Stop simulator</button>
+        <div class="dot" id="simDot"></div>
+        <span id="simStatusLabel">status onbekend</span>
+      </div>
 
       <h2 style="margin-top:26px">Meetdata wissen</h2>
       <p style="font-size:13px;color:var(--text2);max-width:520px">
@@ -191,9 +212,15 @@
     <div class="mapwrap" id="mapwrap">
       <div class="mapinner" id="mapinner">
         <img id="mapimg" alt="Plattegrond" style="display:none">
-        <div class="noMap" id="noMapMsg">Nog geen plattegrond geüpload. Gebruik de knop hierboven.</div>
+        <div class="blankcanvas" id="blankCanvas">
+          <div class="blankcanvas-hint">Nog geen plattegrond geüpload. Je kunt kasten hier alvast vrij plaatsen — upload later een plattegrond via de knop hierboven, de posities blijven staan.</div>
+        </div>
         <svg id="svgoverlay"></svg>
       </div>
+    </div>
+    <div class="mapwrap schemawrap" id="schemaWrap" style="display:none">
+      <div class="blankcanvas-hint" id="schemaEmptyHint" style="position:static;display:none">Nog geen generators/kasten. Voeg ze toe via "Beheer" — het schema wordt automatisch getekend.</div>
+      <svg id="schemaSvg"></svg>
     </div>
     <aside>
       <div class="listhead">Generators &amp; kasten</div>
@@ -217,17 +244,21 @@ const detailEl = document.getElementById('detail');
 const svg = document.getElementById('svgoverlay');
 const mapimg = document.getElementById('mapimg');
 const mapinner = document.getElementById('mapinner');
-const noMapMsg = document.getElementById('noMapMsg');
+const blankCanvas = document.getElementById('blankCanvas');
 
 function allNodes(){ return [...TOPO.generators, ...TOPO.kasten]; }
 function isGen(n){ return n.vermogen_kva !== undefined; }
 function nodeById(id){ return allNodes().find(n=>n.id===id); }
 function genNaam(genId){ const g = TOPO.generators.find(g=>g.id===genId); return g ? g.naam : genId; }
+// het "oppervlak" waarop kasten geplaatst worden: de plattegrond als die is geüpload,
+// anders een leeg vlak — zo kun je ook zonder plattegrond kasten vrij plaatsen
+function getSurfaceEl(){ return mapimg.style.display !== 'none' ? mapimg : blankCanvas; }
 
 async function loadTopology(){
   const res = await fetch('/api/topology');
   TOPO = await res.json();
   renderList(); renderDetail(); renderBeheer();
+  if(mode==='schema') renderSchema();
 }
 
 async function savePositie(node){
@@ -242,12 +273,13 @@ function loadMap(){
   img.onload = ()=>{
     mapimg.src = '/api/map?t=' + Date.now();
     mapimg.style.display = 'block';
-    noMapMsg.style.display = 'none';
+    blankCanvas.style.display = 'none';
     renderPins();
   };
   img.onerror = ()=>{
     mapimg.style.display = 'none';
-    noMapMsg.style.display = 'block';
+    blankCanvas.style.display = 'block';
+    renderPins();
   };
   img.src = '/api/map?t=' + Date.now();
 }
@@ -273,8 +305,18 @@ function renderList(){
   listEl.innerHTML = '';
   TOPO.generators.forEach(gen=>{
     const gh = document.createElement('div');
-    gh.className = 'genrow';
-    gh.textContent = gen.naam + ' · ' + gen.vermogen_kva + ' kVA';
+    gh.className = 'genrow' + (gen.id===selectedId?' selected':'') + (mode==='cal' && gen.id===armedId?' selected':'');
+    const genName = document.createElement('div');
+    genName.className = 'name';
+    genName.textContent = gen.naam + ' · ' + gen.vermogen_kva + ' kVA';
+    const genVal = document.createElement('div');
+    genVal.className = 'val';
+    genVal.textContent = gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst';
+    gh.appendChild(genName); gh.appendChild(genVal);
+    gh.onclick = ()=>{
+      if(mode==='cal'){ armedId = gen.id; renderList(); document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+gen.naam+'" te plaatsen'; }
+      selectedId = gen.id; renderList(); renderDetail(); renderPins();
+    };
     listEl.appendChild(gh);
     TOPO.kasten.filter(k=>k.generator===gen.id).forEach(k=>{
       const row = document.createElement('div');
@@ -325,9 +367,9 @@ function renderDetail(){
 }
 
 function renderPins(){
-  if(mapimg.style.display === 'none') return;
   mapinner.querySelectorAll('.pin,.pinlabel').forEach(e=>e.remove());
-  const w = mapimg.clientWidth, h = mapimg.clientHeight;
+  const surface = getSurfaceEl();
+  const w = surface.clientWidth, h = surface.clientHeight;
   if(!w || !h) return;
   svg.setAttribute('width', w); svg.setAttribute('height', h);
   svg.innerHTML = '';
@@ -357,7 +399,7 @@ function renderPins(){
       selectedId = n.id; renderList(); renderDetail(); renderPins();
       if(mode!=='cal') return;
       const move = (mv)=>{
-        const rect = mapimg.getBoundingClientRect();
+        const rect = getSurfaceEl().getBoundingClientRect();
         let x = ((mv.clientX-rect.left)/rect.width)*100;
         let y = ((mv.clientY-rect.top)/rect.height)*100;
         x = Math.max(0,Math.min(100,x)); y = Math.max(0,Math.min(100,y));
@@ -383,10 +425,98 @@ function renderPins(){
   });
 }
 
+// ---------- schema: automatisch gegenereerd stroomschema (parent/child-boom), geen plattegrond nodig ----------
+function schemaChildrenOf(node){
+  return isGen(node)
+    ? TOPO.kasten.filter(k=>k.generator===node.id && !k.parent)
+    : TOPO.kasten.filter(k=>k.parent===node.id);
+}
+
+function computeSchemaLayout(){
+  const NODE_W = 150, NODE_H = 36, GAP_X = 30, LEVEL_H = 100, PAD = 50;
+  let cursor = 0;
+  const positioned = [];
+  const links = [];
+
+  function place(node, depth){
+    const kids = schemaChildrenOf(node);
+    let x;
+    if(kids.length === 0){
+      x = cursor * (NODE_W + GAP_X) + NODE_W / 2;
+      cursor++;
+    } else {
+      const xs = kids.map(k=>{ const kx = place(k, depth + 1); links.push({ from: node, to: k }); return kx; });
+      x = (Math.min(...xs) + Math.max(...xs)) / 2;
+    }
+    positioned.push({ node, depth, x });
+    return x;
+  }
+
+  TOPO.generators.forEach(g => place(g, 0));
+
+  const maxDepth = positioned.reduce((m, p) => Math.max(m, p.depth), 0);
+  const width = Math.max(cursor * (NODE_W + GAP_X) + PAD, 300);
+  const height = PAD * 2 + (maxDepth + 1) * LEVEL_H;
+  return { positioned, links, width, height, NODE_W, NODE_H, LEVEL_H, PAD };
+}
+
+function renderSchema(){
+  const { positioned, links, width, height, NODE_W, NODE_H, LEVEL_H, PAD } = computeSchemaLayout();
+  const schemaSvg = document.getElementById('schemaSvg');
+  document.getElementById('schemaEmptyHint').style.display = positioned.length ? 'none' : 'block';
+  schemaSvg.setAttribute('width', width);
+  schemaSvg.setAttribute('height', height);
+  schemaSvg.innerHTML = '';
+  const yOf = depth => PAD + depth * LEVEL_H;
+
+  links.forEach(({ from, to })=>{
+    const fp = positioned.find(p=>p.node.id===from.id);
+    const tp = positioned.find(p=>p.node.id===to.id);
+    if(!fp || !tp) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', fp.x + PAD/2); line.setAttribute('y1', yOf(fp.depth) + NODE_H/2);
+    line.setAttribute('x2', tp.x + PAD/2); line.setAttribute('y2', yOf(tp.depth) - NODE_H/2);
+    line.setAttribute('stroke', 'rgba(79,209,197,0.55)');
+    line.setAttribute('stroke-width', '2');
+    schemaSvg.appendChild(line);
+  });
+
+  positioned.forEach(p=>{
+    const gen = isGen(p.node);
+    const cx = p.x + PAD/2, cy = yOf(p.depth);
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor = 'pointer';
+    g.onclick = ()=>{ selectedId = p.node.id; renderList(); renderDetail(); renderSchema(); };
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', cx - NODE_W/2); rect.setAttribute('y', cy - NODE_H/2);
+    rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
+    rect.setAttribute('rx', gen ? 6 : 18);
+    const cls = gen ? '' : statusClass(p.node);
+    const fill = gen ? 'var(--accent)' : cls==='status-red' ? 'var(--red)' : cls==='status-amber' ? 'var(--amber)' : cls==='status-green' ? 'var(--green)' : 'var(--panel2)';
+    rect.setAttribute('fill', fill);
+    rect.setAttribute('stroke', p.node.id===selectedId ? '#fff' : 'var(--border)');
+    rect.setAttribute('stroke-width', p.node.id===selectedId ? '2' : '1');
+    g.appendChild(rect);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', cx); text.setAttribute('y', cy + 4);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-family', 'var(--sans)');
+    text.setAttribute('fill', gen ? '#0b1210' : '#e8eaed');
+    const label = p.node.naam.length > 18 ? p.node.naam.slice(0, 17) + '…' : p.node.naam;
+    text.textContent = gen ? label : label + ' (' + p.node.rating_a + 'A)';
+    g.appendChild(text);
+
+    schemaSvg.appendChild(g);
+  });
+}
+
 mapinner.addEventListener('click', (ev)=>{
   if(mode!=='cal' || !armedId) return;
   if(ev.target.classList.contains('pin')) return;
-  const rect = mapimg.getBoundingClientRect();
+  const rect = getSurfaceEl().getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width)*100;
   const y = ((ev.clientY-rect.top)/rect.height)*100;
   const n = nodeById(armedId);
@@ -440,7 +570,7 @@ document.getElementById('importFile').onchange = (ev)=>{
 
 // ---------- mode switching ----------
 function setActiveModeButton(id){
-  ['modeBeheer','modeCal','modeLive','modeTest'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
+  ['modeBeheer','modeCal','modeSchema','modeLive','modeTest'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
 }
 document.getElementById('modeBeheer').onclick = ()=>{
   mode='beheer';
@@ -461,8 +591,23 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('calbar').style.display='flex';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
+  document.getElementById('mapwrap').style.display='flex';
+  document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   renderPins();
+};
+document.getElementById('modeSchema').onclick = ()=>{
+  mode='schema';
+  setActiveModeButton('modeSchema');
+  document.getElementById('liveControls').style.display='none';
+  document.getElementById('calControls').style.display='none';
+  document.getElementById('calbar').style.display='none';
+  document.getElementById('beheerPanel').style.display='none';
+  document.getElementById('testPanel').style.display='none';
+  document.getElementById('mapwrap').style.display='none';
+  document.getElementById('schemaWrap').style.display='flex';
+  document.getElementById('mainBody').style.display='flex';
+  renderSchema();
 };
 document.getElementById('modeLive').onclick = ()=>{
   mode='live';
@@ -472,6 +617,8 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('calbar').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
+  document.getElementById('mapwrap').style.display='flex';
+  document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   document.getElementById('brokerHost').value = document.getElementById('brokerHost').value || location.hostname || 'localhost';
   renderPins();
@@ -485,6 +632,7 @@ document.getElementById('modeTest').onclick = ()=>{
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('mainBody').style.display='none';
   document.getElementById('testPanel').style.display='flex';
+  refreshSimStatus();
 };
 
 document.getElementById('loadTestBtn').onclick = async ()=>{
@@ -494,6 +642,29 @@ document.getElementById('loadTestBtn').onclick = async ()=>{
     await loadTopology();
     alert('Testtopologie geladen. Ga naar "Beheer" of "Kalibreren" om verder te gaan.');
   }catch(e){ alert(e.message); }
+};
+
+async function refreshSimStatus(){
+  const dot = document.getElementById('simDot');
+  const label = document.getElementById('simStatusLabel');
+  try{
+    const res = await fetch('/api/simulator/status');
+    const data = await res.json();
+    dot.className = 'dot ' + (data.enabled ? 'ok' : '');
+    label.textContent = data.enabled ? 'simulator actief' : 'simulator gestopt';
+  }catch(e){
+    dot.className = 'dot err';
+    label.textContent = 'kon status niet ophalen';
+  }
+}
+
+document.getElementById('simStartBtn').onclick = async ()=>{
+  try{ await apiCall('/api/simulator/start', 'POST'); await refreshSimStatus(); }
+  catch(e){ alert(e.message); }
+};
+document.getElementById('simStopBtn').onclick = async ()=>{
+  try{ await apiCall('/api/simulator/stop', 'POST'); await refreshSimStatus(); }
+  catch(e){ alert(e.message); }
 };
 
 document.getElementById('resetMetingenBtn').onclick = async ()=>{
@@ -669,7 +840,7 @@ document.getElementById('connectBtn').onclick = ()=>{
         total_current:data.total_current, total_act_power:data.total_act_power,
         ts: Date.now()
       };
-      renderList(); renderPins(); if(selectedId===kastId) renderDetail();
+      renderList(); renderPins(); if(mode==='schema') renderSchema(); if(selectedId===kastId) renderDetail();
     });
   }catch(e){ dot.className='dot err'; label.textContent='fout: '+e.message; }
 };
@@ -680,6 +851,7 @@ setInterval(async ()=>{
   await loadTopology();
   selectedId = prevSelected;
   renderPins();
+  if(mode==='test') refreshSimStatus();
 }, 5000);
 
 loadTopology().then(loadMap);

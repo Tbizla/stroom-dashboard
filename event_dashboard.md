@@ -67,11 +67,12 @@ zetten zonder code aan te passen.
 
 - [ ] **Simulator + Testdata-tabblad achter een profile-flag na de testfase.** Beide staan nu
       standaard aan zodat testen makkelijk is. Zodra een editie de testfase uit is: zet
-      `profiles: ["simulator"]` weer op de simulator-service in `docker-compose.yml`, en verberg
+      `profiles: ["test"]` weer op de simulator-service in `docker-compose.yml`, en verberg
       (of laat 404 geven) het Testdata-tabblad — knoppen "Laad testtopologie"
-      (`POST /api/topology/test-data`) en "Wis meetdata" (`POST /api/metingen/reset`) — tenzij
-      dezelfde `simulator`-profile actief is. Zo kan niemand tijdens een echt evenement per
-      ongeluk de topologie overschrijven of meetdata wissen.
+      (`POST /api/topology/test-data`), "Start/stop simulator" (`POST /api/simulator/start`
+      en `/stop`) en "Wis meetdata" (`POST /api/metingen/reset`) — tenzij dezelfde `test`-profile
+      actief is (`docker compose --profile test up -d`). Zo kan niemand tijdens een echt
+      evenement per ongeluk de topologie overschrijven, de simulator aanzetten of meetdata wissen.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail).

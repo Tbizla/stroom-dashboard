@@ -2,6 +2,7 @@ const mqtt = require('mqtt');
 
 const MQTT_URL = process.env.MQTT_URL || 'mqtt://mosquitto:1883';
 const TOPOLOGY_URL = process.env.TOPOLOGY_URL || 'http://webapp:8080/api/topology';
+const STATUS_URL = process.env.SIMULATOR_STATUS_URL || 'http://webapp:8080/api/simulator/status';
 const INTERVAL_MS = parseInt(process.env.INTERVAL_MS || '5000', 10);
 const PIEK_KANS = parseFloat(process.env.PIEK_KANS || '0.01'); // kans per tik dat een kast een belastingspiek krijgt
 
@@ -32,19 +33,38 @@ function maakFasePayload(current) {
   };
 }
 
+async function isIngeschakeld() {
+  try {
+    const res = await fetch(STATUS_URL);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!data.enabled;
+  } catch (e) {
+    return false; // webapp niet bereikbaar: veilig default naar uit
+  }
+}
+
 async function main() {
   const topo = await wachtOpTopologie();
   console.log('[simulator] topologie geladen: ' + topo.kasten.length + ' kasten. Verbinden met ' + MQTT_URL);
 
   const client = mqtt.connect(MQTT_URL);
-  client.on('connect', () => console.log('[simulator] verbonden, publiceert elke ' + INTERVAL_MS + 'ms fake meetdata'));
+  client.on('connect', () => console.log('[simulator] verbonden met MQTT, wacht tot ingeschakeld via de webapp (Testdata-tabblad)'));
   client.on('error', (e) => console.error('[simulator] mqtt-fout:', e.message));
 
   // per kast een startbelasting als fractie van de eigen rating_a, die random-walkt over tijd
   const state = {};
   topo.kasten.forEach(k => { state[k.id] = rand(0.2, 0.5); });
 
-  setInterval(() => {
+  let wasIngeschakeld = false;
+  setInterval(async () => {
+    const ingeschakeld = await isIngeschakeld();
+    if (ingeschakeld !== wasIngeschakeld) {
+      console.log('[simulator] ' + (ingeschakeld ? 'ingeschakeld — publiceert nu elke ' + INTERVAL_MS + 'ms fake meetdata' : 'uitgeschakeld — publiceren gestopt'));
+      wasIngeschakeld = ingeschakeld;
+    }
+    if (!ingeschakeld) return;
+
     topo.kasten.forEach(k => {
       let fractie = state[k.id] + rand(-0.04, 0.04);
       if (Math.random() < PIEK_KANS) fractie += rand(0.3, 0.6); // simuleer een piek richting overbelasting
