@@ -27,7 +27,30 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 function readTopo() { return JSON.parse(fs.readFileSync(TOPO_FILE, 'utf8')); }
-function writeTopo(data) { fs.writeFileSync(TOPO_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+function writeTopo(data) {
+  fs.writeFileSync(TOPO_FILE, JSON.stringify(data, null, 2), 'utf8');
+  syncTopologyToInflux(data).catch((e) => console.error('kon topologie niet naar InfluxDB syncen:', e.message));
+}
+
+// Schrijft de parent/child-structuur (welke kast op welke kast/generator hangt) als losse
+// punten naar InfluxDB, zodat Grafana de live vermogensdata kan koppelen aan de actuele
+// topologie voor bijv. een multi-level Sankey-diagram — zonder dat er iets aan de Shelly's
+// (MQTT-prefix) hoeft te veranderen. Best effort: als InfluxDB niet bereikbaar is, faalt de
+// topologie-opslag zelf niet mee.
+async function syncTopologyToInflux(data) {
+  if (!INFLUX_TOKEN || !data.kasten.length) return;
+  const lines = data.kasten.map((k) => {
+    const parent = k.parent || k.generator;
+    return 'topology_edges,kast=' + k.id + ',parent=' + parent + ',generator=' + k.generator + ' value=1';
+  });
+  const url = INFLUX_URL + '/api/v2/write?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET) + '&precision=s';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'text/plain; charset=utf-8' },
+    body: lines.join('\n'),
+  });
+  if (!res.ok) throw new Error('InfluxDB write gaf ' + res.status + ': ' + (await res.text()));
+}
 
 function slugify(naam) {
   return (naam || '')
@@ -194,21 +217,30 @@ app.post('/api/simulator/start', (req, res) => { simulatorEnabled = true; res.js
 app.post('/api/simulator/stop', (req, res) => { simulatorEnabled = false; res.json({ ok: true, enabled: false }); });
 
 // ---------- simulatie-meetdata wissen ----------
-// Wist alle meetdata (stroom/spanning/vermogen) uit InfluxDB — niet de topologie. Handig om na
-// een korte test met een schone lei te beginnen. Hoort, net als de simulator en de testtopologie-
-// knop hierboven, alleen tijdens de testfase beschikbaar te zijn (zie roadmap in event_dashboard.md).
+// Wist alleen de meetdata (stroom/spanning/vermogen) uit InfluxDB — niet de topologie, en dus
+// ook niet de 'topology_edges'-reeks die de webapp bijhoudt voor Grafana (zie syncTopologyToInflux
+// hierboven), vandaar de predicate. Handig om na een korte test met een schone lei te beginnen.
+// Hoort, net als de simulator en de testtopologie-knop hierboven, alleen tijdens de testfase
+// beschikbaar te zijn (zie roadmap in event_dashboard.md).
 app.post('/api/metingen/reset', async (req, res) => {
   if (!INFLUX_TOKEN) return res.status(500).json({ error: 'INFLUX_TOKEN niet geconfigureerd op de webapp-service' });
   try {
     const url = INFLUX_URL + '/api/v2/delete?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET);
-    const influxRes = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start: '1970-01-01T00:00:00Z', stop: new Date(Date.now() + 1000).toISOString() }),
-    });
-    if (!influxRes.ok) {
-      const text = await influxRes.text();
-      return res.status(502).json({ error: 'InfluxDB gaf een fout (' + influxRes.status + '): ' + text });
+    // InfluxDB's delete-predicate ondersteunt geen "or", dus twee losse calls (één per measurement)
+    for (const measurement of ['shelly_em', 'shelly_emdata']) {
+      const influxRes = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start: '1970-01-01T00:00:00Z',
+          stop: new Date(Date.now() + 1000).toISOString(),
+          predicate: '_measurement="' + measurement + '"',
+        }),
+      });
+      if (!influxRes.ok) {
+        const text = await influxRes.text();
+        return res.status(502).json({ error: 'InfluxDB gaf een fout (' + influxRes.status + '): ' + text });
+      }
     }
     res.json({ ok: true });
   } catch (e) {

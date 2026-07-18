@@ -111,6 +111,36 @@
           "hide": false
         }
       ]
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "Terugblik - energieverdeling",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 6,
+      "type": "netsage-sankey-panel",
+      "title": "Energieverdeling generator -> kast - editie $editie",
+      "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator -> hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 13 },
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "options": {
+        "singleColor": false,
+        "nodeWidth": 15,
+        "nodePadding": 20,
+        "layoutIteration": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\", \"parent\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> map(fn: (r) => ({ source: r.parent, target: r.kast, value: r.value }))\n  |> keep(columns: [\"source\", \"target\", \"value\"])",
+          "hide": false
+        }
+      ]
     }
   ]
 }

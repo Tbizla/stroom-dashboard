@@ -38,6 +38,9 @@ zetten zonder code aan te passen.
 - Automatisch gegenereerde `mqtt_topic_prefix` per kast, direct bruikbaar in de Shelly-config
 - Evenementlogo uploaden, zichtbaar in de header
 - Export/import van de volledige topologie als JSON (back-up, of hergebruik voor een nieuwe editie)
+- Elke wijziging in Beheer wordt automatisch als `topology_edges`-reeks naar InfluxDB gesynct
+  (kast → parent/generator), zodat Grafana de actuele parent/child-structuur kan gebruiken
+  zonder dat de Shelly's of MQTT-topics daarvoor aangepast hoeven te worden
 
 **Plattegrond & kalibratie (Kalibreren-tabblad)**
 - Plattegrond (afbeelding) uploaden
@@ -51,7 +54,8 @@ zetten zonder code aan te passen.
 
 **Testdata-tabblad** *(tijdelijk, zie roadmap)*
 - Eén klik een voorbeeldtopologie laden (2 generators, 6 kasten) om de app te demonstreren
-- Meetdata in InfluxDB wissen zonder de topologie aan te raken, voor een schone start na een korte test
+- Meetdata in InfluxDB wissen (alleen `shelly_em`/`shelly_emdata`, niet de topologie of de
+  `topology_edges`-reeks voor de Sankey) voor een schone start na een korte test
 
 **Simulator**
 - Publiceert realistische, langzaam variërende meetdata voor alle kasten in de huidige topologie,
@@ -62,6 +66,11 @@ zetten zonder code aan te passen.
 - Panelen per kast (totale stroom, stroom per fase) herhalen automatisch via een `$kast`-variabele
 - `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket)
 - Alerting-condities (90%-drempel van `rating_a` per fase, niet van `total_current`) zijn per paneel handmatig toe te voegen
+- Sankey-paneel ("Terugblik - energieverdeling", Netsage Sankey-plugin, automatisch geïnstalleerd
+  via `GF_INSTALL_PLUGINS`) toont na afloop het geschatte energieverbruik per kast als
+  stroomdiagram, met de volledige parent/child-keten (generator → hoofdverdeler → kast, hoe diep
+  ook) — via een Flux-`join()` tussen de vermogensdata en de `topology_edges`-reeks hierboven,
+  dus automatisch actueel zodra de topologie in de webapp wijzigt
 
 ## Roadmap
 
@@ -76,6 +85,13 @@ zetten zonder code aan te passen.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail).
+- [ ] **PDF-export van het Grafana-dashboard voor een terugblikrapport.** Grafana OSS heeft
+      geen ingebouwde PDF-/reportfunctie (dat zit alleen in Grafana Enterprise/Cloud). Voor een
+      deelbaar rapport na afloop van een editie: een losse, gratis tool zoals
+      [IzakMarais/reporter](https://github.com/IzakMarais/reporter) of
+      [cloudeteer/grafana-pdf-report-app](https://github.com/cloudeteer/grafana-pdf-report-app)
+      toevoegen aan de stack. Tot die tijd kan het per paneel via "Inspect > Download CSV",
+      of een browser-print-to-PDF van het dashboard.
 - [ ] **Overzichtsdashboard met generator-totalen.** Eén pagina met de generator-totalen
       bovenaan (grote getallen/gauges), daaronder per generator een rij met de direct-gevoede
       kasten, en voor kasten die zelf weer vertakken (bijv. een terreinverdeler) een klikbare
