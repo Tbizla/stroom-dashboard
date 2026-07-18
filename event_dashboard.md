@@ -1,138 +1,81 @@
-# Grafana / InfluxDB opzet — stroomdashboard
+# Event Stroomdashboard — projectdocument
 
-## 1. Generators en kasten invoeren
+> Voor installatie- en gebruiksinstructies (stack starten, Shelly's koppelen, Grafana-queries):
+> zie [README.md](README.md). Dit document beschrijft wat het project ís, welke features er zijn,
+> en wat er nog op de roadmap staat. Houd dit bij als de featurelijst of roadmap wijzigt.
 
-Alles begint leeg. Open de webapp (zie stap 2), je start automatisch in **Beheer**-modus:
-- Maak eerst je generators aan (naam + kVA)
-- Maak per generator de kasten aan (naam, ampèrage, eventueel een afkorting zoals "P1")
-- Koppel elke kast aan de kast waar 'ie stroomtechnisch op doorgelust is via het dropdown-veld **"Gevoed vanaf"** (leeg = rechtstreeks op de generator). De app voorkomt dat je per ongeluk een lus/cyclus maakt.
-- Kast verwijderen? Kasten die daarop waren doorgelust, worden automatisch doorgekoppeld naar wat erboven zat, zodat de keten intact blijft.
+## Omschrijving
 
-Elke kast krijgt automatisch een `mqtt_topic_prefix` (`fest/<generator_id>/<kast_id>`) — die vul je in de Shelly zelf in onder Settings > MQTT > Custom MQTT prefix.
+Zelf-gehost dashboard om de stroomvoorziening tijdens een evenement (festival, kermis, ...) in
+de gaten te houden: hoeveel stroom trekt elke verdeelkast, hoe dicht zit die bij de zekering, en
+hoe verhoudt dat zich tot de generator waar 'ie op hangt. Elke verdeelkast heeft een Shelly Pro
+3EM-meter die live metingen over MQTT publiceert; die data wordt opgeslagen in InfluxDB en
+gevisualiseerd in Grafana. Een losse webapp is er specifiek voor het **beheren van de
+stroomtopologie** (welke generator, welke kasten, hoe hangen ze aan elkaar) en het **live
+volgen** van de status op een plattegrond — dingen waar Grafana zelf niet geschikt voor is,
+omdat het geen begrip heeft van de fysieke opstelling of de parent/child-stroomketen.
 
-## 2. Shelly's instellen (eenmalig, per kast)
+Architectuur (zie `docker-compose.yml`):
+- **mosquitto** — MQTT-broker waar de Shelly's (of de simulator) naar publiceren
+- **telegraf** — leest MQTT-berichten en schrijft ze weg naar InfluxDB
+- **influxdb** — tijdreeksdatabase voor de meetdata
+- **grafana** — dashboards/grafieken/alerting bovenop InfluxDB
+- **webapp** — topologiebeheer, plattegrond-kalibratie, live-status, testtools (dit repo)
+- **simulator** — publiceert fake meetdata voor alle kasten, voor testen zonder Shelly-hardware
 
-Op elke Shelly Pro 3EM: Settings > MQTT
-- Enable MQTT: aan
-- Server: IP-adres van de machine bij NHQ, poort 1883
-- Custom MQTT prefix: de waarde die de webapp voor die kast heeft gegenereerd (zichtbaar in de kasten-tabel in Beheer-modus, en in een export)
+De hele stack is generiek en evenement-onafhankelijk: er zit geen vaste branding in, en via een
+eigen logo-upload en een `EVENT_EDITION`-variabele in `.env` is 'm elk jaar/editie opnieuw in te
+zetten zonder code aan te passen.
 
-Na deze stap publiceert elke Shelly automatisch naar o.a.:
-- `fest/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase, elke paar seconden of bij verandering
-- `fest/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh)
+## Features
 
-## 3. Stack starten
+**Topologiebeheer (Beheer-tabblad)**
+- Generators aanmaken/bewerken/verwijderen (naam, kVA)
+- Kasten aanmaken/bewerken/verwijderen (naam, afkorting, ampèrage, gekoppelde generator)
+- Kasten aan elkaar koppelen via "Gevoed vanaf" om de stroomketen (parent/child) vast te leggen,
+  met bescherming tegen cyclussen; verwijderen van een tussenliggende kast koppelt de keten
+  automatisch door
+- Automatisch gegenereerde `mqtt_topic_prefix` per kast, direct bruikbaar in de Shelly-config
+- Evenementlogo uploaden, zichtbaar in de header
+- Export/import van de volledige topologie als JSON (back-up, of hergebruik voor een nieuwe editie)
 
-```
-cp .env.example .env
-# vul .env in met eigen wachtwoorden/token
-docker compose up -d --build
-```
+**Plattegrond & kalibratie (Kalibreren-tabblad)**
+- Plattegrond (afbeelding) uploaden
+- Generators en kasten als pins op de plattegrond plaatsen en verslepen
+- Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling
 
-Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000) én het stroomdashboard zelf (poort 8080). Niets hoeft meer los gekopieerd of ingesteld te worden.
+**Live-monitoring (Live-tabblad)**
+- Rechtstreekse MQTT-verbinding vanuit de browser (via websockets) naar de broker
+- Status per kast (groen/amber/rood) op basis van actuele stroom t.o.v. de ingestelde rating
+- Live meetwaarden (stroom per fase, spanning, vermogen) in het detailpaneel
 
-Open `http://<ip-van-de-nhq-machine>:8080` — dat werkt vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus zoals eerder. Posities en plattegrond worden nu centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
+**Testdata-tabblad** *(tijdelijk, zie roadmap)*
+- Eén klik een voorbeeldtopologie laden (2 generators, 6 kasten) om de app te demonstreren
+- Meetdata in InfluxDB wissen zonder de topologie aan te raken, voor een schone start na een korte test
 
-Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met twee panelen (totale stroom en stroom per fase) die automatisch herhaald worden per kast via een `$kast`-variabele, plus een `$editie`-variabele. Dit dashboard bevat bewust geen generator-totalen of alarmdrempels — die vereisen kennis van de webapp-topologie (parent/child-keten, `rating_a`) die niet in InfluxDB zit; zie secties 5 en 6 hieronder om die zelf toe te voegen.
+**Simulator**
+- Publiceert realistische, langzaam variërende meetdata voor alle kasten in de huidige topologie,
+  met incidentele belastingspieken — geen Shelly-hardware nodig om te testen
 
-## 4. Voorbeeldquery — één kast (paneel per kast)
+**Grafana-dashboards**
+- InfluxDB-datasource en start-dashboard worden automatisch geprovisioned bij het opstarten
+- Panelen per kast (totale stroom, stroom per fase) herhalen automatisch via een `$kast`-variabele
+- `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket)
+- Alerting-condities (90%-drempel van `rating_a`) zijn per paneel handmatig toe te voegen
 
-De onderstaande queries gebruiken voorbeeldnamen (`podium1`, `foodtrucks_zuid`, ...). Jouw eigen kast-id's zie je in de Beheer-modus van de webapp — dat zijn de namen die je zelf hebt ingevoerd, verwerkt tot een technische naam (bijv. "Podium 1" → `podium1`).
+## Roadmap
 
-Totale stroom van bijvoorbeeld podium 1, laatste 15 minuten:
-
-```flux
-from(bucket: "stroomdata")
-  |> range(start: -15m)
-  |> filter(fn: (r) => r._measurement == "shelly_em")
-  |> filter(fn: (r) => r.kast == "podium1")
-  |> filter(fn: (r) => r._field == "total_current")
-```
-
-Voor stroom per fase (a/b/c) vervang je de laatste filter door `r._field == "a_current" or r._field == "b_current" or r._field == "c_current"` — zo krijg je drie lijnen in één paneel.
-
-## 5. Voorbeeldquery — generator-totaal
-
-Belangrijk: alleen de kasten met `parent: null` in de JSON optellen (die rechtstreeks op de generator zitten), downstream-kasten NIET meetellen — hun verbruik zit al in de bovenliggende meting.
-
-Generator zuid (podium1 + foodtrucks_zuid + terreinverdeler):
-
-```flux
-from(bucket: "stroomdata")
-  |> range(start: -5m)
-  |> filter(fn: (r) => r._measurement == "shelly_em" and r._field == "total_current")
-  |> filter(fn: (r) => r.kast == "podium1" or r.kast == "foodtrucks_zuid" or r.kast == "terreinverdeler")
-  |> aggregateWindow(every: 10s, fn: last, createEmpty: false)
-  |> group(columns: ["_time"])
-  |> sum()
-```
-
-Generator noord (podium2 + bar2):
-
-```flux
-from(bucket: "stroomdata")
-  |> range(start: -5m)
-  |> filter(fn: (r) => r._measurement == "shelly_em" and r._field == "total_current")
-  |> filter(fn: (r) => r.kast == "podium2" or r.kast == "bar2")
-  |> aggregateWindow(every: 10s, fn: last, createEmpty: false)
-  |> group(columns: ["_time"])
-  |> sum()
-```
-
-Vermogen (kVA-schatting) werkt hetzelfde, maar met `r._field == "total_aprt_power"` in plaats van `total_current`.
-
-## 6. Alarmdrempels per kast
-
-Elke kast heeft in de webapp (Beheer-modus) een `rating_a`. Zet in Grafana per paneel een drempel op bijvoorbeeld 90% van die waarde, zodat je een waarschuwing krijgt vóórdat een kast echt overbelast raakt — bijvoorbeeld een 63A-kast op 56,7A, een 32A-kast op 28,8A. De ratings van al je eigen kasten zie je in één oogopslag terug in de kasten-tabel in Beheer-modus, of in de export (`/api/export`).
-
-Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie (kVA x 1000 / (3 x 230V) voor een driefasesysteem) en gebruik je diezelfde 90%-vuistregel, of je laat het gewoon bij een kVA-drempel op het totaalpaneel.
-
-## 7. Testen met fake data
-
-Er zit een simulator bij die realistisch ogende meetdata voor alle kasten publiceert, zonder dat er Shelly's aangesloten hoeven te zijn. Hij haalt de kastenlijst automatisch op bij de webapp, dus je hoeft niets handmatig te synchroniseren. Elke kast krijgt een langzaam wisselende belasting, en af en toe (standaard ~1% kans per tik) een kunstmatige piek — handig om de groen/amber/rood-status en later de alerts te testen.
-
-**Let op: staat momenteel standaard aan.** Een gewone `docker compose up -d --build` start de simulator dus nu gewoon mee, zodat je meteen kunt testen zonder Shelly's. Zie de backlog hieronder — dit gaat weer achter een flag zodra de testfase klaar is, zodat 'm nooit per ongeluk meedraait tijdens een echt evenement.
-
-Los stoppen kan met:
-
-```
-docker compose stop simulator
-```
-
-## 8. Data exporteren
-
-Twee soorten export, voor twee soorten data:
-
-- **Topologie + posities** (welke kasten, ratings, kaart-coördinaten): knop "Exporteer data" bovenin de webapp (`/api/export`) — downloadt één JSON-bestand. Handig als back-up, of om over te zetten naar een nieuwe editie via "Importeer data".
-- **Historische meetdata** (stroom/spanning/vermogen over tijd): dat hoort bij InfluxDB/Grafana. Open het paneel in Grafana, klik het menu (⋮) rechtsboven in het paneel > **Inspect > Data > Download CSV**. Voor grotere exports kun je ook rechtstreeks een Flux-query op InfluxDB loslaten en het resultaat als CSV wegschrijven.
-
-## 9. Meerdere edities/jaren vergelijken
-
-Elke keer dat je de stack opnieuw start, vul je in `.env` de `EVENT_EDITION` in (bijv. "2027"). Telegraf plakt dat als tag `editie` op elke meting, dus alle jaren blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie, of meerdere edities naast elkaar in één grafiek zetten (bijv. via een `editie`-variabele bovenaan het dashboard).
-
-## 10. Alarmering (Grafana Alerting)
-
-Grafana kan per paneel een alert-regel krijgen die afgaat zodra `total_current` boven de 90%-drempel van `rating_a` komt (zie tabel hierboven). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
-
-Voorbeeld alert-conditie in Grafana (per kast-paneel):
-- Query: `total_current` van de betreffende kast, laatste 1 minuut
-- Conditie: `is above` [90% van rating_a]
-- For: 30s (voorkomt vals alarm bij een korte piek)
-
-Zodra je een kanaal kiest, voeg je die toe onder Alerting > Contact points, en koppel je 'm aan een notification policy. Ondersteunde opties: Telegram, Pushover, ntfy.sh, e-mail, Slack, webhook, en meer.
-
-## 11. Feature-backlog (nog te beslissen)
-
-- [ ] Notificatiekanaal voor alerting naar telefoon (opties: Telegram / Pushover / ntfy.sh / e-mail) — nog te kiezen
-- [ ] **Simulator terug achter een flag zetten na de testfase.** Momenteel start `simulator` standaard mee in `docker-compose.yml`. Zodra het testen klaar is: voeg `profiles: ["simulator"]` weer toe aan de simulator-service, zodat 'm alleen bewust met `docker compose --profile simulator up -d` gestart wordt en nooit per ongeluk meedraait tijdens een echt evenement.
-- [ ] **Testdata-tabblad in de webapp achter dezelfde flag zetten.** Het tabblad "Testdata" bevat twee knoppen die alleen tijdens de testfase bedoeld zijn:
-  - "Laad testtopologie" (endpoint `POST /api/topology/test-data`) — laadt een voorbeeldtopologie.
-  - "Wis meetdata" (endpoint `POST /api/metingen/reset`) — wist alle meetdata uit InfluxDB (topologie blijft staan), handig om na een korte test met een schone grafiek te beginnen.
-
-  Zodra het testen klaar is: verberg de tab/knoppen (of laat de endpoints een 404 geven) tenzij dezelfde `simulator`-profile actief is, zodat niemand tijdens een echt evenement per ongeluk de topologie overschrijft of meetdata wist.
-
-## 12. Dashboard-indeling, voorstel
-
-- Eén overzichtspagina met de twee generator-totalen bovenaan (grote getallen/gauges)
-- Per generator een rij met alle direct-gevoede kasten
-- Per kast die zelf weer vertakt (terreinverdeler, podium2, podium3, bar1, bar2) een klikbare drill-down naar een sub-dashboard met de kasten daaronder — dit kan met Grafana's dashboard-links of variabelen
+- [ ] **Simulator + Testdata-tabblad achter een profile-flag na de testfase.** Beide staan nu
+      standaard aan zodat testen makkelijk is. Zodra een editie de testfase uit is: zet
+      `profiles: ["simulator"]` weer op de simulator-service in `docker-compose.yml`, en verberg
+      (of laat 404 geven) het Testdata-tabblad — knoppen "Laad testtopologie"
+      (`POST /api/topology/test-data`) en "Wis meetdata" (`POST /api/metingen/reset`) — tenzij
+      dezelfde `simulator`-profile actief is. Zo kan niemand tijdens een echt evenement per
+      ongeluk de topologie overschrijven of meetdata wissen.
+- [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
+      aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
+      Telegram, Pushover, ntfy.sh, e-mail).
+- [ ] **Overzichtsdashboard met generator-totalen.** Eén pagina met de generator-totalen
+      bovenaan (grote getallen/gauges), daaronder per generator een rij met de direct-gevoede
+      kasten, en voor kasten die zelf weer vertakken (bijv. een terreinverdeler) een klikbare
+      drill-down naar een sub-dashboard — via Grafana dashboard-links of variabelen.

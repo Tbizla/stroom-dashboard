@@ -183,7 +183,7 @@ app.post('/api/topology/test-data', (req, res) => {
 // ---------- simulatie-meetdata wissen ----------
 // Wist alle meetdata (stroom/spanning/vermogen) uit InfluxDB — niet de topologie. Handig om na
 // een korte test met een schone lei te beginnen. Hoort, net als de simulator en de testtopologie-
-// knop hierboven, alleen tijdens de testfase beschikbaar te zijn (zie backlog in event_dashboard.md).
+// knop hierboven, alleen tijdens de testfase beschikbaar te zijn (zie roadmap in event_dashboard.md).
 app.post('/api/metingen/reset', async (req, res) => {
   if (!INFLUX_TOKEN) return res.status(500).json({ error: 'INFLUX_TOKEN niet geconfigureerd op de webapp-service' });
   try {
