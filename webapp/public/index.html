@@ -33,9 +33,16 @@
   .dot.err{background:var(--red)}
   .dot.busy{background:var(--amber)}
 
-  .body{display:flex;flex:1;min-height:0}
+  .body{display:flex;flex:1;min-height:0;position:relative}
   .mapwrap{flex:1;position:relative;overflow:auto;background:#0b0d10;display:flex;align-items:flex-start;justify-content:center}
-  .mapinner{position:relative;display:inline-block}
+  .mapinner{position:relative;display:inline-block;transform-origin:top left}
+  .zoomctl{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:4px;align-items:center;
+    background:rgba(18,21,26,.9);border:1px solid var(--border);border-radius:8px;padding:4px 6px}
+  .zoomctl button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:5px;width:24px;height:24px;font-size:15px;cursor:pointer;line-height:1;padding:0}
+  .zoomctl button:hover{border-color:var(--accent)}
+  .zoomctl .zoomlabel{font-size:11px;color:var(--text2);font-family:var(--mono);min-width:40px;
+    text-align:center;cursor:pointer;user-select:none}
   .mapinner img{display:block;max-width:none}
   .noMap{color:var(--text3);padding:60px;text-align:center;font-size:13px}
   .blankcanvas{position:relative;width:1600px;height:1000px;background-color:#0b0d10;cursor:crosshair;
@@ -43,7 +50,7 @@
   .blankcanvas-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;
     color:var(--text3);font-size:13px;text-align:center;pointer-events:none}
   #svgoverlay{position:absolute;top:0;left:0;pointer-events:none}
-  #schemaSvg{display:block}
+  #schemaSvg{display:block;transform-origin:top left}
   .schemawrap{padding:30px;flex-direction:column;align-items:center;gap:16px}
   .pin{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
        border:2px solid #0b0d10;cursor:pointer;background:var(--grey);z-index:5;
@@ -219,6 +226,11 @@
   </div>
 
   <div class="body" id="mainBody" style="display:none">
+    <div class="zoomctl" id="zoomCtl">
+      <button id="zoomOutBtn" title="Uitzoomen">−</button>
+      <span class="zoomlabel" id="zoomLabel" title="Klik om te resetten naar 100%">100%</span>
+      <button id="zoomInBtn" title="Inzoomen">+</button>
+    </div>
     <div class="mapwrap" id="mapwrap">
       <div class="mapinner" id="mapinner">
         <img id="mapimg" alt="Plattegrond" style="display:none">
@@ -255,6 +267,33 @@ const svg = document.getElementById('svgoverlay');
 const mapimg = document.getElementById('mapimg');
 const mapinner = document.getElementById('mapinner');
 const blankCanvas = document.getElementById('blankCanvas');
+
+// ---------- zoom: aparte niveaus voor de kaart/kalibratie-weergave en het schema ----------
+let kaartZoom = 1, schemaZoomLevel = 1;
+const ZOOM_MIN = 0.2, ZOOM_MAX = 3, ZOOM_STEP = 0.15;
+
+function currentZoom(){ return mode==='schema' ? schemaZoomLevel : kaartZoom; }
+function setZoom(z){
+  z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+  if(mode==='schema'){
+    schemaZoomLevel = z;
+    document.getElementById('schemaSvg').style.transform = 'scale(' + z + ')';
+  } else {
+    kaartZoom = z;
+    mapinner.style.transform = 'scale(' + z + ')';
+  }
+  document.getElementById('zoomLabel').textContent = Math.round(z * 100) + '%';
+}
+
+document.getElementById('zoomInBtn').onclick = () => setZoom(currentZoom() + ZOOM_STEP);
+document.getElementById('zoomOutBtn').onclick = () => setZoom(currentZoom() - ZOOM_STEP);
+document.getElementById('zoomLabel').onclick = () => setZoom(1);
+
+document.getElementById('mainBody').addEventListener('wheel', (ev) => {
+  if(!ev.ctrlKey) return;
+  ev.preventDefault();
+  setZoom(currentZoom() + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+}, { passive: false });
 
 function allNodes(){ return [...TOPO.generators, ...TOPO.kasten]; }
 function isGen(n){ return n.vermogen_kva !== undefined; }
@@ -616,6 +655,7 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('mapwrap').style.display='flex';
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
+  document.getElementById('zoomLabel').textContent = Math.round(currentZoom()*100)+'%';
   renderPins();
 };
 document.getElementById('modeSchema').onclick = ()=>{
@@ -629,6 +669,7 @@ document.getElementById('modeSchema').onclick = ()=>{
   document.getElementById('mapwrap').style.display='none';
   document.getElementById('schemaWrap').style.display='flex';
   document.getElementById('mainBody').style.display='flex';
+  document.getElementById('zoomLabel').textContent = Math.round(currentZoom()*100)+'%';
   renderSchema();
 };
 document.getElementById('modeLive').onclick = ()=>{
@@ -643,6 +684,7 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   document.getElementById('brokerHost').value = document.getElementById('brokerHost').value || location.hostname || 'localhost';
+  document.getElementById('zoomLabel').textContent = Math.round(currentZoom()*100)+'%';
   renderPins();
 };
 document.getElementById('modeTest').onclick = ()=>{
