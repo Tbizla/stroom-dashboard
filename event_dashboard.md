@@ -44,6 +44,11 @@ zetten zonder code aan te passen.
 - Kasten aan elkaar koppelen via "Gevoed vanaf" om de stroomketen (parent/child) vast te leggen,
   met bescherming tegen cyclussen; verwijderen van een tussenliggende kast koppelt de keten
   automatisch door
+- Kasten-tabel is gegroepeerd per generator/groep (in-/uitklapbaar per sectie, met kVA en het
+  aantal kasten erbij) i.p.v. één platte lijst; geneste kasten (op een andere kast aangesloten)
+  staan ingesprongen met een eigen in-/uitklaptoggle. Zoekbalk (naam/afkorting/stroombron) en
+  typefilters (Kasten/Batterijen/Bypass actief), een "+ Kast op <bron>"-snelkoppeling per sectie,
+  en een "Alles in-/uitklappen"-knop; in-/uitklapstatus per sectie wordt onthouden
 - Automatisch gegenereerde `mqtt_topic_prefix` per kast, direct bruikbaar in de Shelly-config
 - Generators/groepen kunnen optioneel een rating (A) per fase krijgen, voor de generators die ook
   echt uitgelezen worden — zonder rating gewoon een topologie-plek zonder status/belastingberekening
