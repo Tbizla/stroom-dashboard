@@ -290,10 +290,34 @@ document.getElementById('zoomOutBtn').onclick = () => setZoom(currentZoom() - ZO
 document.getElementById('zoomLabel').onclick = () => setZoom(1);
 
 document.getElementById('mainBody').addEventListener('wheel', (ev) => {
-  if(!ev.ctrlKey) return;
   ev.preventDefault();
   setZoom(currentZoom() + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
 }, { passive: false });
+
+// klik-en-sleep pannen op de achtergrond (nu het scrollwiel zoomt i.p.v. scrollt).
+// Pins hebben hun eigen mousedown met stopPropagation, dus die blijven gewoon versleepbaar;
+// een gewone klik (zonder beweging) blijft ook gewoon werken voor plaatsen/selecteren.
+function enablePanDrag(wrapEl){
+  let panning = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  wrapEl.addEventListener('mousedown', (ev) => {
+    panning = true;
+    startX = ev.clientX; startY = ev.clientY;
+    startLeft = wrapEl.scrollLeft; startTop = wrapEl.scrollTop;
+    wrapEl.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', (ev) => {
+    if(!panning) return;
+    wrapEl.scrollLeft = startLeft - (ev.clientX - startX);
+    wrapEl.scrollTop = startTop - (ev.clientY - startY);
+  });
+  window.addEventListener('mouseup', () => {
+    if(!panning) return;
+    panning = false;
+    wrapEl.style.cursor = '';
+  });
+}
+enablePanDrag(document.getElementById('mapwrap'));
+enablePanDrag(document.getElementById('schemaWrap'));
 
 function allNodes(){ return [...TOPO.generators, ...TOPO.kasten]; }
 function isGen(n){ return n.vermogen_kva !== undefined; }
