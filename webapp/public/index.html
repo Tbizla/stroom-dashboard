@@ -14,6 +14,13 @@
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   *{box-sizing:border-box}
+  /* basisstijl voor alle knoppen (en upload-"knoppen", die een <label> zijn) — zorgt dat een
+     kale <button> zonder eigen container-klasse er niet als onbehandelde browser-knop of kale
+     tekst uitziet. Specifiekere regels hieronder (modeswitch, zoomctl, chip, addform, btable)
+     overschrijven dit bewust voor knoppen met een andere rol (tab, icoon, filter, primaire actie). */
+  button, .uploadbtn{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  button:hover, .uploadbtn:hover{border-color:var(--accent)}
   body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden}
   .app{display:flex;flex-direction:column;height:100vh}
 
@@ -26,8 +33,6 @@
 
   .connbar{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:var(--text2);flex-wrap:wrap}
   .connbar input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-family:var(--mono);font-size:12px;width:130px}
-  .connbar button{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
-  .connbar button:hover{border-color:var(--accent)}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--grey);flex-shrink:0}
   .dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
   .dot.err{background:var(--red)}
@@ -68,7 +73,8 @@
   .listhead{padding:12px 14px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}
   .list{overflow-y:auto;flex:1}
   .genrow{padding:10px 14px;background:var(--panel2);font-size:12.5px;font-weight:700;color:var(--accent);
-          display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;cursor:pointer}
+          display:flex;gap:8px;align-items:center;position:sticky;top:0;cursor:pointer}
+  .genrow .name{flex:1}
   .genrow .val{font-family:var(--mono);font-weight:400;color:var(--text2);font-size:12px}
   .genrow.selected{box-shadow:inset 0 0 0 2px var(--accent)}
   .row{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px}
@@ -80,6 +86,26 @@
   .row .dot2.status-red{background:var(--red)}
   .row .name{flex:1}
   .row .val{font-family:var(--mono);color:var(--text2);font-size:12px}
+  .row .sub2{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
+
+  .chev{width:14px;flex-shrink:0;text-align:center;color:var(--text3);font-size:10px;cursor:pointer;user-select:none}
+  .genrow .chev{color:var(--accent)}
+
+  .listtools{padding:0 14px 10px;display:flex;flex-direction:column;gap:8px}
+  .listtools input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:var(--sans);width:100%}
+  .listtools input:focus{outline:none;border-color:var(--accent)}
+  .listfilters{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:12px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--sans)}
+  .chip:hover{border-color:var(--accent)}
+  .chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+  .listfilters .collapseall{margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:var(--sans)}
+  .listfilters .collapseall:hover{border-color:var(--accent);color:var(--text)}
+
+  .badges{display:flex;gap:4px}
+  .badge{font-family:var(--mono);font-size:10px;border-radius:8px;padding:1px 6px;font-weight:600}
+  .badge-green{background:rgba(62,207,106,.16);color:var(--green)}
+  .badge-amber{background:rgba(245,166,35,.16);color:var(--amber)}
+  .badge-red{background:rgba(229,72,77,.16);color:var(--red)}
 
   .detail{border-top:1px solid var(--border);padding:16px;max-height:46%;overflow-y:auto;flex-shrink:0}
   .detail h2{font-size:15px;margin:0 0 3px}
@@ -92,11 +118,7 @@
 
   .calbar{padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .calbar b{color:var(--text)}
-  .calbar button{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
-  .calbar button:hover{border-color:var(--accent)}
   .calbar .hint{color:var(--accent)}
-  .calbar label.uploadbtn{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer}
-  .calbar label.uploadbtn:hover{border-color:var(--accent)}
 
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -145,7 +167,8 @@
   </header>
 
   <div class="calbar" id="calbar" style="display:none">
-    <label class="uploadbtn">Plattegrond uploaden<input type="file" id="mapFile" style="display:none" accept="image/*"></label>
+    <label class="uploadbtn">Plattegrond uploaden<input type="file" id="mapFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
+    <span id="mapUploadErr" class="err" style="display:none"></span>
     <span>Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
     <span class="hint" id="armedLabel"></span>
   </div>
@@ -154,7 +177,7 @@
     <div class="beheercol">
       <h2>Evenementlogo</h2>
       <div class="addform">
-        <label class="uploadbtn">Logo uploaden<input type="file" id="logoFile" style="display:none" accept="image/*"></label>
+        <label class="uploadbtn">Logo uploaden<input type="file" id="logoFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
         <span id="logoStatus" style="font-size:12px;color:var(--text2)"></span>
       </div>
 
@@ -250,6 +273,15 @@
     </div>
     <aside>
       <div class="listhead">Generators &amp; kasten</div>
+      <div class="listtools" id="listtools">
+        <input type="text" id="listSearch" placeholder="Zoek op naam of afkorting...">
+        <div class="listfilters">
+          <button class="chip active" data-filter="alles">Alles</button>
+          <button class="chip" data-filter="amber">Amber+</button>
+          <button class="chip" data-filter="rood">Alleen rood</button>
+          <button class="collapseall" id="listToggleAllBtn">Alles inklappen</button>
+        </div>
+      </div>
       <div class="list" id="list"></div>
       <div class="detail" id="detail"><div class="empty">Selecteer een kast om details te zien.</div></div>
     </aside>
@@ -271,6 +303,24 @@ const svg = document.getElementById('svgoverlay');
 const mapimg = document.getElementById('mapimg');
 const mapinner = document.getElementById('mapinner');
 const blankCanvas = document.getElementById('blankCanvas');
+
+// ---------- sidebar: in-/uitklapstatus per generator/kast, onthouden in localStorage ----------
+const SIDEBAR_STORAGE_KEY = 'stroomdash_sidebar_v1';
+const MANY_GENERATORS_THRESHOLD = 3;
+let sidebarState = {};
+try { sidebarState = JSON.parse(localStorage.getItem(SIDEBAR_STORAGE_KEY) || '{}'); } catch(e) {}
+function saveSidebarState(){
+  try { localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(sidebarState)); } catch(e) {}
+}
+// levert de open/dicht-status voor een id op; als er nog geen onthouden waarde is (nieuw
+// item), wordt de default toegepast en in het geheugen (niet meteen in localStorage) gezet —
+// zo overschrijft een topologiewijziging de eerder onthouden keuzes van de gebruiker niet.
+function isNodeOpen(id, defaultOpen){
+  if(!Object.prototype.hasOwnProperty.call(sidebarState, id)) sidebarState[id] = defaultOpen;
+  return sidebarState[id];
+}
+let listSearchQuery = '';
+let listStatusFilter = 'alles';
 
 // ---------- zoom: eigen, onthouden niveau per tabblad (cal/schema/live), ook na herladen van de pagina ----------
 const ZOOM_MIN = 0.05, ZOOM_MAX = 3, ZOOM_STEP = 0.15;
@@ -482,54 +532,200 @@ function maxFaseStroom(d){
   return fasen.length ? Math.max(...fasen) : null;
 }
 
-function statusClass(kast){
+function statusOf(kast){
   const cur = maxFaseStroom(liveData[kast.id]);
-  if(cur==null) return '';
+  if(cur==null) return null;
   const pct = (cur / kast.rating_a) * 100;
-  if(pct >= 90) return 'status-red';
-  if(pct >= 70) return 'status-amber';
-  return 'status-green';
+  if(pct >= 90) return 'red';
+  if(pct >= 70) return 'amber';
+  return 'green';
+}
+function statusClass(kast){
+  const s = statusOf(kast);
+  return s ? 'status-'+s : '';
+}
+
+// kinderen van een generator (top-level, zonder parent-kast) of van een kast (via 'parent') —
+// zelfde boomdefinitie als het schema-tabblad, zie schemaChildrenOf hieronder
+function listChildrenOf(node){
+  return isGen(node)
+    ? TOPO.kasten.filter(k=>k.generator===node.id && !k.parent)
+    : TOPO.kasten.filter(k=>k.parent===node.id);
+}
+function collectDescendantKasten(node){
+  let result = [];
+  listChildrenOf(node).forEach(k=>{ result.push(k); result = result.concat(collectDescendantKasten(k)); });
+  return result;
+}
+function statusCounts(node){
+  const counts = { green:0, amber:0, red:0 };
+  collectDescendantKasten(node).forEach(k=>{ const s = statusOf(k); if(s) counts[s]++; });
+  return counts;
+}
+
+function makeBadge(kind, n){
+  const b = document.createElement('span');
+  b.className = 'badge badge-'+kind;
+  b.textContent = n;
+  return b;
+}
+
+// bepaalt, voor de hele boom, welke generatoren/kasten-met-kinderen open of dicht staan —
+// leest/vult sidebarState (met defaults uit punt 3 van de spec) zodat dit overal (rendering
+// én de "alles in-/uitklappen"-knop) dezelfde bron van waarheid gebruikt
+function computeOpenStates(){
+  const states = {};
+  const manyGenerators = TOPO.generators.length > MANY_GENERATORS_THRESHOLD;
+  function visit(node, isGenerator){
+    const kids = listChildrenOf(node);
+    if(kids.length){
+      const defaultOpen = isGenerator ? (!manyGenerators || statusCounts(node).amber>0 || statusCounts(node).red>0) : false;
+      states[node.id] = isNodeOpen(node.id, defaultOpen);
+    }
+    kids.forEach(k=>visit(k, false));
+  }
+  TOPO.generators.forEach(g=>visit(g, true));
+  return states;
 }
 
 function renderList(){
   listEl.innerHTML = '';
-  TOPO.generators.forEach(gen=>{
-    const gh = document.createElement('div');
-    gh.className = 'genrow' + (gen.id===selectedId?' selected':'') + (mode==='cal' && gen.id===armedId?' selected':'');
-    const genName = document.createElement('div');
-    genName.className = 'name';
-    genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' ('+gen.leden.length+' leden)' : '');
-    const genVal = document.createElement('div');
-    genVal.className = 'val';
-    genVal.textContent = gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst';
-    gh.appendChild(genName); gh.appendChild(genVal);
-    gh.onclick = ()=>{
-      if(mode==='cal'){ armedId = gen.id; renderList(); document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+gen.naam+'" te plaatsen'; }
-      selectedId = gen.id; renderList(); renderDetail(); renderPins();
-    };
-    listEl.appendChild(gh);
-    TOPO.kasten.filter(k=>k.generator===gen.id).forEach(k=>{
+  const query = listSearchQuery.trim().toLowerCase();
+  const filter = listStatusFilter;
+  const searching = !!query || filter!=='alles';
+  const openStates = computeOpenStates();
+
+  function kastMatchesFilter(k){
+    const textOk = !query || k.naam.toLowerCase().includes(query) || (k.afkorting && k.afkorting.toLowerCase().includes(query));
+    if(!textOk) return false;
+    if(filter==='alles') return true;
+    const s = statusOf(k);
+    if(filter==='rood') return s==='red';
+    return s==='amber' || s==='red';
+  }
+  const subtreeMatchCache = new Map();
+  function subtreeMatches(node){
+    if(subtreeMatchCache.has(node.id)) return subtreeMatchCache.get(node.id);
+    let result = !isGen(node) && kastMatchesFilter(node);
+    if(!result) result = listChildrenOf(node).some(subtreeMatches);
+    subtreeMatchCache.set(node.id, result);
+    return result;
+  }
+
+  function renderChildren(container, node, depth){
+    listChildrenOf(node).forEach(k=>{
+      if(searching && !subtreeMatches(k)) return;
+      const heeftKinderen = listChildrenOf(k).length > 0;
       const row = document.createElement('div');
-      row.className = 'row' + (k.id===selectedId?' selected':'') + (mode==='cal' && k.id===armedId?' selected':'');
+      row.className = 'row' + (k.id===selectedId?' selected':'') + (mode==='cal' && k.id===armedId?' selected':'') + (heeftKinderen?' parent':'');
+      row.style.paddingLeft = (14 + depth*14) + 'px';
+
+      const chev = document.createElement('span');
+      chev.className = 'chev';
+      let open = false;
+      if(heeftKinderen){
+        open = searching ? true : openStates[k.id];
+        chev.textContent = open ? '▾' : '▸';
+        chev.onclick = (e)=>{ e.stopPropagation(); sidebarState[k.id] = !openStates[k.id]; saveSidebarState(); renderList(); };
+      }
+      row.appendChild(chev);
+
       const dot = document.createElement('div');
       dot.className = 'dot2 ' + statusClass(k);
       const name = document.createElement('div');
       name.className = 'name';
       name.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam + (k.afkorting ? ' (' + k.afkorting + ')' : '');
-      const val = document.createElement('div');
-      val.className = 'val';
-      const d = liveData[k.id];
-      const maxFase = maxFaseStroom(d);
-      val.textContent = maxFase!=null ? maxFase.toFixed(1)+'A' : (k.positie && k.positie.x_pct!=null?'—':'niet geplaatst');
-      row.appendChild(dot); row.appendChild(name); row.appendChild(val);
+      row.appendChild(dot); row.appendChild(name);
+
+      if(heeftKinderen){
+        const sub = document.createElement('div');
+        sub.className = 'sub2';
+        sub.textContent = collectDescendantKasten(k).length + ' onderliggend';
+        row.appendChild(sub);
+      } else {
+        const val = document.createElement('div');
+        val.className = 'val';
+        const maxFase = maxFaseStroom(liveData[k.id]);
+        val.textContent = maxFase!=null ? maxFase.toFixed(1)+'A' : (k.positie && k.positie.x_pct!=null?'—':'niet geplaatst');
+        row.appendChild(val);
+      }
+
       row.onclick = ()=>{
-        if(mode==='cal'){ armedId = k.id; renderList(); document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+k.naam+'" te plaatsen'; }
+        if(mode==='cal'){ armedId = k.id; document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+k.naam+'" te plaatsen'; }
         selectedId = k.id; renderList(); renderDetail(); renderPins();
       };
-      listEl.appendChild(row);
+      container.appendChild(row);
+
+      if(heeftKinderen && open) renderChildren(container, k, depth+1);
     });
+  }
+
+  TOPO.generators.forEach(gen=>{
+    if(searching && !subtreeMatches(gen)) return;
+    const heeftKinderen = listChildrenOf(gen).length > 0;
+    const gh = document.createElement('div');
+    gh.className = 'genrow' + (gen.id===selectedId?' selected':'') + (mode==='cal' && gen.id===armedId?' selected':'');
+
+    const chev = document.createElement('span');
+    chev.className = 'chev';
+    let open = false;
+    if(heeftKinderen){
+      open = searching ? true : openStates[gen.id];
+      chev.textContent = open ? '▾' : '▸';
+      chev.onclick = (e)=>{ e.stopPropagation(); sidebarState[gen.id] = !openStates[gen.id]; saveSidebarState(); renderList(); };
+    }
+    gh.appendChild(chev);
+
+    const genName = document.createElement('div');
+    genName.className = 'name';
+    genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' ('+gen.leden.length+' leden)' : '');
+    gh.appendChild(genName);
+
+    const counts = statusCounts(gen);
+    const badges = document.createElement('div');
+    badges.className = 'badges';
+    if(counts.green) badges.appendChild(makeBadge('green', counts.green));
+    if(counts.amber) badges.appendChild(makeBadge('amber', counts.amber));
+    if(counts.red) badges.appendChild(makeBadge('red', counts.red));
+    gh.appendChild(badges);
+
+    const genVal = document.createElement('div');
+    genVal.className = 'val';
+    genVal.textContent = gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst';
+    gh.appendChild(genVal);
+
+    gh.onclick = ()=>{
+      if(mode==='cal'){ armedId = gen.id; document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+gen.naam+'" te plaatsen'; }
+      selectedId = gen.id; renderList(); renderDetail(); renderPins();
+    };
+    listEl.appendChild(gh);
+
+    if(heeftKinderen && open) renderChildren(listEl, gen, 0);
   });
+
+  const collapsibleIds = Object.keys(openStates);
+  const openCount = collapsibleIds.filter(id=>openStates[id]).length;
+  const toggleAllBtn = document.getElementById('listToggleAllBtn');
+  const expandAction = openCount===0 && collapsibleIds.length>0;
+  toggleAllBtn.textContent = expandAction ? 'Alles uitklappen' : 'Alles inklappen';
+  toggleAllBtn.onclick = ()=>{
+    collapsibleIds.forEach(id=>{ sidebarState[id] = expandAction; });
+    saveSidebarState();
+    renderList();
+  };
 }
+
+document.getElementById('listSearch').addEventListener('input', (e)=>{
+  listSearchQuery = e.target.value;
+  renderList();
+});
+document.querySelectorAll('.listfilters .chip').forEach(chip=>{
+  chip.onclick = ()=>{
+    listStatusFilter = chip.dataset.filter;
+    document.querySelectorAll('.listfilters .chip').forEach(c=>c.classList.toggle('active', c===chip));
+    renderList();
+  };
+});
 
 function renderDetail(){
   const n = nodeById(selectedId);
@@ -754,7 +950,16 @@ document.getElementById('mapFile').onchange = async (ev)=>{
   if(!file) return;
   const fd = new FormData();
   fd.append('kaart', file);
-  await fetch('/api/map', { method:'POST', body: fd });
+  const errEl = document.getElementById('mapUploadErr');
+  errEl.style.display = 'none';
+  const res = await fetch('/api/map', { method:'POST', body: fd });
+  if(!res.ok){
+    const body = await res.json().catch(()=>({}));
+    errEl.textContent = body.error || 'upload mislukt';
+    errEl.style.display = 'inline';
+    ev.target.value = '';
+    return;
+  }
   loadMap();
 };
 
@@ -765,7 +970,15 @@ document.getElementById('logoFile').onchange = async (ev)=>{
   fd.append('logo', file);
   const status = document.getElementById('logoStatus');
   status.textContent = 'uploaden...';
-  await fetch('/api/logo', { method:'POST', body: fd });
+  status.style.color = 'var(--text2)';
+  const res = await fetch('/api/logo', { method:'POST', body: fd });
+  if(!res.ok){
+    const body = await res.json().catch(()=>({}));
+    status.textContent = body.error || 'upload mislukt';
+    status.style.color = 'var(--red)';
+    ev.target.value = '';
+    return;
+  }
   loadLogo();
   status.textContent = 'logo geupload';
 };

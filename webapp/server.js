@@ -6,8 +6,8 @@ const dns = require('dns');
 
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
-const MAP_FILE = path.join(DATA_DIR, 'kaart.png');
-const LOGO_FILE = path.join(DATA_DIR, 'logo.png');
+const MAP_BASENAME = path.join(DATA_DIR, 'kaart');
+const LOGO_BASENAME = path.join(DATA_DIR, 'logo');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
 const TEST_TOPO_SIMPEL = path.join(__dirname, 'test_topologie_simpel.json');
 const TEST_TOPO_UITGEBREID = path.join(__dirname, 'test_topologie_uitgebreid.json');
@@ -411,27 +411,87 @@ app.post('/api/metingen/reset', alleenInTestmodus, async (req, res) => {
   }
 });
 
-// ---------- plattegrond ----------
-const upload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 } });
-app.post('/api/map', upload.single('kaart'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'geen bestand ontvangen (veldnaam moet "kaart" zijn)' });
-  fs.renameSync(req.file.path, MAP_FILE);
+// ---------- afbeeldingsuploads (plattegrond, logo): alleen .png/.bmp/.svg ----------
+// De bestandsnaam-extensie en de Content-Type die de browser meestuurt zijn allebei door de
+// client te vervalsen, dus die tellen alleen als eerste, snelle filter. De echte controle is
+// het herkennen van het bestandstype aan de daadwerkelijke bytes na de upload.
+const AFBEELDING_EXT = new Set(['.png', '.bmp', '.svg']);
+const AFBEELDING_MIME = new Set(['image/png', 'image/bmp', 'image/x-ms-bmp', 'image/svg+xml']);
+const AFBEELDING_EXT_BY_TYPE = { png: '.png', bmp: '.bmp', svg: '.svg' };
+
+function afbeeldingFileFilter(req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!AFBEELDING_EXT.has(ext) || !AFBEELDING_MIME.has(file.mimetype)) {
+    return cb(new Error('alleen .png, .bmp of .svg bestanden zijn toegestaan'));
+  }
+  cb(null, true);
+}
+
+function detecteerAfbeeldingType(buffer) {
+  if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return 'png';
+  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) return 'bmp';
+  const head = buffer.slice(0, 1024).toString('utf8');
+  if (/<svg[\s>]/i.test(head)) return 'svg';
+  return null;
+}
+
+function bestaandAfbeeldingsbestand(basename) {
+  for (const ext of Object.values(AFBEELDING_EXT_BY_TYPE)) {
+    const p = basename + ext;
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function verwijderAfbeeldingsbestanden(basename) {
+  for (const ext of Object.values(AFBEELDING_EXT_BY_TYPE)) {
+    const p = basename + ext;
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+}
+
+function verwerkAfbeeldingUpload(req, res, basename) {
+  const buffer = fs.readFileSync(req.file.path);
+  const type = detecteerAfbeeldingType(buffer);
+  if (!type) {
+    fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'bestand is geen geldige .png, .bmp of .svg afbeelding' });
+  }
+  verwijderAfbeeldingsbestanden(basename);
+  fs.renameSync(req.file.path, basename + AFBEELDING_EXT_BY_TYPE[type]);
   res.json({ ok: true });
+}
+
+const upload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 }, fileFilter: afbeeldingFileFilter });
+// multer geeft een fileFilter-afwijzing door aan de Express-errorhandler; die hier meteen
+// als nette 400 afvangen voorkomt dat de upload eindigt in een generieke 500.
+function metUploadFoutafhandeling(middleware) {
+  return (req, res, next) => middleware(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}
+
+// ---------- plattegrond ----------
+app.post('/api/map', metUploadFoutafhandeling(upload.single('kaart')), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'geen bestand ontvangen (veldnaam moet "kaart" zijn)' });
+  verwerkAfbeeldingUpload(req, res, MAP_BASENAME);
 });
 app.get('/api/map', (req, res) => {
-  if (!fs.existsSync(MAP_FILE)) return res.status(404).send('nog geen plattegrond geupload');
-  res.sendFile(MAP_FILE);
+  const bestand = bestaandAfbeeldingsbestand(MAP_BASENAME);
+  if (!bestand) return res.status(404).send('nog geen plattegrond geupload');
+  res.sendFile(bestand);
 });
 
 // ---------- evenementlogo ----------
-app.post('/api/logo', upload.single('logo'), (req, res) => {
+app.post('/api/logo', metUploadFoutafhandeling(upload.single('logo')), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'geen bestand ontvangen (veldnaam moet "logo" zijn)' });
-  fs.renameSync(req.file.path, LOGO_FILE);
-  res.json({ ok: true });
+  verwerkAfbeeldingUpload(req, res, LOGO_BASENAME);
 });
 app.get('/api/logo', (req, res) => {
-  if (!fs.existsSync(LOGO_FILE)) return res.status(404).send('nog geen logo geupload');
-  res.sendFile(LOGO_FILE);
+  const bestand = bestaandAfbeeldingsbestand(LOGO_BASENAME);
+  if (!bestand) return res.status(404).send('nog geen logo geupload');
+  res.sendFile(bestand);
 });
 
 // ---------- export / import ----------
