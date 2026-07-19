@@ -28,7 +28,19 @@
         "label": "Kast",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
-        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"stroomdata\", tag: \"kast\")",
+        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> keep(columns: [\"kast\"])\n  |> distinct(column: \"kast\")\n  |> group()\n  |> sort()",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "sort": 1,
+        "current": {}
+      },
+      {
+        "name": "generator",
+        "label": "Generator/groep",
+        "type": "query",
+        "datasource": { "type": "influxdb", "uid": "influxdb" },
+        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> keep(columns: [\"generator\"])\n  |> distinct(column: \"generator\")\n  |> group()\n  |> sort()",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -95,9 +107,10 @@
     {
       "id": 6,
       "type": "netsage-sankey-panel",
-      "title": "Energieverdeling generator -> kast - editie $editie",
-      "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator/groep -> batterij/hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig. Generatorgroepen en batterij-/piekscheerderkasten worden hierin automatisch als gewoon knooppunt meegenomen, zonder speciale configuratie.",
+      "title": "Energieverdeling $generator - editie $editie",
+      "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator/groep -> batterij/hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig. Herhaalt automatisch per generator/groep ($generator): één grote sankey met alle kasten samen liep bij een grotere topologie vast in de plugin (alleen tekst zichtbaar, geen diagram meer), dus elke stroombron krijgt hier zijn eigen, behapbare diagram. Bekende eigenaardigheid van de netsage-sankey-panel plugin: bij het laden van de pagina faalt de layout soms voor een willekeurig paneel (toont dan ook alleen tekst) doordat meerdere sankey's tegelijk opstarten — de data klopt gewoon, een ververs van de pagina (of het paneel los openen via het paneelmenu) lost het vrijwel altijd op.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 13 },
+      "repeat": "generator",
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "options": {
         "singleColor": false,
@@ -109,7 +122,7 @@
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\", \"parent\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> map(fn: (r) => ({ source: r.parent, target: r.kast, value: r.value }))\n  |> keep(columns: [\"source\", \"target\", \"value\"])",
+          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\", \"parent\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> map(fn: (r) => ({ source: r.parent, target: r.kast, value: r.value }))\n  |> keep(columns: [\"source\", \"target\", \"value\"])",
           "hide": false
         }
       ]

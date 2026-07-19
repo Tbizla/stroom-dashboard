@@ -307,9 +307,14 @@ function setZoom(z){
 // viewport na uitzoomen op scrollpositie (0,0) staan, ver van waar de gekrompen inhoud zichtbaar is —
 // dat toont dan alleen de lege achtergrond ("het scherm wordt zwart"). Daarom recentreren we na elke
 // zoomwijziging de scrollpositie op het midden van de (geschaalde) inhoud.
+// Alleen voor het schema: de SVG is altijd precies zo groot als de boom die 'm bevat, dus het midden
+// van het element IS het midden van de inhoud. Het kaart/live-canvas is een vast groot werkvlak
+// (4800x3000) los van hoeveel er daadwerkelijk op geplaatst is — daarop centreren trekt de viewport
+// naar het midden van dat lege werkvlak i.p.v. naar waar de pins staan, dus daar juist NIET doen.
 function centerContentInViewport(){
-  const wrap = mode==='schema' ? document.getElementById('schemaWrap') : document.getElementById('mapwrap');
-  const contentEl = mode==='schema' ? document.getElementById('schemaSvg') : mapinner;
+  if(mode!=='schema') return;
+  const wrap = document.getElementById('schemaWrap');
+  const contentEl = document.getElementById('schemaSvg');
   const wrapRect = wrap.getBoundingClientRect();
   const contentRect = contentEl.getBoundingClientRect();
   if(!contentRect.width || !contentRect.height) return;
@@ -323,10 +328,18 @@ document.getElementById('zoomInBtn').onclick = () => setZoom(currentZoom() + ZOO
 document.getElementById('zoomOutBtn').onclick = () => setZoom(currentZoom() - ZOOM_STEP);
 document.getElementById('zoomLabel').onclick = () => setZoom(1);
 
-// zoomt zo ver uit (of in) dat de volledige inhoud (bv. alle generators van een grote stresstest-schema) past
+// zoomt zo ver uit (of in) dat de volledige inhoud past
 function fitToScreen(){
-  const wrap = mode==='schema' ? document.getElementById('schemaWrap') : document.getElementById('mapwrap');
-  const contentEl = mode==='schema' ? document.getElementById('schemaSvg') : mapinner;
+  if(mode==='schema') return fitToScreenSchema();
+  return fitToScreenKaart();
+}
+
+// schema: de SVG is altijd al precies zo groot als de boom die 'm bevat (computeSchemaLayout
+// berekent width/height op basis van het aantal knopen), dus "de hele SVG" IS hier al "wat er
+// daadwerkelijk gebruikt wordt" — geen aparte bounding-box-berekening nodig.
+function fitToScreenSchema(){
+  const wrap = document.getElementById('schemaWrap');
+  const contentEl = document.getElementById('schemaSvg');
   // de ongeschaalde inhoudsgrootte NIET afleiden door de huidige (mogelijk inmiddels afwijkende)
   // zoomwaarde uit de zichtbare rect te delen — dat gaf een verkeerde fit zodra die aanname niet meer
   // klopte met de daadwerkelijk toegepaste transform. In plaats daarvan de transform even uitzetten en
@@ -341,6 +354,42 @@ function fitToScreen(){
   const availW = wrap.clientWidth - 24, availH = wrap.clientHeight - 24;
   if(availW <= 0 || availH <= 0) return;
   setZoom(Math.min(availW / cw, availH / ch));
+}
+
+// kalibreren/live: het canvas (plattegrond of het lege werkvlak) is vaak veel groter dan wat er
+// daadwerkelijk op geplaatst is — fitten op de HELE surface (bijv. het volledige 4800x3000 lege vlak)
+// zoomt dan veel verder uit dan nodig en laat vooral lege ruimte zien. Fit daarom op de bounding box
+// van de daadwerkelijk geplaatste generators/kasten, met wat marge, en scroll naar het midden daarvan.
+function fitToScreenKaart(){
+  const wrap = document.getElementById('mapwrap');
+  const surface = getSurfaceEl();
+  const surfaceW = surface.clientWidth, surfaceH = surface.clientHeight;
+  if(!surfaceW || !surfaceH) return;
+  const availW = wrap.clientWidth - 24, availH = wrap.clientHeight - 24;
+  if(availW <= 0 || availH <= 0) return;
+
+  const geplaatst = allNodes().filter(n => n.positie && n.positie.x_pct != null);
+  let minX = 0, maxX = 100, minY = 0, maxY = 100;
+  if(geplaatst.length){
+    minX = Math.min(...geplaatst.map(n => n.positie.x_pct));
+    maxX = Math.max(...geplaatst.map(n => n.positie.x_pct));
+    minY = Math.min(...geplaatst.map(n => n.positie.y_pct));
+    maxY = Math.max(...geplaatst.map(n => n.positie.y_pct));
+    const PAD = 4;
+    minX = Math.max(0, minX - PAD); maxX = Math.min(100, maxX + PAD);
+    minY = Math.max(0, minY - PAD); maxY = Math.min(100, maxY + PAD + 3); // iets extra onder voor het pin-label
+  } // niks geplaatst: val terug op de hele surface (0-100), zodat er alsnog iets zinnigs te zien is
+
+  const contentW = (maxX - minX) / 100 * surfaceW;
+  const contentH = (maxY - minY) / 100 * surfaceH;
+  if(!contentW || !contentH) return;
+  const scale = Math.min(availW / contentW, availH / contentH, ZOOM_MAX);
+  setZoom(scale);
+
+  const centerX = (minX + maxX) / 2 / 100 * surfaceW * scale;
+  const centerY = (minY + maxY) / 2 / 100 * surfaceH * scale;
+  wrap.scrollLeft = centerX - wrap.clientWidth / 2;
+  wrap.scrollTop = centerY - wrap.clientHeight / 2;
 }
 document.getElementById('zoomFitBtn').onclick = fitToScreen;
 

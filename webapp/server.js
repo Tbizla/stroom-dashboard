@@ -62,16 +62,32 @@ function writeTopo(data) {
 // Schrijft de parent/child-structuur (welke kast op welke kast/generator hangt) als losse
 // punten naar InfluxDB, zodat Grafana de live vermogensdata kan koppelen aan de actuele
 // topologie voor bijv. een multi-level Sankey-diagram — zonder dat er iets aan de Shelly's
-// (MQTT-prefix) hoeft te veranderen. Best effort: als InfluxDB niet bereikbaar is, faalt de
-// topologie-opslag zelf niet mee.
+// (MQTT-prefix) hoeft te veranderen. InfluxDB is append-only en "kast" is een tag, dus een kast
+// die ooit bestond (hernoemd/verwijderd/oude testtopologie) blijft anders voor altijd als losse
+// reeks staan — vandaar eerst de hele measurement wissen en daarna de actuele set opnieuw
+// schrijven, zodat topology_edges altijd precies (en alleen) de huidige topologie weerspiegelt,
+// ook na "Alles wissen" (dan blijft er na de delete gewoon niets over om te herschrijven).
+// Best effort: als InfluxDB niet bereikbaar is, faalt de topologie-opslag zelf niet mee.
 async function syncTopologyToInflux(data) {
-  if (!INFLUX_TOKEN || !data.kasten.length) return;
+  if (!INFLUX_TOKEN) return;
+  const deleteUrl = INFLUX_URL + '/api/v2/delete?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET);
+  const deleteRes = await fetch(deleteUrl, {
+    method: 'POST',
+    headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      start: '1970-01-01T00:00:00Z',
+      stop: new Date(Date.now() + 1000).toISOString(),
+      predicate: '_measurement="topology_edges"',
+    }),
+  });
+  if (!deleteRes.ok) throw new Error('InfluxDB delete (topology_edges) gaf ' + deleteRes.status + ': ' + (await deleteRes.text()));
+  if (!data.kasten.length) return;
   const lines = data.kasten.map((k) => {
     const parent = k.parent || k.generator;
     return 'topology_edges,kast=' + k.id + ',parent=' + parent + ',generator=' + k.generator + ' value=1';
   });
-  const url = INFLUX_URL + '/api/v2/write?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET) + '&precision=s';
-  const res = await fetch(url, {
+  const writeUrl = INFLUX_URL + '/api/v2/write?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET) + '&precision=s';
+  const res = await fetch(writeUrl, {
     method: 'POST',
     headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'text/plain; charset=utf-8' },
     body: lines.join('\n'),
@@ -305,9 +321,18 @@ function autoPositioneerTestTopologie(data) {
   const round1 = (n) => Math.round(n * 10) / 10;
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
+  // vaste, behapbare afstand tussen generators i.p.v. ze altijd over het hele werkgebied (8%-88%)
+  // uit te smeren — bij bijv. maar 2 generators stonden ze anders in de uiterste hoeken, zo ver uit
+  // elkaar dat je moest inzoomen om ze allebei tegelijk te zien. Bij veel generators (die niet allemaal
+  // met deze afstand zouden passen) krimpt de afstand juist in, zodat het binnen het werkgebied blijft.
+  // Begint bovendien bovenin (i.p.v. verticaal gecentreerd): het canvas is groot genoeg voor de
+  // uitgebreide stresstest-topologie, maar percentages daarvan gecentreerd rond 50% vallen voor een
+  // kleine topologie alsnog ver buiten het zichtbare gebied bij 100% zoom zonder te scrollen.
   const n = data.generators.length;
+  const IDEAAL_GEN_GAP = 18, MAX_SPREAD = 80, GEN_START_Y = 8;
+  const genGap = n > 1 ? Math.min(IDEAAL_GEN_GAP, MAX_SPREAD / (n - 1)) : 0;
   data.generators.forEach((g, i) => {
-    const y = n > 1 ? 12 + i * (76 / (n - 1)) : 50;
+    const y = n > 1 ? GEN_START_Y + i * genGap : GEN_START_Y;
     g.positie = { x_pct: X_START, y_pct: round1(y) };
   });
 
