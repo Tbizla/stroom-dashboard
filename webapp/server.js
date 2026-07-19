@@ -162,7 +162,7 @@ function normaliseerLeden(leden) {
 }
 
 app.post('/api/generators', (req, res) => {
-  const { naam, vermogen_kva, type } = req.body || {};
+  const { naam, vermogen_kva, type, rating_a } = req.body || {};
   if (!naam || !vermogen_kva) return res.status(400).json({ error: 'naam en vermogen_kva zijn verplicht' });
   if (type !== undefined && !GEN_TYPES.includes(type)) return res.status(400).json({ error: 'ongeldig type' });
   const data = readTopo();
@@ -170,7 +170,13 @@ app.post('/api/generators', (req, res) => {
   const id = uniekeId(slugify(naam), alleIds);
   const gen = {
     id, naam, vermogen_kva: Number(vermogen_kva), positie: { x_pct: null, y_pct: null },
-    type: type || 'generator', groep_soort: null, leden: []
+    type: type || 'generator', groep_soort: null, leden: [],
+    // niet elke generator is uit te lezen (sommige krijgen alsnog een Shelly met CT-klem erbij,
+    // andere (nog) niet) — rating_a is dus, anders dan bij een kast, optioneel; zonder rating_a
+    // kan er geen belastingspercentage/status berekend worden, ook al komt er wel meetdata binnen.
+    // topic is zelfreferentieel (fest/<id>/<id>/status/em:0): een generator is voor de meetpijplijn
+    // gewoon zijn eigen "kast", geen apart telegraf/InfluxDB-schema nodig.
+    rating_a: rating_a ? Number(rating_a) : null,
   };
   data.generators.push(gen);
   writeTopo(data);
@@ -181,9 +187,10 @@ app.put('/api/generators/:id', (req, res) => {
   const data = readTopo();
   const gen = data.generators.find(g => g.id === req.params.id);
   if (!gen) return res.status(404).json({ error: 'generator niet gevonden' });
-  const { naam, vermogen_kva, type, groep_soort, leden } = req.body || {};
+  const { naam, vermogen_kva, type, groep_soort, leden, rating_a } = req.body || {};
   if (naam) gen.naam = naam;
   if (vermogen_kva) gen.vermogen_kva = Number(vermogen_kva);
+  if (rating_a !== undefined) gen.rating_a = rating_a === '' || rating_a === null ? null : Number(rating_a);
   // oudere generators (aangemaakt vóór dit veld bestond, bijv. via een testtopologie-JSON) missen
   // groep_soort/leden nog helemaal — die ontbreken dus niet alleen wanneer je van 'groep' wég schakelt,
   // ook de eerste keer dat je ze juist ÍN 'groep' zet moeten ze een geldige (lege) startwaarde krijgen

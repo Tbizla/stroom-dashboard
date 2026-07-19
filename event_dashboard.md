@@ -10,7 +10,9 @@ Zelf-gehost dashboard om de stroomvoorziening tijdens een evenement (festival, k
 de gaten te houden: hoeveel stroom trekt elke verdeelkast, hoe dicht zit die bij de zekering, en
 hoe verhoudt dat zich tot de generator waar 'ie op hangt. Elke verdeelkast heeft een Shelly Pro
 3EM-meter die live metingen over MQTT publiceert; die data wordt opgeslagen in InfluxDB en
-gevisualiseerd in Grafana. Een losse webapp is er specifiek voor het **beheren van de
+gevisualiseerd in Grafana. Generators zijn vaak ook zelf uit te lezen (native telemetrie, of —
+waar dat niet kan — een los toegevoegde Shelly met CT-klem op de uitgaande kabel), en krijgen dan
+dezelfde live-monitoring als een kast. Een losse webapp is er specifiek voor het **beheren van de
 stroomtopologie** (welke generator, welke kasten, hoe hangen ze aan elkaar) en het **live
 volgen** van de status op een plattegrond — dingen waar Grafana zelf niet geschikt voor is,
 omdat het geen begrip heeft van de fysieke opstelling of de parent/child-stroomketen.
@@ -43,7 +45,11 @@ zetten zonder code aan te passen.
   met bescherming tegen cyclussen; verwijderen van een tussenliggende kast koppelt de keten
   automatisch door
 - Automatisch gegenereerde `mqtt_topic_prefix` per kast, direct bruikbaar in de Shelly-config
-- Evenementlogo uploaden, zichtbaar in de header
+- Generators/groepen kunnen optioneel een rating (A) per fase krijgen, voor de generators die ook
+  echt uitgelezen worden — zonder rating gewoon een topologie-plek zonder status/belastingberekening
+- Evenementlogo uploaden, zichtbaar in de header. Logo- en plattegronduploads zijn beperkt tot
+  .png/.bmp/.svg, gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen de
+  bestandsnaam), zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
 - Export/import van de volledige topologie als JSON (back-up, of hergebruik voor een nieuwe editie)
 - Elke wijziging in Beheer wordt automatisch als `topology_edges`-reeks naar InfluxDB gesynct
   (kast → parent/generator), zodat Grafana de actuele parent/child-structuur kan gebruiken
@@ -68,8 +74,14 @@ zetten zonder code aan te passen.
 
 **Live-monitoring (Live-tabblad)**
 - Rechtstreekse MQTT-verbinding vanuit de browser (via websockets) naar de broker
-- Status per kast (groen/amber/rood) op basis van actuele stroom t.o.v. de ingestelde rating
-- Live meetwaarden (stroom per fase, spanning, vermogen) in het detailpaneel
+- Status per kast (groen/amber/rood) op basis van actuele stroom t.o.v. de ingestelde rating —
+  ook voor generators/groepen met een ingevulde rating, zowel in de zij-lijst als op de
+  plattegrond (pin) en in het schema (boxkleur)
+- Live meetwaarden (stroom per fase, spanning, vermogen) in het detailpaneel, voor kasten en
+  (indien uitgelezen) generators/groepen
+- Zij-lijst met generators en kasten is in-/uitklapbaar (met status-badges per generator en een
+  "N onderliggend"-indicator bij geneste kasten), doorzoekbaar op naam/afkorting en filterbaar op
+  amber/rood; in-/uitklapstatus per item wordt onthouden
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (2 generators, 6 kasten, 3 niveaus) voor een

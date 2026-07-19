@@ -80,10 +80,10 @@
   .row{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px}
   .row:hover{background:var(--panel2)}
   .row.selected{background:var(--accent-dim)}
-  .row .dot2{width:9px;height:9px;border-radius:50%;background:var(--grey);flex-shrink:0}
-  .row .dot2.status-green{background:var(--green)}
-  .row .dot2.status-amber{background:var(--amber)}
-  .row .dot2.status-red{background:var(--red)}
+  .dot2{width:9px;height:9px;border-radius:50%;background:var(--grey);flex-shrink:0}
+  .dot2.status-green{background:var(--green)}
+  .dot2.status-amber{background:var(--amber)}
+  .dot2.status-red{background:var(--red)}
   .row .name{flex:1}
   .row .val{font-family:var(--mono);color:var(--text2);font-size:12px}
   .row .sub2{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
@@ -186,6 +186,7 @@
       <div class="addform">
         <input id="newGenNaam" placeholder="Naam, bijv. Generator zuid">
         <input id="newGenKva" type="number" placeholder="kVA" style="width:80px">
+        <input id="newGenRating" type="number" placeholder="Rating (A), optioneel" style="width:130px">
         <button id="addGenBtn">+ Generator</button>
       </div>
 
@@ -532,16 +533,19 @@ function maxFaseStroom(d){
   return fasen.length ? Math.max(...fasen) : null;
 }
 
-function statusOf(kast){
-  const cur = maxFaseStroom(liveData[kast.id]);
+// werkt voor zowel kasten (rating_a altijd verplicht ingevuld) als generators (rating_a optioneel
+// — alleen gezet als die generator ook echt uitgelezen wordt, native of via een Shelly+CT-klem)
+function statusOf(node){
+  if(node.rating_a==null) return null;
+  const cur = maxFaseStroom(liveData[node.id]);
   if(cur==null) return null;
-  const pct = (cur / kast.rating_a) * 100;
+  const pct = (cur / node.rating_a) * 100;
   if(pct >= 90) return 'red';
   if(pct >= 70) return 'amber';
   return 'green';
 }
-function statusClass(kast){
-  const s = statusOf(kast);
+function statusClass(node){
+  const s = statusOf(node);
   return s ? 'status-'+s : '';
 }
 
@@ -676,6 +680,12 @@ function renderList(){
     }
     gh.appendChild(chev);
 
+    if(gen.rating_a!=null){
+      const dot = document.createElement('div');
+      dot.className = 'dot2 ' + statusClass(gen);
+      gh.appendChild(dot);
+    }
+
     const genName = document.createElement('div');
     genName.className = 'name';
     genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' ('+gen.leden.length+' leden)' : '');
@@ -691,7 +701,8 @@ function renderList(){
 
     const genVal = document.createElement('div');
     genVal.className = 'val';
-    genVal.textContent = gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst';
+    const genMaxFase = maxFaseStroom(liveData[gen.id]);
+    genVal.textContent = genMaxFase!=null ? genMaxFase.toFixed(1)+'A' : (gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst');
     gh.appendChild(genVal);
 
     gh.onclick = ()=>{
@@ -727,6 +738,30 @@ document.querySelectorAll('.listfilters .chip').forEach(chip=>{
   };
 });
 
+// meetdata-blok (fasen, vermogen, belastingsbalk) — gedeeld tussen kasten (rating_a altijd
+// verplicht) en generators (rating_a optioneel, alleen gezet als 'm ook echt uitgelezen wordt)
+function metingenHtml(node, d){
+  let html = '';
+  const maxFase = maxFaseStroom(d);
+  if(d && d.total_current!=null) html += '<div class="metric"><span class="k">Totale stroom (3 fasen)</span><span>'+d.total_current.toFixed(2)+' A</span></div>';
+  if(d){
+    ['a','b','c'].forEach(ph=>{
+      if(d[ph+'_current']!=null) html += '<div class="metric"><span class="k">Fase '+ph.toUpperCase()+'</span><span>'+d[ph+'_current'].toFixed(2)+' A · '+(d[ph+'_voltage']?d[ph+'_voltage'].toFixed(0)+'V':'')+'</span></div>';
+    });
+    if(d.total_act_power!=null) html += '<div class="metric"><span class="k">Vermogen</span><span>'+d.total_act_power.toFixed(0)+' W</span></div>';
+    html += '<div class="metric"><span class="k">Laatste update</span><span>'+new Date(d.ts).toLocaleTimeString('nl-NL')+'</span></div>';
+  }
+  if(node.rating_a!=null){
+    const pct = maxFase!=null ? Math.min(100, (maxFase/node.rating_a)*100) : 0;
+    const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+    html += '<div class="metric"><span class="k">Belasting (hoogste fase / rating)</span><span>'+(maxFase!=null?Math.round(pct)+'%':'geen data')+'</span></div>';
+    html += '<div class="barwrap"><div class="bar" style="width:'+pct+'%;background:'+cls+'"></div></div>';
+  } else if(maxFase!=null){
+    html += '<div class="metric"><span class="k">Belasting</span><span>geen rating ingesteld</span></div>';
+  }
+  return html;
+}
+
 function renderDetail(){
   const n = nodeById(selectedId);
   if(!n){ detailEl.innerHTML = '<div class="empty">Selecteer een kast om details te zien.</div>'; return; }
@@ -737,27 +772,16 @@ function renderDetail(){
     if(n.type==='batterij' && n.heeft_bypass){
       html += '<div class="metric"><span class="k">Bypass</span><span>Bij overbelasting gaat het vermogen rechtstreeks naar het afgaande veld</span></div>';
     }
-    const maxFase = maxFaseStroom(d);
-    const pct = maxFase!=null ? Math.min(100, (maxFase/n.rating_a)*100) : 0;
-    const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-    if(d && d.total_current!=null) html += '<div class="metric"><span class="k">Totale stroom (3 fasen)</span><span>'+d.total_current.toFixed(2)+' A</span></div>';
-    if(d){
-      ['a','b','c'].forEach(ph=>{
-        if(d[ph+'_current']!=null) html += '<div class="metric"><span class="k">Fase '+ph.toUpperCase()+'</span><span>'+d[ph+'_current'].toFixed(2)+' A · '+(d[ph+'_voltage']?d[ph+'_voltage'].toFixed(0)+'V':'')+'</span></div>';
-      });
-      if(d.total_act_power!=null) html += '<div class="metric"><span class="k">Vermogen</span><span>'+d.total_act_power.toFixed(0)+' W</span></div>';
-      html += '<div class="metric"><span class="k">Laatste update</span><span>'+new Date(d.ts).toLocaleTimeString('nl-NL')+'</span></div>';
-    }
-    html += '<div class="metric"><span class="k">Belasting (hoogste fase / rating)</span><span>'+(maxFase!=null?Math.round(pct)+'%':'geen data')+'</span></div>';
-    html += '<div class="barwrap"><div class="bar" style="width:'+pct+'%;background:'+cls+'"></div></div>';
+    html += metingenHtml(n, d);
   } else {
     const typeLabel = n.type==='batterij' ? 'Batterij' : n.type==='groep' ? 'Groep' : 'Generator';
-    html += '<div class="sub">'+typeIcon(n)+' '+typeLabel+'</div>';
+    html += '<div class="sub">'+typeIcon(n)+' '+typeLabel+(n.rating_a!=null?' · rating '+n.rating_a+'A per fase':'')+'</div>';
     if(n.type==='groep' && n.leden && n.leden.length){
       const soortLabel = n.groep_soort==='parallel' ? 'Parallel (load-sharing)' : n.groep_soort==='backup' ? 'N+1 backup (auto-start bij uitval)' : n.groep_soort==='hybride' ? 'Hybride (generators + opslag)' : 'onbekend';
       html += '<div class="metric"><span class="k">Soort koppeling</span><span>'+soortLabel+'</span></div>';
       html += '<div class="metric"><span class="k">Leden ('+n.leden.length+')</span><span>'+n.leden.map(l=>typeIcon(l)+' '+l.naam+(l.vermogen_kva?' ('+l.vermogen_kva+'kVA)':'')).join(', ')+'</span></div>';
     }
+    html += metingenHtml(n, d);
   }
   html += '<div class="metric" style="margin-top:10px"><span class="k">Positie</span><span>'+(n.positie && n.positie.x_pct!=null? n.positie.x_pct.toFixed(1)+'%, '+n.positie.y_pct.toFixed(1)+'%' : 'nog niet geplaatst')+'</span></div>';
   detailEl.innerHTML = html;
@@ -787,7 +811,7 @@ function renderPins(){
   allNodes().forEach(n=>{
     if(!n.positie || n.positie.x_pct==null) return;
     const pin = document.createElement('div');
-    pin.className = 'pin' + (isGen(n)?' gen':' '+statusClass(n)) + (n.id===selectedId?' selected':'');
+    pin.className = 'pin' + (isGen(n)?' gen':'') + ' ' + statusClass(n) + (n.id===selectedId?' selected':'');
     pin.style.left = (n.positie.x_pct/100*w)+'px';
     pin.style.top = (n.positie.y_pct/100*h)+'px';
     pin.title = n.naam;
@@ -904,9 +928,9 @@ function renderSchema(){
     rect.setAttribute('x', cx - NODE_W/2); rect.setAttribute('y', cy - NODE_H/2);
     rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
     rect.setAttribute('rx', gen ? 6 : 18);
-    const cls = gen ? '' : statusClass(p.node);
-    const genFill = p.node.type==='batterij' ? '#5b8def' : p.node.type==='groep' ? '#b18cf0' : 'var(--accent)';
-    const fill = gen ? genFill : cls==='status-red' ? 'var(--red)' : cls==='status-amber' ? 'var(--amber)' : cls==='status-green' ? 'var(--green)' : 'var(--panel2)';
+    const cls = statusClass(p.node);
+    const typeFill = gen ? (p.node.type==='batterij' ? '#5b8def' : p.node.type==='groep' ? '#b18cf0' : 'var(--accent)') : 'var(--panel2)';
+    const fill = cls==='status-red' ? 'var(--red)' : cls==='status-amber' ? 'var(--amber)' : cls==='status-green' ? 'var(--green)' : typeFill;
     rect.setAttribute('fill', fill);
     rect.setAttribute('stroke', p.node.id===selectedId ? '#fff' : 'var(--border)');
     rect.setAttribute('stroke-width', p.node.id===selectedId ? '2' : '1');
@@ -920,7 +944,7 @@ function renderSchema(){
     text.setAttribute('fill', gen ? '#0b1210' : '#e8eaed');
     const naamMetIcon = (!gen && p.node.type==='batterij' ? '🔋 ' : '') + p.node.naam;
     const label = naamMetIcon.length > 18 ? naamMetIcon.slice(0, 17) + '…' : naamMetIcon;
-    text.textContent = gen ? label : label + ' (' + p.node.rating_a + 'A)';
+    text.textContent = label + (p.node.rating_a!=null ? ' (' + p.node.rating_a + 'A)' : '');
     g.appendChild(text);
 
     schemaSvg.appendChild(g);
@@ -1143,7 +1167,7 @@ const expandedGroepen = new Set();
 function renderBeheer(){
   // generators-tabel
   const genTable = document.getElementById('genTable');
-  let gh = '<tr><th>Naam</th><th style="width:110px">Type</th><th style="width:80px">kVA</th>'+
+  let gh = '<tr><th>Naam</th><th style="width:110px">Type</th><th style="width:80px">kVA</th><th style="width:90px">Rating (A)</th>'+
     '<th style="width:70px"># kasten</th><th style="width:140px">Soort koppeling</th><th style="width:110px">Leden</th><th style="width:80px"></th></tr>';
   TOPO.generators.forEach(g=>{
     const aantal = TOPO.kasten.filter(k=>k.generator===g.id).length;
@@ -1158,6 +1182,7 @@ function renderBeheer(){
         '<option value="groep"'+(type==='groep'?' selected':'')+'>🏭 Groep</option>'+
       '</select></td>'+
       '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
+      '<td><input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="Alleen invullen als deze generator/groep zelf ook uitgelezen wordt (native of via Shelly+CT-klem)"></td>'+
       '<td>'+aantal+'</td>'+
       '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+'>'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>—</option>'+
@@ -1169,7 +1194,7 @@ function renderBeheer(){
       '<td><button data-gen-del="'+g.id+'" class="danger">Verwijder</button></td>'+
       '</tr>';
     if(isGroep && expandedGroepen.has(g.id)){
-      gh += '<tr class="ledenrow"><td colspan="7"><table class="btable ledentable">'+
+      gh += '<tr class="ledenrow"><td colspan="8"><table class="btable ledentable">'+
         '<tr><th>Naam lid</th><th style="width:110px">Type</th><th style="width:90px">kVA</th><th style="width:70px"></th></tr>'+
         g.leden.map((l,i)=>
           '<tr>'+
@@ -1204,6 +1229,10 @@ function renderBeheer(){
   });
   genTable.querySelectorAll('[data-gen-kva]').forEach(el=>el.onchange = async ()=>{
     try{ await apiCall('/api/generators/'+el.dataset.genKva, 'PUT', {vermogen_kva: el.value}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  });
+  genTable.querySelectorAll('[data-gen-rating]').forEach(el=>el.onchange = async ()=>{
+    try{ await apiCall('/api/generators/'+el.dataset.genRating, 'PUT', {rating_a: el.value}); await loadTopology(); }
     catch(e){ alert(e.message); }
   });
   genTable.querySelectorAll('[data-gen-type]').forEach(el=>el.onchange = async ()=>{
@@ -1335,10 +1364,11 @@ function renderBeheer(){
 document.getElementById('addGenBtn').onclick = async ()=>{
   const naam = document.getElementById('newGenNaam').value.trim();
   const kva = document.getElementById('newGenKva').value;
+  const rating = document.getElementById('newGenRating').value;
   if(!naam || !kva) return alert('Vul naam en kVA in');
   try{
-    await apiCall('/api/generators', 'POST', {naam, vermogen_kva: kva});
-    document.getElementById('newGenNaam').value=''; document.getElementById('newGenKva').value='';
+    await apiCall('/api/generators', 'POST', {naam, vermogen_kva: kva, rating_a: rating || undefined});
+    document.getElementById('newGenNaam').value=''; document.getElementById('newGenKva').value=''; document.getElementById('newGenRating').value='';
     await loadTopology();
   }catch(e){ alert(e.message); }
 };
