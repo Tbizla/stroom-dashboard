@@ -53,42 +53,14 @@
       "gridPos": { "h": 3, "w": 24, "x": 0, "y": 1 },
       "options": {
         "mode": "markdown",
-        "content": "Deze panelen worden automatisch herhaald per kast in `$kast` (bron: MQTT-topic-tags in InfluxDB, niet de webapp-topologie). **Generator-totalen** (som van alleen de direct-gevoede kasten) staan hier bewust niet in, omdat dat kennis van de parent/child-keten uit de webapp vereist — zie `README.md` sectie 5 om die handmatig toe te voegen. Alarmdrempels (90% van `rating_a`) zet je ook per paneel handmatig, want die rating staat in de webapp-topologie, niet in InfluxDB."
+        "content": "Deze panelen worden automatisch herhaald per kast in `$kast` (bron: MQTT-topic-tags in InfluxDB, niet de webapp-topologie), inclusief batterij-/piekscheerderkasten. Bewust géén losse \"totale stroom\"-paneel: een CEE-aansluiting is per fase gerated, niet cumulatief, dus de hoogste van de 3 fasen hieronder is de waarde die telt voor overbelasting — niet de som. **Generator-totalen** (som van alleen de direct-gevoede kasten) staan hier bewust niet in, omdat dat kennis van de parent/child-keten uit de webapp vereist — zie `README.md` sectie 5 om die handmatig toe te voegen. Alarmdrempels (90% van `rating_a` per fase) zet je ook per paneel handmatig, want die rating staat in de webapp-topologie, niet in InfluxDB."
       }
-    },
-    {
-      "id": 3,
-      "type": "timeseries",
-      "title": "Totale stroom - $kast",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "repeat": "kast",
-      "repeatDirection": "h",
-      "datasource": { "type": "influxdb", "uid": "influxdb" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "amp",
-          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10 }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": { "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r._field == \"total_current\")\n  |> filter(fn: (r) => r.kast == \"${kast}\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")",
-          "hide": false
-        }
-      ]
     },
     {
       "id": 4,
       "type": "timeseries",
       "title": "Stroom per fase - $kast",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
       "repeat": "kast",
       "repeatDirection": "h",
       "datasource": { "type": "influxdb", "uid": "influxdb" },
@@ -124,7 +96,7 @@
       "id": 6,
       "type": "netsage-sankey-panel",
       "title": "Energieverdeling generator -> kast - editie $editie",
-      "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator -> hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig.",
+      "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator/groep -> batterij/hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig. Generatorgroepen en batterij-/piekscheerderkasten worden hierin automatisch als gewoon knooppunt meegenomen, zonder speciale configuratie.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 13 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "options": {

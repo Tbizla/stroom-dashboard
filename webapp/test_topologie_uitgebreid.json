@@ -7,7 +7,10 @@
       "positie": {
         "x_pct": null,
         "y_pct": null
-      }
+      },
+      "type": "generator",
+      "groep_soort": null,
+      "leden": []
     },
     {
       "id": "generator_zuid",
@@ -16,7 +19,10 @@
       "positie": {
         "x_pct": null,
         "y_pct": null
-      }
+      },
+      "type": "generator",
+      "groep_soort": null,
+      "leden": []
     },
     {
       "id": "generator_oost",
@@ -25,7 +31,10 @@
       "positie": {
         "x_pct": null,
         "y_pct": null
-      }
+      },
+      "type": "generator",
+      "groep_soort": null,
+      "leden": []
     },
     {
       "id": "generator_west",
@@ -34,16 +43,43 @@
       "positie": {
         "x_pct": null,
         "y_pct": null
-      }
+      },
+      "type": "generator",
+      "groep_soort": null,
+      "leden": []
     },
     {
       "id": "generator_centrum",
       "naam": "Generator Centrum",
-      "vermogen_kva": 150,
+      "vermogen_kva": 2200,
       "positie": {
         "x_pct": null,
         "y_pct": null
-      }
+      },
+      "type": "groep",
+      "groep_soort": "parallel",
+      "leden": [
+        {
+          "naam": "Aggregaat 1",
+          "vermogen_kva": 550,
+          "type": "generator"
+        },
+        {
+          "naam": "Aggregaat 2",
+          "vermogen_kva": 550,
+          "type": "generator"
+        },
+        {
+          "naam": "Aggregaat 3",
+          "vermogen_kva": 550,
+          "type": "generator"
+        },
+        {
+          "naam": "Aggregaat 4",
+          "vermogen_kva": 550,
+          "type": "generator"
+        }
+      ]
     }
   ],
   "kasten": [
@@ -188,196 +224,84 @@
       }
     },
     {
-      "id": "onderverdeler_noord_A",
+      "id": "onderverdeler_noord_a",
       "naam": "Onderverdeler Noord A",
       "rating_a": 100,
       "generator": "generator_noord",
-      "parent": "verdeler_noord_2",
-      "afkorting": "OVNA",
+      "parent": "verdeler_noord_8",
+      "afkorting": "OVVNA",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/onderverdeler_noord_A",
+      "mqtt_topic_prefix": "fest/generator_noord/onderverdeler_noord_a",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_noord_A_1",
+      "id": "eindkast_noord_a_1",
       "naam": "Eindkast Noord A.1",
       "rating_a": 63,
       "generator": "generator_noord",
-      "parent": "onderverdeler_noord_A",
-      "afkorting": "EKNA.1",
+      "parent": "onderverdeler_noord_a",
+      "afkorting": "EKVNA.1",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_A_1",
+      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_a_1",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_noord_A_2",
+      "id": "eindkast_noord_a_2",
       "naam": "Eindkast Noord A.2",
       "rating_a": 32,
       "generator": "generator_noord",
-      "parent": "onderverdeler_noord_A",
-      "afkorting": "EKNA.2",
+      "parent": "onderverdeler_noord_a",
+      "afkorting": "EKVNA.2",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_A_2",
+      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_a_2",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_noord_A_3",
+      "id": "eindkast_noord_a_3",
       "naam": "Eindkast Noord A.3",
       "rating_a": 63,
       "generator": "generator_noord",
-      "parent": "onderverdeler_noord_A",
-      "afkorting": "EKNA.3",
+      "parent": "onderverdeler_noord_a",
+      "afkorting": "EKVNA.3",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_A_3",
+      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_a_3",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "onderverdeler_noord_B",
-      "naam": "Onderverdeler Noord B",
-      "rating_a": 100,
-      "generator": "generator_noord",
-      "parent": "verdeler_noord_5",
-      "afkorting": "OVNB",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/onderverdeler_noord_B",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_B_1",
-      "naam": "Eindkast Noord B.1",
-      "rating_a": 63,
-      "generator": "generator_noord",
-      "parent": "onderverdeler_noord_B",
-      "afkorting": "EKNB.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_B_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_B_2",
-      "naam": "Eindkast Noord B.2",
+      "id": "eindkast_noord_a_4",
+      "naam": "Eindkast Noord A.4",
       "rating_a": 32,
       "generator": "generator_noord",
-      "parent": "onderverdeler_noord_B",
-      "afkorting": "EKNB.2",
+      "parent": "onderverdeler_noord_a",
+      "afkorting": "EKVNA.4",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_B_2",
+      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_a_4",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_noord_B_3",
-      "naam": "Eindkast Noord B.3",
+      "id": "eindkast_noord_a_5",
+      "naam": "Eindkast Noord A.5",
       "rating_a": 63,
       "generator": "generator_noord",
-      "parent": "onderverdeler_noord_B",
-      "afkorting": "EKNB.3",
+      "parent": "onderverdeler_noord_a",
+      "afkorting": "EKVNA.5",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_B_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_noord_C",
-      "naam": "Onderverdeler Noord C",
-      "rating_a": 100,
-      "generator": "generator_noord",
-      "parent": "verdeler_noord_8",
-      "afkorting": "OVNC",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/onderverdeler_noord_C",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_C_1",
-      "naam": "Eindkast Noord C.1",
-      "rating_a": 63,
-      "generator": "generator_noord",
-      "parent": "onderverdeler_noord_C",
-      "afkorting": "EKNC.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_C_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_C_2",
-      "naam": "Eindkast Noord C.2",
-      "rating_a": 32,
-      "generator": "generator_noord",
-      "parent": "onderverdeler_noord_C",
-      "afkorting": "EKNC.2",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_C_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_C_3",
-      "naam": "Eindkast Noord C.3",
-      "rating_a": 63,
-      "generator": "generator_noord",
-      "parent": "onderverdeler_noord_C",
-      "afkorting": "EKNC.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_C_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_C_4",
-      "naam": "Eindkast Noord C.4",
-      "rating_a": 32,
-      "generator": "generator_noord",
-      "parent": "onderverdeler_noord_C",
-      "afkorting": "EKNC.4",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_C_4",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_noord_C_5",
-      "naam": "Eindkast Noord C.5",
-      "rating_a": 63,
-      "generator": "generator_noord",
-      "parent": "onderverdeler_noord_C",
-      "afkorting": "EKNC.5",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_C_5",
+      "mqtt_topic_prefix": "fest/generator_noord/eindkast_noord_a_5",
       "positie": {
         "x_pct": null,
         "y_pct": null
@@ -524,196 +448,84 @@
       }
     },
     {
-      "id": "onderverdeler_zuid_A",
+      "id": "onderverdeler_zuid_a",
       "naam": "Onderverdeler Zuid A",
       "rating_a": 100,
       "generator": "generator_zuid",
-      "parent": "verdeler_zuid_2",
-      "afkorting": "OVZA",
+      "parent": "verdeler_zuid_8",
+      "afkorting": "OVVZA",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/onderverdeler_zuid_A",
+      "mqtt_topic_prefix": "fest/generator_zuid/onderverdeler_zuid_a",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_zuid_A_1",
+      "id": "eindkast_zuid_a_1",
       "naam": "Eindkast Zuid A.1",
       "rating_a": 63,
       "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_A",
-      "afkorting": "EKZA.1",
+      "parent": "onderverdeler_zuid_a",
+      "afkorting": "EKVZA.1",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_A_1",
+      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_a_1",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_zuid_A_2",
+      "id": "eindkast_zuid_a_2",
       "naam": "Eindkast Zuid A.2",
       "rating_a": 32,
       "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_A",
-      "afkorting": "EKZA.2",
+      "parent": "onderverdeler_zuid_a",
+      "afkorting": "EKVZA.2",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_A_2",
+      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_a_2",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_zuid_A_3",
+      "id": "eindkast_zuid_a_3",
       "naam": "Eindkast Zuid A.3",
       "rating_a": 63,
       "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_A",
-      "afkorting": "EKZA.3",
+      "parent": "onderverdeler_zuid_a",
+      "afkorting": "EKVZA.3",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_A_3",
+      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_a_3",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "onderverdeler_zuid_B",
-      "naam": "Onderverdeler Zuid B",
-      "rating_a": 100,
-      "generator": "generator_zuid",
-      "parent": "verdeler_zuid_5",
-      "afkorting": "OVZB",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/onderverdeler_zuid_B",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_B_1",
-      "naam": "Eindkast Zuid B.1",
-      "rating_a": 63,
-      "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_B",
-      "afkorting": "EKZB.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_B_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_B_2",
-      "naam": "Eindkast Zuid B.2",
+      "id": "eindkast_zuid_a_4",
+      "naam": "Eindkast Zuid A.4",
       "rating_a": 32,
       "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_B",
-      "afkorting": "EKZB.2",
+      "parent": "onderverdeler_zuid_a",
+      "afkorting": "EKVZA.4",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_B_2",
+      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_a_4",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_zuid_B_3",
-      "naam": "Eindkast Zuid B.3",
+      "id": "eindkast_zuid_a_5",
+      "naam": "Eindkast Zuid A.5",
       "rating_a": 63,
       "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_B",
-      "afkorting": "EKZB.3",
+      "parent": "onderverdeler_zuid_a",
+      "afkorting": "EKVZA.5",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_B_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_zuid_C",
-      "naam": "Onderverdeler Zuid C",
-      "rating_a": 100,
-      "generator": "generator_zuid",
-      "parent": "verdeler_zuid_8",
-      "afkorting": "OVZC",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/onderverdeler_zuid_C",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_C_1",
-      "naam": "Eindkast Zuid C.1",
-      "rating_a": 63,
-      "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_C",
-      "afkorting": "EKZC.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_C_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_C_2",
-      "naam": "Eindkast Zuid C.2",
-      "rating_a": 32,
-      "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_C",
-      "afkorting": "EKZC.2",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_C_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_C_3",
-      "naam": "Eindkast Zuid C.3",
-      "rating_a": 63,
-      "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_C",
-      "afkorting": "EKZC.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_C_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_C_4",
-      "naam": "Eindkast Zuid C.4",
-      "rating_a": 32,
-      "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_C",
-      "afkorting": "EKZC.4",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_C_4",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_zuid_C_5",
-      "naam": "Eindkast Zuid C.5",
-      "rating_a": 63,
-      "generator": "generator_zuid",
-      "parent": "onderverdeler_zuid_C",
-      "afkorting": "EKZC.5",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_C_5",
+      "mqtt_topic_prefix": "fest/generator_zuid/eindkast_zuid_a_5",
       "positie": {
         "x_pct": null,
         "y_pct": null
@@ -860,196 +672,84 @@
       }
     },
     {
-      "id": "onderverdeler_oost_A",
+      "id": "onderverdeler_oost_a",
       "naam": "Onderverdeler Oost A",
       "rating_a": 100,
       "generator": "generator_oost",
-      "parent": "verdeler_oost_2",
-      "afkorting": "OVOA",
+      "parent": "verdeler_oost_8",
+      "afkorting": "OVVOA",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/onderverdeler_oost_A",
+      "mqtt_topic_prefix": "fest/generator_oost/onderverdeler_oost_a",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_oost_A_1",
+      "id": "eindkast_oost_a_1",
       "naam": "Eindkast Oost A.1",
       "rating_a": 63,
       "generator": "generator_oost",
-      "parent": "onderverdeler_oost_A",
-      "afkorting": "EKOA.1",
+      "parent": "onderverdeler_oost_a",
+      "afkorting": "EKVOA.1",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_A_1",
+      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_a_1",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_oost_A_2",
+      "id": "eindkast_oost_a_2",
       "naam": "Eindkast Oost A.2",
       "rating_a": 32,
       "generator": "generator_oost",
-      "parent": "onderverdeler_oost_A",
-      "afkorting": "EKOA.2",
+      "parent": "onderverdeler_oost_a",
+      "afkorting": "EKVOA.2",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_A_2",
+      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_a_2",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_oost_A_3",
+      "id": "eindkast_oost_a_3",
       "naam": "Eindkast Oost A.3",
       "rating_a": 63,
       "generator": "generator_oost",
-      "parent": "onderverdeler_oost_A",
-      "afkorting": "EKOA.3",
+      "parent": "onderverdeler_oost_a",
+      "afkorting": "EKVOA.3",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_A_3",
+      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_a_3",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "onderverdeler_oost_B",
-      "naam": "Onderverdeler Oost B",
-      "rating_a": 100,
-      "generator": "generator_oost",
-      "parent": "verdeler_oost_5",
-      "afkorting": "OVOB",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/onderverdeler_oost_B",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_B_1",
-      "naam": "Eindkast Oost B.1",
-      "rating_a": 63,
-      "generator": "generator_oost",
-      "parent": "onderverdeler_oost_B",
-      "afkorting": "EKOB.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_B_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_B_2",
-      "naam": "Eindkast Oost B.2",
+      "id": "eindkast_oost_a_4",
+      "naam": "Eindkast Oost A.4",
       "rating_a": 32,
       "generator": "generator_oost",
-      "parent": "onderverdeler_oost_B",
-      "afkorting": "EKOB.2",
+      "parent": "onderverdeler_oost_a",
+      "afkorting": "EKVOA.4",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_B_2",
+      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_a_4",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_oost_B_3",
-      "naam": "Eindkast Oost B.3",
+      "id": "eindkast_oost_a_5",
+      "naam": "Eindkast Oost A.5",
       "rating_a": 63,
       "generator": "generator_oost",
-      "parent": "onderverdeler_oost_B",
-      "afkorting": "EKOB.3",
+      "parent": "onderverdeler_oost_a",
+      "afkorting": "EKVOA.5",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_B_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_oost_C",
-      "naam": "Onderverdeler Oost C",
-      "rating_a": 100,
-      "generator": "generator_oost",
-      "parent": "verdeler_oost_8",
-      "afkorting": "OVOC",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/onderverdeler_oost_C",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_C_1",
-      "naam": "Eindkast Oost C.1",
-      "rating_a": 63,
-      "generator": "generator_oost",
-      "parent": "onderverdeler_oost_C",
-      "afkorting": "EKOC.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_C_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_C_2",
-      "naam": "Eindkast Oost C.2",
-      "rating_a": 32,
-      "generator": "generator_oost",
-      "parent": "onderverdeler_oost_C",
-      "afkorting": "EKOC.2",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_C_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_C_3",
-      "naam": "Eindkast Oost C.3",
-      "rating_a": 63,
-      "generator": "generator_oost",
-      "parent": "onderverdeler_oost_C",
-      "afkorting": "EKOC.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_C_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_C_4",
-      "naam": "Eindkast Oost C.4",
-      "rating_a": 32,
-      "generator": "generator_oost",
-      "parent": "onderverdeler_oost_C",
-      "afkorting": "EKOC.4",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_C_4",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_oost_C_5",
-      "naam": "Eindkast Oost C.5",
-      "rating_a": 63,
-      "generator": "generator_oost",
-      "parent": "onderverdeler_oost_C",
-      "afkorting": "EKOC.5",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_C_5",
+      "mqtt_topic_prefix": "fest/generator_oost/eindkast_oost_a_5",
       "positie": {
         "x_pct": null,
         "y_pct": null
@@ -1182,546 +882,324 @@
       }
     },
     {
-      "id": "verdeler_west_10",
-      "naam": "Verdeler West 10",
-      "rating_a": 63,
-      "generator": "generator_west",
-      "parent": "verdeler_west_9",
-      "afkorting": "VW10",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/verdeler_west_10",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_west_A",
+      "id": "onderverdeler_west_a",
       "naam": "Onderverdeler West A",
       "rating_a": 100,
       "generator": "generator_west",
-      "parent": "verdeler_west_2",
-      "afkorting": "OVWA",
+      "parent": "verdeler_west_7",
+      "afkorting": "OVVWA",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/onderverdeler_west_A",
+      "mqtt_topic_prefix": "fest/generator_west/onderverdeler_west_a",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_west_A_1",
+      "id": "eindkast_west_a_1",
       "naam": "Eindkast West A.1",
       "rating_a": 63,
       "generator": "generator_west",
-      "parent": "onderverdeler_west_A",
-      "afkorting": "EKWA.1",
+      "parent": "onderverdeler_west_a",
+      "afkorting": "EKVWA.1",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_A_1",
+      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_a_1",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_west_A_2",
+      "id": "eindkast_west_a_2",
       "naam": "Eindkast West A.2",
       "rating_a": 32,
       "generator": "generator_west",
-      "parent": "onderverdeler_west_A",
-      "afkorting": "EKWA.2",
+      "parent": "onderverdeler_west_a",
+      "afkorting": "EKVWA.2",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_A_2",
+      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_a_2",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_west_A_3",
+      "id": "eindkast_west_a_3",
       "naam": "Eindkast West A.3",
       "rating_a": 63,
       "generator": "generator_west",
-      "parent": "onderverdeler_west_A",
-      "afkorting": "EKWA.3",
+      "parent": "onderverdeler_west_a",
+      "afkorting": "EKVWA.3",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_A_3",
+      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_a_3",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "onderverdeler_west_B",
-      "naam": "Onderverdeler West B",
-      "rating_a": 100,
-      "generator": "generator_west",
-      "parent": "verdeler_west_5",
-      "afkorting": "OVWB",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/onderverdeler_west_B",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_B_1",
-      "naam": "Eindkast West B.1",
-      "rating_a": 63,
-      "generator": "generator_west",
-      "parent": "onderverdeler_west_B",
-      "afkorting": "EKWB.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_B_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_B_2",
-      "naam": "Eindkast West B.2",
+      "id": "eindkast_west_a_4",
+      "naam": "Eindkast West A.4",
       "rating_a": 32,
       "generator": "generator_west",
-      "parent": "onderverdeler_west_B",
-      "afkorting": "EKWB.2",
+      "parent": "onderverdeler_west_a",
+      "afkorting": "EKVWA.4",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_B_2",
+      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_a_4",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "eindkast_west_B_3",
-      "naam": "Eindkast West B.3",
+      "id": "eindkast_west_a_5",
+      "naam": "Eindkast West A.5",
       "rating_a": 63,
       "generator": "generator_west",
-      "parent": "onderverdeler_west_B",
-      "afkorting": "EKWB.3",
+      "parent": "onderverdeler_west_a",
+      "afkorting": "EKVWA.5",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_B_3",
+      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_a_5",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "onderverdeler_west_C",
-      "naam": "Onderverdeler West C",
-      "rating_a": 100,
-      "generator": "generator_west",
-      "parent": "verdeler_west_8",
-      "afkorting": "OVWC",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/onderverdeler_west_C",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_C_1",
-      "naam": "Eindkast West C.1",
-      "rating_a": 63,
-      "generator": "generator_west",
-      "parent": "onderverdeler_west_C",
-      "afkorting": "EKWC.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_C_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_C_2",
-      "naam": "Eindkast West C.2",
-      "rating_a": 32,
-      "generator": "generator_west",
-      "parent": "onderverdeler_west_C",
-      "afkorting": "EKWC.2",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_C_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_C_3",
-      "naam": "Eindkast West C.3",
-      "rating_a": 63,
-      "generator": "generator_west",
-      "parent": "onderverdeler_west_C",
-      "afkorting": "EKWC.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_C_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_C_4",
-      "naam": "Eindkast West C.4",
-      "rating_a": 32,
-      "generator": "generator_west",
-      "parent": "onderverdeler_west_C",
-      "afkorting": "EKWC.4",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_C_4",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_west_C_5",
-      "naam": "Eindkast West C.5",
-      "rating_a": 63,
-      "generator": "generator_west",
-      "parent": "onderverdeler_west_C",
-      "afkorting": "EKWC.5",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_west/eindkast_west_C_5",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "verdeler_centrum_1",
-      "naam": "Hoofdverdeler Centrum",
-      "rating_a": 200,
+      "id": "cat_batterij_centrum",
+      "naam": "CAT Batterijcontainer",
+      "rating_a": 1250,
       "generator": "generator_centrum",
       "parent": null,
-      "afkorting": "VC1",
+      "afkorting": "BATC",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_1",
+      "type": "batterij",
+      "heeft_bypass": true,
+      "mqtt_topic_prefix": "fest/generator_centrum/cat_batterij_centrum",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_2",
-      "naam": "Verdeler Centrum 2",
+      "id": "route_centrum_a_1",
+      "naam": "Route Centrum A.1",
       "rating_a": 200,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_1",
-      "afkorting": "VC2",
+      "parent": "cat_batterij_centrum",
+      "afkorting": "RCA.1",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_2",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_1",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_3",
-      "naam": "Verdeler Centrum 3",
+      "id": "route_centrum_a_2",
+      "naam": "Route Centrum A.2",
       "rating_a": 200,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_2",
-      "afkorting": "VC3",
+      "parent": "route_centrum_a_1",
+      "afkorting": "RCA.2",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_3",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_2",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_4",
-      "naam": "Verdeler Centrum 4",
+      "id": "route_centrum_a_3",
+      "naam": "Route Centrum A.3",
+      "rating_a": 150,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_a_2",
+      "afkorting": "RCA.3",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_3",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_a_4",
+      "naam": "Route Centrum A.4",
+      "rating_a": 150,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_a_3",
+      "afkorting": "RCA.4",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_4",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_a_5",
+      "naam": "Route Centrum A.5",
       "rating_a": 100,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_3",
-      "afkorting": "VC4",
+      "parent": "route_centrum_a_4",
+      "afkorting": "RCA.5",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_4",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_5",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_5",
-      "naam": "Verdeler Centrum 5",
+      "id": "route_centrum_a_6",
+      "naam": "Route Centrum A.6",
       "rating_a": 100,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_4",
-      "afkorting": "VC5",
+      "parent": "route_centrum_a_5",
+      "afkorting": "RCA.6",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_5",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_6",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_6",
-      "naam": "Verdeler Centrum 6",
+      "id": "route_centrum_a_7",
+      "naam": "Route Centrum A.7",
+      "rating_a": 63,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_a_6",
+      "afkorting": "RCA.7",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_7",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_a_8",
+      "naam": "Route Centrum A.8",
+      "rating_a": 63,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_a_7",
+      "afkorting": "RCA.8",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_a_8",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_b_1",
+      "naam": "Route Centrum B.1",
+      "rating_a": 200,
+      "generator": "generator_centrum",
+      "parent": "cat_batterij_centrum",
+      "afkorting": "RCB.1",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_1",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_b_2",
+      "naam": "Route Centrum B.2",
+      "rating_a": 150,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_b_1",
+      "afkorting": "RCB.2",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_2",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_b_3",
+      "naam": "Route Centrum B.3",
+      "rating_a": 150,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_b_2",
+      "afkorting": "RCB.3",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_3",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_b_4",
+      "naam": "Route Centrum B.4",
+      "rating_a": 125,
+      "generator": "generator_centrum",
+      "parent": "route_centrum_b_3",
+      "afkorting": "RCB.4",
+      "shelly_ip": null,
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_4",
+      "positie": {
+        "x_pct": null,
+        "y_pct": null
+      }
+    },
+    {
+      "id": "route_centrum_b_5",
+      "naam": "Route Centrum B.5",
       "rating_a": 100,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_5",
-      "afkorting": "VC6",
+      "parent": "route_centrum_b_4",
+      "afkorting": "RCB.5",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_6",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_5",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_7",
-      "naam": "Verdeler Centrum 7",
+      "id": "route_centrum_b_6",
+      "naam": "Route Centrum B.6",
       "rating_a": 63,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_6",
-      "afkorting": "VC7",
+      "parent": "route_centrum_b_5",
+      "afkorting": "RCB.6",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_7",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_6",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_8",
-      "naam": "Verdeler Centrum 8",
+      "id": "route_centrum_b_7",
+      "naam": "Route Centrum B.7",
       "rating_a": 63,
       "generator": "generator_centrum",
-      "parent": "verdeler_centrum_7",
-      "afkorting": "VC8",
+      "parent": "route_centrum_b_6",
+      "afkorting": "RCB.7",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_8",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_7",
       "positie": {
         "x_pct": null,
         "y_pct": null
       }
     },
     {
-      "id": "verdeler_centrum_9",
-      "naam": "Verdeler Centrum 9",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "verdeler_centrum_8",
-      "afkorting": "VC9",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_9",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "verdeler_centrum_10",
-      "naam": "Verdeler Centrum 10",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "verdeler_centrum_9",
-      "afkorting": "VC10",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/verdeler_centrum_10",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_centrum_A",
-      "naam": "Onderverdeler Centrum A",
-      "rating_a": 100,
-      "generator": "generator_centrum",
-      "parent": "verdeler_centrum_2",
-      "afkorting": "OVCA",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/onderverdeler_centrum_A",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_A_1",
-      "naam": "Eindkast Centrum A.1",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_A",
-      "afkorting": "EKCA.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_A_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_A_2",
-      "naam": "Eindkast Centrum A.2",
+      "id": "route_centrum_b_8",
+      "naam": "Route Centrum B.8",
       "rating_a": 32,
       "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_A",
-      "afkorting": "EKCA.2",
+      "parent": "route_centrum_b_7",
+      "afkorting": "RCB.8",
       "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_A_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_A_3",
-      "naam": "Eindkast Centrum A.3",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_A",
-      "afkorting": "EKCA.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_A_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_centrum_B",
-      "naam": "Onderverdeler Centrum B",
-      "rating_a": 100,
-      "generator": "generator_centrum",
-      "parent": "verdeler_centrum_5",
-      "afkorting": "OVCB",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/onderverdeler_centrum_B",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_B_1",
-      "naam": "Eindkast Centrum B.1",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_B",
-      "afkorting": "EKCB.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_B_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_B_2",
-      "naam": "Eindkast Centrum B.2",
-      "rating_a": 32,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_B",
-      "afkorting": "EKCB.2",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_B_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_B_3",
-      "naam": "Eindkast Centrum B.3",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_B",
-      "afkorting": "EKCB.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_B_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "onderverdeler_centrum_C",
-      "naam": "Onderverdeler Centrum C",
-      "rating_a": 100,
-      "generator": "generator_centrum",
-      "parent": "verdeler_centrum_8",
-      "afkorting": "OVCC",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/onderverdeler_centrum_C",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_C_1",
-      "naam": "Eindkast Centrum C.1",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_C",
-      "afkorting": "EKCC.1",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_C_1",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_C_2",
-      "naam": "Eindkast Centrum C.2",
-      "rating_a": 32,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_C",
-      "afkorting": "EKCC.2",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_C_2",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_C_3",
-      "naam": "Eindkast Centrum C.3",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_C",
-      "afkorting": "EKCC.3",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_C_3",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_C_4",
-      "naam": "Eindkast Centrum C.4",
-      "rating_a": 32,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_C",
-      "afkorting": "EKCC.4",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_C_4",
-      "positie": {
-        "x_pct": null,
-        "y_pct": null
-      }
-    },
-    {
-      "id": "eindkast_centrum_C_5",
-      "naam": "Eindkast Centrum C.5",
-      "rating_a": 63,
-      "generator": "generator_centrum",
-      "parent": "onderverdeler_centrum_C",
-      "afkorting": "EKCC.5",
-      "shelly_ip": null,
-      "mqtt_topic_prefix": "fest/generator_centrum/eindkast_centrum_C_5",
+      "mqtt_topic_prefix": "fest/generator_centrum/route_centrum_b_8",
       "positie": {
         "x_pct": null,
         "y_pct": null
@@ -1734,6 +1212,8 @@
     "shelly_ip": "in te vullen met het lokale IP-adres van de Shelly Pro 3EM in deze kast",
     "mqtt_topic_prefix": "automatisch gegenereerd als fest/<generator_id>/<kast_id>; vul deze waarde in de Shelly in onder Settings > MQTT > Custom MQTT prefix",
     "positie": "x_pct/y_pct: locatie op de plattegrond als percentage van breedte/hoogte (0-100). Wordt ingevuld via de kalibratiemodus.",
-    "afkorting": "optionele korte naam zoals gebruikt op de plattegrond/in de crew-communicatie"
+    "afkorting": "optionele korte naam zoals gebruikt op de plattegrond/in de crew-communicatie",
+    "type": "kast: 'kast' (normale verdeelkast) of 'batterij' (piekscheerder, kan zichzelf bypassen bij overbelasting)",
+    "heeft_bypass": "alleen relevant bij type=batterij: gaat het vermogen bij overbelasting rechtstreeks naar het afgaande veld"
   }
 }

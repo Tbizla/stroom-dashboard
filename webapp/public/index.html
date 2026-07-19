@@ -34,8 +34,8 @@
   .dot.busy{background:var(--amber)}
 
   .body{display:flex;flex:1;min-height:0;position:relative}
-  .mapwrap{flex:1;position:relative;overflow:auto;background:#0b0d10;display:flex;align-items:flex-start;justify-content:center}
-  .mapinner{position:relative;display:inline-block;transform-origin:top left}
+  .mapwrap{flex:1;position:relative;overflow:auto;background:#0b0d10}
+  .mapinner{position:relative;display:inline-block;transform-origin:top left;flex-shrink:0}
   .zoomctl{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:4px;align-items:center;
     background:rgba(18,21,26,.9);border:1px solid var(--border);border-radius:8px;padding:4px 6px}
   .zoomctl button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
@@ -45,13 +45,13 @@
     text-align:center;cursor:pointer;user-select:none}
   .mapinner img{display:block;max-width:none}
   .noMap{color:var(--text3);padding:60px;text-align:center;font-size:13px}
-  .blankcanvas{position:relative;width:1600px;height:1000px;background-color:#0b0d10;cursor:crosshair;
+  .blankcanvas{position:relative;width:4800px;height:3000px;background-color:#0b0d10;cursor:crosshair;
     background-image:radial-gradient(circle, var(--border) 1px, transparent 1px);background-size:32px 32px}
   .blankcanvas-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;
     color:var(--text3);font-size:13px;text-align:center;pointer-events:none}
   #svgoverlay{position:absolute;top:0;left:0;pointer-events:none}
-  #schemaSvg{display:block;transform-origin:top left}
-  .schemawrap{padding:30px;flex-direction:column;align-items:center;gap:16px}
+  #schemaSvg{display:block;transform-origin:top left;flex-shrink:0}
+  .schemawrap{padding:30px}
   .pin{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
        border:2px solid #0b0d10;cursor:pointer;background:var(--grey);z-index:5;
        box-shadow:0 0 0 2px rgba(255,255,255,.15)}
@@ -102,7 +102,10 @@
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
   .beheer{flex:1;overflow-y:auto;padding:22px 26px;display:none}
-  .beheercol{max-width:820px}
+  .beheercol{max-width:940px}
+  .ledenrow>td{padding:0 8px 10px 24px !important;border-bottom:1px solid var(--border)}
+  .ledentable{background:var(--panel2);border-radius:8px;padding:4px 8px}
+  .ledentable th, .ledentable td{border-bottom:1px solid var(--bg)}
   .beheer h2{font-size:14px;color:var(--accent);margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em}
   .btable{width:100%;border-collapse:collapse;margin-bottom:10px}
   .btable th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border)}
@@ -149,7 +152,13 @@
 
   <div class="beheer" id="beheerPanel" style="display:flex">
     <div class="beheercol">
-      <h2>Generators</h2>
+      <h2>Evenementlogo</h2>
+      <div class="addform">
+        <label class="uploadbtn">Logo uploaden<input type="file" id="logoFile" style="display:none" accept="image/*"></label>
+        <span id="logoStatus" style="font-size:12px;color:var(--text2)"></span>
+      </div>
+
+      <h2 style="margin-top:22px">Generators</h2>
       <table class="btable" id="genTable"></table>
       <div class="addform">
         <input id="newGenNaam" placeholder="Naam, bijv. Generator zuid">
@@ -166,12 +175,6 @@
         <select id="newKastGen"></select>
         <select id="newKastParent"><option value="">Rechtstreeks op generator</option></select>
         <button id="addKastBtn">+ Kast</button>
-      </div>
-
-      <h2 style="margin-top:22px">Evenementlogo</h2>
-      <div class="addform">
-        <label class="uploadbtn">Logo uploaden<input type="file" id="logoFile" style="display:none" accept="image/*"></label>
-        <span id="logoStatus" style="font-size:12px;color:var(--text2)"></span>
       </div>
 
       <div style="margin-top:24px">
@@ -230,6 +233,7 @@
       <button id="zoomOutBtn" title="Uitzoomen">−</button>
       <span class="zoomlabel" id="zoomLabel" title="Klik om te resetten naar 100%">100%</span>
       <button id="zoomInBtn" title="Inzoomen">+</button>
+      <button id="zoomFitBtn" title="Alles in beeld (fit to screen)">⛶</button>
     </div>
     <div class="mapwrap" id="mapwrap">
       <div class="mapinner" id="mapinner">
@@ -268,26 +272,77 @@ const mapimg = document.getElementById('mapimg');
 const mapinner = document.getElementById('mapinner');
 const blankCanvas = document.getElementById('blankCanvas');
 
-// ---------- zoom: aparte niveaus voor de kaart/kalibratie-weergave en het schema ----------
-let kaartZoom = 1, schemaZoomLevel = 1;
-const ZOOM_MIN = 0.2, ZOOM_MAX = 3, ZOOM_STEP = 0.15;
+// ---------- zoom: eigen, onthouden niveau per tabblad (cal/schema/live), ook na herladen van de pagina ----------
+const ZOOM_MIN = 0.05, ZOOM_MAX = 3, ZOOM_STEP = 0.15;
+const ZOOM_STORAGE_KEY = 'stroomdash_zoom_v1';
+let zoomLevels = { cal: null, schema: null, live: null, schemaSize: null };
+try { Object.assign(zoomLevels, JSON.parse(localStorage.getItem(ZOOM_STORAGE_KEY) || '{}')); } catch(e) {}
 
-function currentZoom(){ return mode==='schema' ? schemaZoomLevel : kaartZoom; }
-function setZoom(z){
-  z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+function currentZoom(){ return zoomLevels[mode] ?? 1; }
+function applyZoom(){
+  const z = currentZoom();
   if(mode==='schema'){
-    schemaZoomLevel = z;
     document.getElementById('schemaSvg').style.transform = 'scale(' + z + ')';
   } else {
-    kaartZoom = z;
     mapinner.style.transform = 'scale(' + z + ')';
   }
   document.getElementById('zoomLabel').textContent = Math.round(z * 100) + '%';
+  centerContentInViewport();
+}
+function setZoom(z){
+  z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+  zoomLevels[mode] = z;
+  // elke zoomwijziging (ook handmatig via +/-/scrollwiel, niet alleen de fit-knop) legt vast voor welke
+  // schemagrootte dit percentage gold, zodat een latere topologiewijziging dit als verouderd herkent
+  if(mode==='schema'){
+    const svg = document.getElementById('schemaSvg');
+    zoomLevels.schemaSize = { w: +svg.getAttribute('width') || 0, h: +svg.getAttribute('height') || 0 };
+  }
+  try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(zoomLevels)); } catch(e) {}
+  applyZoom();
+}
+
+// transform:scale() krimpt alleen de visuele weergave, niet de layout-/scrollbox van de wrap (die blijft
+// op ongeschaalde grootte staan omdat de wrap gecentreerd is met flexbox). Zonder correctie blijft de
+// viewport na uitzoomen op scrollpositie (0,0) staan, ver van waar de gekrompen inhoud zichtbaar is —
+// dat toont dan alleen de lege achtergrond ("het scherm wordt zwart"). Daarom recentreren we na elke
+// zoomwijziging de scrollpositie op het midden van de (geschaalde) inhoud.
+function centerContentInViewport(){
+  const wrap = mode==='schema' ? document.getElementById('schemaWrap') : document.getElementById('mapwrap');
+  const contentEl = mode==='schema' ? document.getElementById('schemaSvg') : mapinner;
+  const wrapRect = wrap.getBoundingClientRect();
+  const contentRect = contentEl.getBoundingClientRect();
+  if(!contentRect.width || !contentRect.height) return;
+  const deltaX = (contentRect.left + contentRect.width / 2) - (wrapRect.left + wrapRect.width / 2);
+  const deltaY = (contentRect.top + contentRect.height / 2) - (wrapRect.top + wrapRect.height / 2);
+  wrap.scrollLeft += deltaX;
+  wrap.scrollTop += deltaY;
 }
 
 document.getElementById('zoomInBtn').onclick = () => setZoom(currentZoom() + ZOOM_STEP);
 document.getElementById('zoomOutBtn').onclick = () => setZoom(currentZoom() - ZOOM_STEP);
 document.getElementById('zoomLabel').onclick = () => setZoom(1);
+
+// zoomt zo ver uit (of in) dat de volledige inhoud (bv. alle generators van een grote stresstest-schema) past
+function fitToScreen(){
+  const wrap = mode==='schema' ? document.getElementById('schemaWrap') : document.getElementById('mapwrap');
+  const contentEl = mode==='schema' ? document.getElementById('schemaSvg') : mapinner;
+  // de ongeschaalde inhoudsgrootte NIET afleiden door de huidige (mogelijk inmiddels afwijkende)
+  // zoomwaarde uit de zichtbare rect te delen — dat gaf een verkeerde fit zodra die aanname niet meer
+  // klopte met de daadwerkelijk toegepaste transform. In plaats daarvan de transform even uitzetten en
+  // de ware afmeting rechtstreeks meten; getBoundingClientRect() werkt betrouwbaar op zowel <svg> als
+  // gewone elementen (offsetWidth/Height niet altijd op SVG-rootelementen).
+  const prevTransform = contentEl.style.transform;
+  contentEl.style.transform = 'none';
+  const rect = contentEl.getBoundingClientRect();
+  const cw = rect.width, ch = rect.height;
+  contentEl.style.transform = prevTransform;
+  if(!cw || !ch) return;
+  const availW = wrap.clientWidth - 24, availH = wrap.clientHeight - 24;
+  if(availW <= 0 || availH <= 0) return;
+  setZoom(Math.min(availW / cw, availH / ch));
+}
+document.getElementById('zoomFitBtn').onclick = fitToScreen;
 
 document.getElementById('mainBody').addEventListener('wheel', (ev) => {
   ev.preventDefault();
@@ -323,6 +378,9 @@ function allNodes(){ return [...TOPO.generators, ...TOPO.kasten]; }
 function isGen(n){ return n.vermogen_kva !== undefined; }
 function nodeById(id){ return allNodes().find(n=>n.id===id); }
 function genNaam(genId){ const g = TOPO.generators.find(g=>g.id===genId); return g ? g.naam : genId; }
+// visueel onderscheid tussen een los aggregaat, een accu en een groep (meerdere aggregaten/accu's die
+// samen als één krachtbron optreden, bijv. een centrale met 6 generators + een CAT-batterijcontainer)
+function typeIcon(n){ return n.type==='batterij' ? '🔋' : n.type==='groep' ? '🏭' : '⚡'; }
 // het "oppervlak" waarop kasten geplaatst worden: de plattegrond als die is geüpload,
 // anders een leeg vlak — zo kun je ook zonder plattegrond kasten vrij plaatsen
 function getSurfaceEl(){ return mapimg.style.display !== 'none' ? mapimg : blankCanvas; }
@@ -391,7 +449,7 @@ function renderList(){
     gh.className = 'genrow' + (gen.id===selectedId?' selected':'') + (mode==='cal' && gen.id===armedId?' selected':'');
     const genName = document.createElement('div');
     genName.className = 'name';
-    genName.textContent = gen.naam + ' · ' + gen.vermogen_kva + ' kVA';
+    genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' ('+gen.leden.length+' leden)' : '');
     const genVal = document.createElement('div');
     genVal.className = 'val';
     genVal.textContent = gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst';
@@ -408,7 +466,7 @@ function renderList(){
       dot.className = 'dot2 ' + statusClass(k);
       const name = document.createElement('div');
       name.className = 'name';
-      name.textContent = k.naam + (k.afkorting ? ' (' + k.afkorting + ')' : '');
+      name.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam + (k.afkorting ? ' (' + k.afkorting + ')' : '');
       const val = document.createElement('div');
       val.className = 'val';
       const d = liveData[k.id];
@@ -428,9 +486,12 @@ function renderDetail(){
   const n = nodeById(selectedId);
   if(!n){ detailEl.innerHTML = '<div class="empty">Selecteer een kast om details te zien.</div>'; return; }
   const d = liveData[n.id];
-  let html = '<h2>'+n.naam+'</h2>';
+  let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+'</h2>';
   if(!isGen(n)){
-    html += '<div class="sub">'+genNaam(n.generator)+' · rating '+n.rating_a+'A per fase'+(n.opmerking?(' · '+n.opmerking):'')+'</div>';
+    html += '<div class="sub">'+(n.type==='batterij'?'Batterij/piekscheerder — ':'')+genNaam(n.generator)+' · rating '+n.rating_a+'A per fase'+(n.opmerking?(' · '+n.opmerking):'')+'</div>';
+    if(n.type==='batterij' && n.heeft_bypass){
+      html += '<div class="metric"><span class="k">Bypass</span><span>Bij overbelasting gaat het vermogen rechtstreeks naar het afgaande veld</span></div>';
+    }
     const maxFase = maxFaseStroom(d);
     const pct = maxFase!=null ? Math.min(100, (maxFase/n.rating_a)*100) : 0;
     const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
@@ -445,7 +506,13 @@ function renderDetail(){
     html += '<div class="metric"><span class="k">Belasting (hoogste fase / rating)</span><span>'+(maxFase!=null?Math.round(pct)+'%':'geen data')+'</span></div>';
     html += '<div class="barwrap"><div class="bar" style="width:'+pct+'%;background:'+cls+'"></div></div>';
   } else {
-    html += '<div class="sub">Generator</div>';
+    const typeLabel = n.type==='batterij' ? 'Batterij' : n.type==='groep' ? 'Groep' : 'Generator';
+    html += '<div class="sub">'+typeIcon(n)+' '+typeLabel+'</div>';
+    if(n.type==='groep' && n.leden && n.leden.length){
+      const soortLabel = n.groep_soort==='parallel' ? 'Parallel (load-sharing)' : n.groep_soort==='backup' ? 'N+1 backup (auto-start bij uitval)' : n.groep_soort==='hybride' ? 'Hybride (generators + opslag)' : 'onbekend';
+      html += '<div class="metric"><span class="k">Soort koppeling</span><span>'+soortLabel+'</span></div>';
+      html += '<div class="metric"><span class="k">Leden ('+n.leden.length+')</span><span>'+n.leden.map(l=>typeIcon(l)+' '+l.naam+(l.vermogen_kva?' ('+l.vermogen_kva+'kVA)':'')).join(', ')+'</span></div>';
+    }
   }
   html += '<div class="metric" style="margin-top:10px"><span class="k">Positie</span><span>'+(n.positie && n.positie.x_pct!=null? n.positie.x_pct.toFixed(1)+'%, '+n.positie.y_pct.toFixed(1)+'%' : 'nog niet geplaatst')+'</span></div>';
   detailEl.innerHTML = html;
@@ -505,7 +572,7 @@ function renderPins(){
     label.className = 'pinlabel';
     label.style.left = (n.positie.x_pct/100*w)+'px';
     label.style.top = (n.positie.y_pct/100*h)+'px';
-    label.textContent = n.naam;
+    label.textContent = isGen(n) ? typeIcon(n)+' '+n.naam : (n.type==='batterij'?'🔋 ':'')+n.naam;
     mapinner.appendChild(label);
   });
 }
@@ -551,6 +618,21 @@ function renderSchema(){
   document.getElementById('schemaEmptyHint').style.display = positioned.length ? 'none' : 'block';
   schemaSvg.setAttribute('width', width);
   schemaSvg.setAttribute('height', height);
+  // zonder expliciete CSS-breedte/hoogte rekt een display:block <svg> zich uit naar de containerbreedte
+  // i.p.v. de width/height-attributen te respecteren — daarmee viel alles voorbij die breedte letterlijk
+  // buiten het svg-viewport (geen scroll-probleem, het werd o(nzichtbaar) geclipt)
+  schemaSvg.style.width = width + 'px';
+  schemaSvg.style.height = height + 'px';
+  // een onthouden zoomniveau is alleen geldig voor de boomgrootte waarvoor het ooit is bepaald — het schema
+  // groeit/krimpt met de topologie (andere testset, kasten toegevoegd/verwijderd), dus bij een gewijzigde
+  // afmeting is het onthouden percentage zinloos en moet opnieuw gefit worden i.p.v. blind toegepast
+  const sizeMismatch = !zoomLevels.schemaSize || Math.abs(zoomLevels.schemaSize.w - width) > 2 || Math.abs(zoomLevels.schemaSize.h - height) > 2;
+  if(zoomLevels.schema != null && sizeMismatch){
+    zoomLevels.schema = null;
+    // de DOM draagt tot de volgende applyZoom()/fitToScreen() nog de oude, inmiddels ongeldige transform;
+    // die moet nu al gereset zodat een eventuele fitToScreen()-meting niet tegen een verkeerde schaal aanmeet
+    schemaSvg.style.transform = 'scale(1)';
+  }
   schemaSvg.innerHTML = '';
   const yOf = depth => PAD + depth * LEVEL_H;
 
@@ -578,7 +660,8 @@ function renderSchema(){
     rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
     rect.setAttribute('rx', gen ? 6 : 18);
     const cls = gen ? '' : statusClass(p.node);
-    const fill = gen ? 'var(--accent)' : cls==='status-red' ? 'var(--red)' : cls==='status-amber' ? 'var(--amber)' : cls==='status-green' ? 'var(--green)' : 'var(--panel2)';
+    const genFill = p.node.type==='batterij' ? '#5b8def' : p.node.type==='groep' ? '#b18cf0' : 'var(--accent)';
+    const fill = gen ? genFill : cls==='status-red' ? 'var(--red)' : cls==='status-amber' ? 'var(--amber)' : cls==='status-green' ? 'var(--green)' : 'var(--panel2)';
     rect.setAttribute('fill', fill);
     rect.setAttribute('stroke', p.node.id===selectedId ? '#fff' : 'var(--border)');
     rect.setAttribute('stroke-width', p.node.id===selectedId ? '2' : '1');
@@ -590,7 +673,8 @@ function renderSchema(){
     text.setAttribute('font-size', '11');
     text.setAttribute('font-family', 'var(--sans)');
     text.setAttribute('fill', gen ? '#0b1210' : '#e8eaed');
-    const label = p.node.naam.length > 18 ? p.node.naam.slice(0, 17) + '…' : p.node.naam;
+    const naamMetIcon = (!gen && p.node.type==='batterij' ? '🔋 ' : '') + p.node.naam;
+    const label = naamMetIcon.length > 18 ? naamMetIcon.slice(0, 17) + '…' : naamMetIcon;
     text.textContent = gen ? label : label + ' (' + p.node.rating_a + 'A)';
     g.appendChild(text);
 
@@ -679,7 +763,7 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('mapwrap').style.display='flex';
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
-  document.getElementById('zoomLabel').textContent = Math.round(currentZoom()*100)+'%';
+  applyZoom();
   renderPins();
 };
 document.getElementById('modeSchema').onclick = ()=>{
@@ -693,8 +777,8 @@ document.getElementById('modeSchema').onclick = ()=>{
   document.getElementById('mapwrap').style.display='none';
   document.getElementById('schemaWrap').style.display='flex';
   document.getElementById('mainBody').style.display='flex';
-  document.getElementById('zoomLabel').textContent = Math.round(currentZoom()*100)+'%';
   renderSchema();
+  if(zoomLevels.schema == null) fitToScreen(); else applyZoom();
 };
 document.getElementById('modeLive').onclick = ()=>{
   mode='live';
@@ -708,7 +792,7 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   document.getElementById('brokerHost').value = document.getElementById('brokerHost').value || location.hostname || 'localhost';
-  document.getElementById('zoomLabel').textContent = Math.round(currentZoom()*100)+'%';
+  applyZoom();
   renderPins();
 };
 document.getElementById('modeTest').onclick = ()=>{
@@ -776,12 +860,12 @@ document.getElementById('resetMetingenBtn').onclick = async ()=>{
 
 // ---------- Beheer: generators & kasten aanmaken, bewerken, koppelen, verwijderen ----------
 function vulGenSelect(select, geselecteerd){
-  select.innerHTML = TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+g.naam+'</option>').join('');
+  select.innerHTML = TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
 }
 function vulParentSelect(select, generatorId, eigenId, geselecteerd){
   const opties = TOPO.kasten.filter(k=>k.generator===generatorId && k.id!==eigenId);
   select.innerHTML = '<option value="">Rechtstreeks op generator</option>' +
-    opties.map(k=>'<option value="'+k.id+'"'+(k.id===geselecteerd?' selected':'')+'>'+k.naam+'</option>').join('');
+    opties.map(k=>'<option value="'+k.id+'"'+(k.id===geselecteerd?' selected':'')+'>'+(k.type==='batterij'?'🔋 ':'')+k.naam+'</option>').join('');
 }
 async function apiCall(url, method, body){
   const res = await fetch(url, { method, headers: body?{'Content-Type':'application/json'}:undefined, body: body?JSON.stringify(body):undefined });
@@ -790,20 +874,67 @@ async function apiCall(url, method, body){
   return data;
 }
 
+// welke groepen (bijv. "Centrale Noord — 6 generators + CAT-batterij") hun ledenlijst opengeklapt hebben
+// staan; los van TOPO zodat het openklappen niet steeds dichtklapt na elke herlaad/opslaan-cyclus
+const expandedGroepen = new Set();
+
 function renderBeheer(){
   // generators-tabel
   const genTable = document.getElementById('genTable');
-  let gh = '<tr><th>Naam</th><th style="width:90px">kVA</th><th style="width:70px"># kasten</th><th style="width:80px"></th></tr>';
+  let gh = '<tr><th>Naam</th><th style="width:110px">Type</th><th style="width:80px">kVA</th>'+
+    '<th style="width:70px"># kasten</th><th style="width:140px">Soort koppeling</th><th style="width:110px">Leden</th><th style="width:80px"></th></tr>';
   TOPO.generators.forEach(g=>{
     const aantal = TOPO.kasten.filter(k=>k.generator===g.id).length;
+    const type = g.type || 'generator';
+    const isGroep = type === 'groep';
+    if(!Array.isArray(g.leden)) g.leden = []; // oudere generators (van vóór dit veld bestond) missen 'leden' nog
     gh += '<tr>'+
       '<td><input value="'+g.naam.replace(/"/g,'&quot;')+'" data-gen-naam="'+g.id+'"></td>'+
+      '<td><select data-gen-type="'+g.id+'">'+
+        '<option value="generator"'+(type==='generator'?' selected':'')+'>⚡ Generator</option>'+
+        '<option value="batterij"'+(type==='batterij'?' selected':'')+'>🔋 Batterij</option>'+
+        '<option value="groep"'+(type==='groep'?' selected':'')+'>🏭 Groep</option>'+
+      '</select></td>'+
       '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
       '<td>'+aantal+'</td>'+
+      '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+'>'+
+        '<option value=""'+(!g.groep_soort?' selected':'')+'>—</option>'+
+        '<option value="parallel"'+(g.groep_soort==='parallel'?' selected':'')+'>Parallel (load-sharing)</option>'+
+        '<option value="backup"'+(g.groep_soort==='backup'?' selected':'')+'>N+1 backup (auto-start)</option>'+
+        '<option value="hybride"'+(g.groep_soort==='hybride'?' selected':'')+'>Hybride (gen. + opslag)</option>'+
+      '</select></td>'+
+      '<td>'+(isGroep ? '<button data-groep-toggle="'+g.id+'">'+(g.leden.length)+' leden '+(expandedGroepen.has(g.id)?'▴':'▾')+'</button>' : '—')+'</td>'+
       '<td><button data-gen-del="'+g.id+'" class="danger">Verwijder</button></td>'+
       '</tr>';
+    if(isGroep && expandedGroepen.has(g.id)){
+      gh += '<tr class="ledenrow"><td colspan="7"><table class="btable ledentable">'+
+        '<tr><th>Naam lid</th><th style="width:110px">Type</th><th style="width:90px">kVA</th><th style="width:70px"></th></tr>'+
+        g.leden.map((l,i)=>
+          '<tr>'+
+            '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
+            '<td><select data-lid-type="'+g.id+'|'+i+'"><option value="generator"'+(l.type!=='batterij'?' selected':'')+'>⚡ Generator</option><option value="batterij"'+(l.type==='batterij'?' selected':'')+'>🔋 Batterij</option></select></td>'+
+            '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
+            '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
+          '</tr>'
+        ).join('')+
+        '<tr>'+
+          '<td><input placeholder="Naam, bijv. Aggregaat 3" data-lid-new-naam="'+g.id+'"></td>'+
+          '<td><select data-lid-new-type="'+g.id+'"><option value="generator">⚡ Generator</option><option value="batterij">🔋 Batterij</option></select></td>'+
+          '<td><input type="number" placeholder="kVA" data-lid-new-kva="'+g.id+'"></td>'+
+          '<td><button data-lid-add="'+g.id+'">+</button></td>'+
+        '</tr>'+
+        '</table></td></tr>';
+    }
   });
   genTable.innerHTML = gh;
+
+  // stuurt de volledige ledenlijst van een groep naar de server; index-gebaseerd (geen eigen id's nodig,
+  // leden zijn puur beschrijvend en worden nergens anders naar verwezen)
+  async function saveLeden(genId, leden){
+    try{ await apiCall('/api/generators/'+genId, 'PUT', {leden}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  }
+  function huidigeLeden(genId){ return (TOPO.generators.find(g=>g.id===genId)||{leden:[]}).leden.map(l=>({...l})); }
 
   genTable.querySelectorAll('[data-gen-naam]').forEach(el=>el.onchange = async ()=>{
     try{ await apiCall('/api/generators/'+el.dataset.genNaam, 'PUT', {naam: el.value}); await loadTopology(); }
@@ -813,6 +944,51 @@ function renderBeheer(){
     try{ await apiCall('/api/generators/'+el.dataset.genKva, 'PUT', {vermogen_kva: el.value}); await loadTopology(); }
     catch(e){ alert(e.message); }
   });
+  genTable.querySelectorAll('[data-gen-type]').forEach(el=>el.onchange = async ()=>{
+    try{ await apiCall('/api/generators/'+el.dataset.genType, 'PUT', {type: el.value}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  });
+  genTable.querySelectorAll('[data-gen-soort]').forEach(el=>el.onchange = async ()=>{
+    try{ await apiCall('/api/generators/'+el.dataset.genSoort, 'PUT', {groep_soort: el.value}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  });
+  genTable.querySelectorAll('[data-groep-toggle]').forEach(el=>el.onclick = ()=>{
+    const id = el.dataset.groepToggle;
+    if(expandedGroepen.has(id)) expandedGroepen.delete(id); else expandedGroepen.add(id);
+    renderBeheer();
+  });
+  genTable.querySelectorAll('[data-lid-naam]').forEach(el=>el.onchange = async ()=>{
+    const [genId, idx] = el.dataset.lidNaam.split('|');
+    const leden = huidigeLeden(genId); leden[idx].naam = el.value;
+    await saveLeden(genId, leden);
+  });
+  genTable.querySelectorAll('[data-lid-type]').forEach(el=>el.onchange = async ()=>{
+    const [genId, idx] = el.dataset.lidType.split('|');
+    const leden = huidigeLeden(genId); leden[idx].type = el.value;
+    await saveLeden(genId, leden);
+  });
+  genTable.querySelectorAll('[data-lid-kva]').forEach(el=>el.onchange = async ()=>{
+    const [genId, idx] = el.dataset.lidKva.split('|');
+    const leden = huidigeLeden(genId); leden[idx].vermogen_kva = el.value ? Number(el.value) : null;
+    await saveLeden(genId, leden);
+  });
+  genTable.querySelectorAll('[data-lid-del]').forEach(el=>el.onclick = async ()=>{
+    const [genId, idx] = el.dataset.lidDel.split('|');
+    const leden = huidigeLeden(genId); leden.splice(idx, 1);
+    await saveLeden(genId, leden);
+  });
+  genTable.querySelectorAll('[data-lid-add]').forEach(el=>el.onclick = async ()=>{
+    const genId = el.dataset.lidAdd;
+    const naamEl = genTable.querySelector('[data-lid-new-naam="'+genId+'"]');
+    const typeEl = genTable.querySelector('[data-lid-new-type="'+genId+'"]');
+    const kvaEl = genTable.querySelector('[data-lid-new-kva="'+genId+'"]');
+    const naam = naamEl.value.trim();
+    if(!naam) return;
+    expandedGroepen.add(genId);
+    const leden = huidigeLeden(genId);
+    leden.push({ naam, type: typeEl.value, vermogen_kva: kvaEl.value ? Number(kvaEl.value) : null });
+    await saveLeden(genId, leden);
+  });
   genTable.querySelectorAll('[data-gen-del]').forEach(el=>el.onclick = async ()=>{
     if(!confirm('Generator verwijderen?')) return;
     try{ await apiCall('/api/generators/'+el.dataset.genDel, 'DELETE'); await loadTopology(); }
@@ -821,12 +997,20 @@ function renderBeheer(){
 
   // kasten-tabel
   const kastTable = document.getElementById('kastTable');
-  let kh = '<tr><th>Naam</th><th style="width:80px">Afk.</th><th style="width:70px">A</th><th style="width:150px">Generator</th><th style="width:190px">Gevoed vanaf</th><th style="width:80px"></th></tr>';
+  let kh = '<tr><th>Naam</th><th style="width:80px">Afk.</th><th style="width:70px">A</th><th style="width:110px">Type</th>'+
+    '<th style="width:90px">Bypass</th><th style="width:150px">Generator</th><th style="width:190px">Gevoed vanaf</th><th style="width:80px"></th></tr>';
   TOPO.kasten.forEach(k=>{
+    const type = k.type || 'kast';
+    const isBatterij = type === 'batterij';
     kh += '<tr>'+
       '<td><input value="'+k.naam.replace(/"/g,'&quot;')+'" data-k-naam="'+k.id+'"></td>'+
       '<td><input value="'+(k.afkorting||'').replace(/"/g,'&quot;')+'" data-k-afk="'+k.id+'"></td>'+
       '<td><input type="number" value="'+k.rating_a+'" data-k-rating="'+k.id+'"></td>'+
+      '<td><select data-k-type="'+k.id+'">'+
+        '<option value="kast"'+(!isBatterij?' selected':'')+'>Kast</option>'+
+        '<option value="batterij"'+(isBatterij?' selected':'')+'>🔋 Batterij</option>'+
+      '</select></td>'+
+      '<td style="text-align:center"><input type="checkbox" data-k-bypass="'+k.id+'" '+(k.heeft_bypass?'checked':'')+' '+(isBatterij?'':'disabled')+' title="Bypasst zichzelf en stuurt vermogen rechtstreeks door bij overbelasting"></td>'+
       '<td><select data-k-gen="'+k.id+'"></select></td>'+
       '<td><select data-k-parent="'+k.id+'"></select></td>'+
       '<td><button data-k-del="'+k.id+'" class="danger">Verwijder</button></td>'+
@@ -852,6 +1036,14 @@ function renderBeheer(){
   });
   kastTable.querySelectorAll('[data-k-rating]').forEach(el=>el.onchange = async ()=>{
     try{ await apiCall('/api/kasten/'+el.dataset.kRating, 'PUT', {rating_a: el.value}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  });
+  kastTable.querySelectorAll('[data-k-type]').forEach(el=>el.onchange = async ()=>{
+    try{ await apiCall('/api/kasten/'+el.dataset.kType, 'PUT', {type: el.value}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  });
+  kastTable.querySelectorAll('[data-k-bypass]').forEach(el=>el.onchange = async ()=>{
+    try{ await apiCall('/api/kasten/'+el.dataset.kBypass, 'PUT', {heeft_bypass: el.checked}); await loadTopology(); }
     catch(e){ alert(e.message); }
   });
   kastTable.querySelectorAll('[data-k-gen]').forEach(el=>el.onchange = async ()=>{
@@ -943,7 +1135,10 @@ document.getElementById('connectBtn').onclick = ()=>{
 };
 
 // ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
+// niet op het Beheer-tabblad: daar ben je zelf de enige die bewerkt, en een tussentijdse herbouw van de
+// tabellen verstoort dan alleen het snel achter elkaar invoeren van velden (focus/cursor/onopgeslagen tekst)
 setInterval(async ()=>{
+  if(mode==='beheer') return;
   const prevSelected = selectedId;
   await loadTopology();
   selectedId = prevSelected;
@@ -953,6 +1148,11 @@ setInterval(async ()=>{
 
 loadTopology().then(loadMap);
 loadLogo();
+// het Testdata-tabblad (en de bijbehorende endpoints) bestaat alleen als de stack met
+// --profile test + TEST_MODE=true gestart is; anders geven die endpoints toch 404, dus verberg 'm
+fetch('/api/test-mode').then(r=>r.json()).then(d=>{
+  if(!d.testMode) document.getElementById('modeTest').style.display = 'none';
+}).catch(()=>{});
 </script>
 </body>
 </html>

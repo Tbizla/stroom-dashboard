@@ -69,10 +69,14 @@ services:
     volumes:
       - webapp-data:/data
 
+  # alleen gestart met `docker compose --profile test up -d` — de webapp herkent zelf of deze
+  # service bestaat (DNS-lookup op "simulator", zie isTestMode() in server.js) om de Testdata-tabblad
+  # endpoints vrij te geven, dus dit ene commando is genoeg om testmodus aan/uit te zetten
   simulator:
     build: ./simulator
     container_name: simulator
     restart: unless-stopped
+    profiles: ["test"]
     depends_on:
       - mosquitto
       - webapp

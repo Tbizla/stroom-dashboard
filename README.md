@@ -45,7 +45,7 @@ Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 300
 
 Open `http://<ip-van-de-nhq-machine>:8080` — dat werkt vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 
-Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met twee panelen (totale stroom en stroom per fase) die automatisch herhaald worden per kast via een `$kast`-variabele, plus een `$editie`-variabele. Dit dashboard bevat bewust geen generator-totalen of alarmdrempels — die vereisen kennis van de webapp-topologie (parent/child-keten, `rating_a`) die niet in InfluxDB zit; zie secties 5 en 6 hieronder om die zelf toe te voegen.
+Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een paneel (stroom per fase, geen los "totale stroom"-paneel — zie sectie 5 hieronder waarom) dat automatisch herhaald wordt per kast via een `$kast`-variabele, plus een `$editie`-variabele. Dit dashboard bevat bewust geen generator-totalen of alarmdrempels — die vereisen kennis van de webapp-topologie (parent/child-keten, `rating_a`) die niet in InfluxDB zit; zie secties 5 en 6 hieronder om die zelf toe te voegen.
 
 ## 4. Voorbeeldquery — één kast (paneel per kast)
 
@@ -100,21 +100,23 @@ Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie per fase (k
 
 Er zit een simulator bij die realistisch ogende meetdata voor alle kasten publiceert, zonder dat er Shelly's aangesloten hoeven te zijn. Hij haalt de kastenlijst automatisch op bij de webapp en ververst die elke 5 seconden, dus je hoeft niets handmatig te synchroniseren of te herstarten als je van testtopologie wisselt. Elke kast krijgt een langzaam wisselende belasting, en af en toe (standaard ~1% kans per tik) een kunstmatige piek — handig om de groen/amber/rood-status en later de alerts te testen.
 
+**Dit alles staat aan met precies één commando**, zodat je nooit per ongeluk tijdens een echt evenement de topologie overschrijft, de simulator aanzet of meetdata wist:
+
+```
+docker compose --profile test up -d
+```
+
+Dit start ook daadwerkelijk de `simulator`-container mee (die anders niet meedraait, ook niet bij een gewone `docker compose up -d`). De webapp herkent zelf of dat profile actief is — geen aparte instelling in `.env` nodig — en geeft dan pas de testendpoints en het **Testdata**-tabblad vrij; zonder `--profile test` geven die endpoints een 404 en blijft het tabblad verborgen.
+
 Op het **Testdata**-tabblad in de webapp, twee varianten:
 - **"Laad eenvoudige testtopologie"** — 2 generators, 6 kasten, 3 niveaus diep. Snelle demo van de werking.
-- **"Laad uitgebreide testtopologie (stresstest)"** — 5 generators, 120 kasten, tot 10 niveaus diep per generator. Voor het testen van de lijst/schema/plattegrond/Sankey en de doorvoer van Telegraf/InfluxDB/de simulator onder realistische belasting.
+- **"Laad uitgebreide testtopologie (stresstest)"** — 5 generators (waarvan Centrum een **groep** is: 4 aggregaten van 550 kVA + een batterijcontainer met bypass, die op zijn beurt 2 daisy-chained routes van 8 kasten voedt), 80 kasten totaal, tot 10 niveaus diep per generator. Voor het testen van de lijst/schema/plattegrond/Sankey en de doorvoer van Telegraf/InfluxDB/de simulator onder realistische belasting, inclusief generatorgroepen en batterij-/piekscheerderkasten.
 
 Beide overschrijven de huidige generators en kasten, en je kunt op elk moment tussen de twee wisselen — de simulator pikt de wijziging binnen enkele seconden op.
 
 **"Wis meetdata"** wist alle meetdata uit InfluxDB (de topologie blijft staan, inclusief de `topology_edges`-reeks voor de Sankey) — handig om na een korte test met een schone grafiek te beginnen.
 
-**Let op: de simulator staat momenteel standaard aan.** Een gewone `docker compose up -d --build` start de simulator dus nu gewoon mee, zodat je meteen kunt testen zonder Shelly's. Zie de roadmap in [event_dashboard.md](event_dashboard.md) — dit gaat samen met het Testdata-tabblad weer achter een flag zodra de testfase klaar is, zodat er nooit per ongeluk mee getest wordt tijdens een echt evenement.
-
-Los stoppen kan met:
-
-```
-docker compose stop simulator
-```
+Zodra het echte evenement begint: start gewoon opnieuw op zonder `--profile test` (`docker compose up -d`) — de simulator-container stopt dan mee en de testendpoints/het tabblad zijn meteen niet meer bereikbaar.
 
 ## 8. Data exporteren
 

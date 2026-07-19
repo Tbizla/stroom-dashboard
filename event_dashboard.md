@@ -30,8 +30,15 @@ zetten zonder code aan te passen.
 ## Features
 
 **Topologiebeheer (Beheer-tabblad)**
-- Generators aanmaken/bewerken/verwijderen (naam, kVA)
-- Kasten aanmaken/bewerken/verwijderen (naam, afkorting, ampèrage, gekoppelde generator)
+- Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
+  **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
+  generators/accu's bestaat (bijv. een centrale met meerdere aggregaten + een batterijcontainer die
+  load-sharen of elkaar met auto-start back-uppen). Kasten koppelen aan de groep zelf, niet aan een
+  los lid; de leden zijn beschrijvend (naam/kVA/type) en geen eigen topologie-node
+- Kasten aanmaken/bewerken/verwijderen (naam, afkorting, ampèrage, gekoppelde generator/groep), met
+  een type: gewone **kast**, of **batterij** (piekscheerder die tussen een generator(groep) en de
+  eronder hangende kasten in zit, met optioneel een bypass-vlag voor als 'm bij overbelasting
+  zichzelf omzeilt en het vermogen rechtstreeks doorgeeft)
 - Kasten aan elkaar koppelen via "Gevoed vanaf" om de stroomketen (parent/child) vast te leggen,
   met bescherming tegen cyclussen; verwijderen van een tussenliggende kast koppelt de keten
   automatisch door
@@ -43,21 +50,48 @@ zetten zonder code aan te passen.
   zonder dat de Shelly's of MQTT-topics daarvoor aangepast hoeven te worden
 
 **Plattegrond & kalibratie (Kalibreren-tabblad)**
-- Plattegrond (afbeelding) uploaden
-- Generators en kasten als pins op de plattegrond plaatsen en verslepen
+- Plattegrond (afbeelding) uploaden, of zonder plattegrond werken op een leeg, ruim canvas
+  (4800×3000) als er nog geen kaart is — de posities blijven gewoon staan zodra je er later een
+  toevoegt
+- Generators en kasten als pins plaatsen en verslepen
 - Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling
+- In-/uitzoomen (knoppen of scrollwiel) en pannen (klikken en slepen), met een "fit to screen"-knop
+  die alles in één keer in beeld brengt — handig bij een grote topologie
+
+**Schema-tabblad**
+- Automatisch gegenereerd stroomschema (boomdiagram) van de volledige parent/child-keten, generator
+  → groep/batterij/hoofdverdeler → kast, hoe diep ook — geen plattegrond of handmatige plaatsing
+  nodig. Groepen, generators, batterijen en kasten krijgen elk een eigen kleur; de status van elke
+  kast (groen/amber/rood) is direct zichtbaar in het schema
+- Dezelfde zoom/pan/fit-to-screen-bediening als het Kalibreren-tabblad; het onthouden zoomniveau
+  wordt automatisch ongeldig (en opnieuw gefit) zodra de topologie van grootte verandert
 
 **Live-monitoring (Live-tabblad)**
 - Rechtstreekse MQTT-verbinding vanuit de browser (via websockets) naar de broker
 - Status per kast (groen/amber/rood) op basis van actuele stroom t.o.v. de ingestelde rating
 - Live meetwaarden (stroom per fase, spanning, vermogen) in het detailpaneel
 
-**Testdata-tabblad** *(tijdelijk, zie roadmap)*
+**Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (2 generators, 6 kasten, 3 niveaus) voor een
-  snelle demo, of **uitgebreid** (5 generators, 120 kasten, tot 10 niveaus diep) als stresstest van de
-  lijst/schema/plattegrond/Sankey en de Telegraf/InfluxDB/simulator-doorvoer
+  snelle demo, of **uitgebreid** (5 generators — waarvan één een groep van 4 aggregaten + batterij
+  met bypass, en 2 daisy-chained routes van 8 kasten — 80 kasten totaal, tot 10 niveaus diep) als
+  stresstest van de lijst/schema/plattegrond/Sankey en de Telegraf/InfluxDB/simulator-doorvoer
+- Beide varianten komen meteen kant-en-klaar geplaatst op de plattegrond: groepen/generators/
+  batterijen op een rij links, elke stroomketen daarvandaan in een rechte lijn naar rechts (die bij
+  een vertakking symmetrisch uitwaaiert en daarna weer recht doorloopt) — geen 80 kasten met de hand
+  hoeven te slepen om meteen iets bruikbaars op het scherm te hebben
 - Meetdata in InfluxDB wissen (alleen `shelly_em`/`shelly_emdata`, niet de topologie of de
   `topology_edges`-reeks voor de Sankey) voor een schone start na een korte test
+
+**Testmodus**
+- Simulator en Testdata-tabblad (testtopologie laden, simulator starten/stoppen, meetdata wissen)
+  staan aan met precies één commando: `docker compose --profile test up -d`. De `simulator`-service
+  start dan mee, en de webapp herkent dat zelf (een DNS-lookup op de hostnaam `simulator` — die
+  bestaat alleen op het docker-netwerk als het profile actief is) om de bijbehorende endpoints vrij
+  te geven en het Testdata-tabblad te tonen. Geen aparte instelling in `.env` nodig. Start weer op
+  met het gewone `docker compose up -d` (zonder `--profile test`) om alles dicht te zetten, zodat
+  niemand tijdens een echt evenement per ongeluk de topologie overschrijft, de simulator aanzet of
+  meetdata wist.
 
 **Simulator**
 - Publiceert realistische, langzaam variërende meetdata voor alle kasten in de huidige topologie,
@@ -67,25 +101,19 @@ zetten zonder code aan te passen.
 
 **Grafana-dashboards**
 - InfluxDB-datasource en start-dashboard worden automatisch geprovisioned bij het opstarten
-- Panelen per kast (totale stroom, stroom per fase) herhalen automatisch via een `$kast`-variabele
+- Paneel per kast (stroom per fase, geen los "totale stroom"-paneel — een CEE-aansluiting is per
+  fase gerated, niet cumulatief) herhaalt automatisch via een `$kast`-variabele, inclusief
+  batterij-/piekscheerderkasten
 - `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket)
 - Alerting-condities (90%-drempel van `rating_a` per fase, niet van `total_current`) zijn per paneel handmatig toe te voegen
 - Sankey-paneel ("Terugblik - energieverdeling", Netsage Sankey-plugin, automatisch geïnstalleerd
   via `GF_INSTALL_PLUGINS`) toont na afloop het geschatte energieverbruik per kast als
-  stroomdiagram, met de volledige parent/child-keten (generator → hoofdverdeler → kast, hoe diep
-  ook) — via een Flux-`join()` tussen de vermogensdata en de `topology_edges`-reeks hierboven,
-  dus automatisch actueel zodra de topologie in de webapp wijzigt
+  stroomdiagram, met de volledige parent/child-keten (generator/groep → batterij/hoofdverdeler →
+  kast, hoe diep ook) — via een Flux-`join()` tussen de vermogensdata en de `topology_edges`-reeks
+  hierboven, dus automatisch actueel zodra de topologie in de webapp wijzigt
 
 ## Roadmap
 
-- [ ] **Simulator + Testdata-tabblad achter een profile-flag na de testfase.** Beide staan nu
-      standaard aan zodat testen makkelijk is. Zodra een editie de testfase uit is: zet
-      `profiles: ["test"]` weer op de simulator-service in `docker-compose.yml`, en verberg
-      (of laat 404 geven) het Testdata-tabblad — knoppen "Laad eenvoudige/uitgebreide testtopologie"
-      (`POST /api/topology/test-data/simpel` en `/uitgebreid`), "Start/stop simulator"
-      (`POST /api/simulator/start` en `/stop`) en "Wis meetdata" (`POST /api/metingen/reset`) —
-      tenzij dezelfde `test`-profile actief is (`docker compose --profile test up -d`). Zo kan niemand tijdens een echt
-      evenement per ongeluk de topologie overschrijven, de simulator aanzetten of meetdata wissen.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail).
