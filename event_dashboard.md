@@ -108,6 +108,11 @@ zetten zonder code aan te passen.
 **Simulator**
 - Publiceert realistische, langzaam variërende meetdata voor alle kasten in de huidige topologie,
   met incidentele belastingspieken — geen Shelly-hardware nodig om te testen
+- De stroom van een kast met eigen kinderen (bijv. een hoofdverdeler) is de daadwerkelijke som van
+  wat die kinderen (recursief) verbruiken, plus een klein eigen aandeel — niet meer los-willekeurig
+  per kast. Een generator/groep met een ingevulde rating (A) telt op dezelfde manier op uit alles
+  wat er rechtstreeks op is aangesloten, dus de hele keten (generator → hoofdverdeler → eindkast)
+  klopt getalsmatig van beneden naar boven, zoals in het echt
 - Ververst de topologie elke 5 seconden vanuit de webapp, dus wisselen tussen testtopologieën
   (of wijzigingen tijdens een editie) werkt zonder de simulator-container te herstarten
 
@@ -126,6 +131,10 @@ zetten zonder code aan te passen.
 
 ## Roadmap
 
+- [ ] **Generator-EM rework.** De net toegevoegde generator/groep-monitoring (optionele rating_a,
+      zelfde live status als een kast, self-meter via `fest/<generator>/<generator>/status/em:0`)
+      voelt nog niet helemaal goed — nog niet scherp wát precies, dus eerst verder gebruiken/
+      bekijken voor de volgende aanpassing.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail).
