@@ -171,3 +171,58 @@ zetten zonder code aan te passen.
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
       sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina.
+
+### Roadmap v2
+
+> **Werkafspraak vanaf nu**: voor elk van onderstaande punten eerst een uitgebreide spec/plan
+> uitwerken en afstemmen vóórdat er gebouwd wordt — geldt voor zowel de Cowork- als de Code-kant
+> (zie ook de afspraak hierover in CLAUDE.md). Geen van de items hieronder is dus "zomaar" te
+> starten, ook niet de kleine.
+
+- [ ] **Meertalige UI (NL/EN).** De hele UI is nu hardcoded Nederlands, verspreid door
+      `webapp/public/index.html`. Er is ook een Engelse versie nodig. Voorstel: alle UI-teksten
+      naar een los taalbestand (bijv. een JSON met NL/EN-sleutels) verplaatsen voor onderhoud, met
+      een taalkeuze (dropdown in de header, onthouden in `localStorage`, zelfde patroon als de
+      bestaande zoom-/sidebar-state). Aandachtspunt: domeintermen (kast, generator, groep,
+      batterij, plattegrond) hebben geen vanzelfsprekende 1-op-1 Engelse vertaling — vraagt een
+      bewuste woordkeuze, niet alleen een automatische vertaalslag.
+- [ ] **Fasekleuren NL-conventie (bruin/zwart/grijs) i.p.v. A/B/C.** In Nederland duiden we de drie
+      fasen van een driefasesysteem aan met bruin (fase 1), zwart (fase 2) en grijs (fase 3), niet
+      met de huidige Shelly-afgeleide labels A/B/C. Dit moet in de UI reflecteren (kastpopup,
+      aside-detail, evt. de lijst). Let op: dit is een andere kleurcodering dan de bestaande
+      groen/amber/rood-statuskleuren (belasting t.o.v. rating) — moet er visueel duidelijk naast
+      kunnen bestaan zonder die twee te laten samensmelten (bijv. een klein kleurvlakje/label naast
+      de fase-naam, niet de hele rij inkleuren).
+- [ ] **MQTT-topic-prefix van `fest` naar iets generieks (`event`).** `fest/<generator>/<kast>/...`
+      is een restant van toen de scope nog specifiek festivals was; de scope is inmiddels breder
+      ("events"). Raakt `mqttPrefix()` in `server.js`, de topic-parsing in `telegraf.conf`, de
+      Shelly-configuratie-instructies in README.md, en (impliciet) elke Shelly die al met de oude
+      prefix is ingesteld. Vraagt een bewuste migratie, geen kale zoek-en-vervang.
+- [ ] **Alles bereikbaar vanuit één (hoofd)dashboard.** Nu moet je voor Grafana en de webapp losse
+      tabbladen/poorten open hebben. Met steeds meer functionaliteit (rapport, straks mogelijk
+      backup) wordt dat onhandig. Doel: relevante Grafana-functionaliteit (of een eigen equivalent)
+      ook vanuit de webapp zelf bereikbaar maken, i.p.v. te moeten wisselen tussen pagina's. Nog
+      geen concrete aanpak (embed/iframe vs. herbouwen) — expliciet een van de items die eerst een
+      volwaardig plan nodig heeft.
+- [ ] **Evenementlogo in elke PDF-export + formatting-review vooraf.** Het geüploade logo moet in
+      alle PDF-rapporten terugkomen. **Voordat dit gebouwd wordt: eerst de PDF-formatting
+      doornemen met Cowork aan de hand van visuele voorbeelden/mockups** — dit is bewust als aparte
+      stap genoemd, niet iets om er terloops bij te doen.
+- [ ] **Backup-functie vanuit de UI, één bestand voor volledige restore.** Eén knop/scherm in de
+      webapp die alles (topologie, plattegrond, logo, en idealiter ook de InfluxDB-meetdata) in één
+      bestand bundelt, zodat een restore op een andere instance in één keer alles terugzet. Met een
+      keuzescherm: volledige backup, of een selectie van datasets (bijv. alleen topologie, alleen
+      meetdata, alleen media). De huidige `/api/export` dekt alleen de topologie-JSON, dus dit is
+      een uitbreiding, geen vervanging.
+- [ ] **Spanningsveld: single-use container per evenement vs. edities vergelijken.** Het wordt
+      waarschijnlijker dat de Docker-stack per evenement single-use is (opzetten, gebruiken,
+      afbreken). Tegelijk moet het mogelijk blijven om data van andere evenementen/edities te
+      importeren, te vergelijken, en er samen een PDF-rapport van te maken. Deze twee wensen staan
+      op gespannen voet met elkaar — **nog goed over nadenken voordat hier een aanpak voor gekozen
+      wordt**, dit is bewust nog geen concreet plan.
+- [ ] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Controleren of de Shelly Pro 3EM
+      daadwerkelijk alles doorstuurt wat 'm aan data zou kunnen leveren (vergelijk met de volledige
+      Shelly EM-API/documentatie). **Als blijkt dat dit niet het geval is: eerst een analyse-
+      document opstellen** (wat mist, wat zou dat toevoegen, wat vraagt dat van Telegraf/InfluxDB/
+      de webapp) — geen code voordat die analyse er is.
+- [ ] *(meer volgt)*
