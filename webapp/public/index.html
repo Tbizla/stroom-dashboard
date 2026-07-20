@@ -1030,39 +1030,49 @@ function renderKastPopup(){
   el.appendChild(laatste);
 
   // positioneren t.o.v. de pin, boven met pijl naar beneden — of eronder/horizontaal verschoven
-  // als de ballon anders buiten #mapwrap zou uitsteken. Ankerpunt = de daadwerkelijke schermpositie
-  // van de pin (getBoundingClientRect, dus altijd correct ongeacht zoom/pan), niet een herberekening
-  // uit x_pct — de ballon zelf staat buiten #mapinner dus heeft geen eigen zoomschaal.
+  // als de ballon anders buiten #mapwrap zou uitsteken, of over de zoom-knoppen (#zoomCtl, een
+  // los overlay-element linksboven in #mainBody, geen onderdeel van mapwrap's scroll-inhoud) heen
+  // zou vallen. Ankerpunt = de daadwerkelijke schermpositie van de pin (getBoundingClientRect, dus
+  // altijd correct ongeacht zoom/pan), niet een herberekening uit x_pct — de ballon zelf staat
+  // buiten #mapinner dus heeft geen eigen zoomschaal.
   const pinEl = mapinner.querySelector('.pin[data-id="'+CSS.escape(k.id)+'"]');
   if(!pinEl){ el.remove(); return; }
   const pinRect = pinEl.getBoundingClientRect();
   const wrapRect = mapwrap.getBoundingClientRect();
+  const zoomCtlRect = document.getElementById('zoomCtl').getBoundingClientRect();
+  const pinCenterX = pinRect.left + pinRect.width/2, pinCenterY = pinRect.top + pinRect.height/2;
+
   // in "inhoud-coördinaten" van mapwrap (schermpositie + huidige scroll) zetten, zodat de ballon
   // vanzelf meeschuift bij pannen tot de eerstvolgende herberekening (open/zoom/databericht)
-  const anchorX = pinRect.left + pinRect.width/2 - wrapRect.left + mapwrap.scrollLeft;
-  const anchorY = pinRect.top + pinRect.height/2 - wrapRect.top + mapwrap.scrollTop;
-  el.style.left = anchorX+'px'; el.style.top = anchorY+'px';
-  el.style.transform = 'translate(-50%, calc(-100% - 14px))';
+  el.style.left = (pinCenterX - wrapRect.left + mapwrap.scrollLeft) + 'px';
+  el.style.top = (pinCenterY - wrapRect.top + mapwrap.scrollTop) + 'px';
+  el.style.transform = 'none';
+  el.classList.remove('onder');
+  const ownW = el.offsetWidth, ownH = el.offsetHeight;
 
-  let elRect = el.getBoundingClientRect();
+  let dx = -ownW/2;
+  let dy = -(ownH + 14);
   let onder = false;
-  if(elRect.top < wrapRect.top + 4){
+
+  // effectieve bovengrens: normaal de rand van #mapwrap, maar lager (onder de zoom-knoppen) als
+  // de ballon daar horizontaal overheen zou vallen
+  const valtOverZoomCtl = !(pinCenterX+dx+ownW < zoomCtlRect.left || pinCenterX+dx > zoomCtlRect.right);
+  const bovengrens = valtOverZoomCtl ? Math.max(wrapRect.top, zoomCtlRect.bottom) + 8 : wrapRect.top + 4;
+  if(pinCenterY + dy < bovengrens){
     onder = true;
     el.classList.add('onder');
-    el.style.transform = 'translate(-50%, 14px)';
-    elRect = el.getBoundingClientRect();
+    dy = Math.max(14, bovengrens - pinCenterY);
   }
-  let extraX = 0;
-  if(elRect.left < wrapRect.left + 4){
-    extraX = wrapRect.left + 4 - elRect.left;
-  } else if(elRect.right > wrapRect.right - 4){
-    extraX = -(elRect.right - (wrapRect.right - 4));
+
+  if(pinCenterX + dx < wrapRect.left + 4){
+    dx = wrapRect.left + 4 - pinCenterX;
+  } else if(pinCenterX + dx + ownW > wrapRect.right - 4){
+    dx = wrapRect.right - 4 - ownW - pinCenterX;
   }
-  if(extraX){
-    const vertPart = onder ? '14px' : 'calc(-100% - 14px)';
-    el.style.transform = 'translate(calc(-50% + '+extraX+'px), '+vertPart+')';
-    arrow.style.left = 'calc(50% - '+extraX+'px)';
-  }
+
+  el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+  const arrowShift = dx - (-ownW/2);
+  if(arrowShift) arrow.style.left = 'calc(50% - ' + arrowShift + 'px)';
 }
 
 // ---------- schema: automatisch gegenereerd stroomschema (parent/child-boom), geen plattegrond nodig ----------
