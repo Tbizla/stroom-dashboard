@@ -135,7 +135,10 @@ zetten zonder code aan te passen.
 - "Totaal energieverbruik $generator"-paneel bovenaan het dashboard: telt het geschatte
   energieverbruik (kWh, `integral(unit: 1h)` van `total_act_power`) op van alleen de kasten die
   rechtstreeks op die generator/groep hangen (`parent == generator` in `topology_edges`) —
-  automatisch, geen handmatige kastenlijst nodig zoals de voorbeeldquery in `README.md` sectie 5
+  automatisch, geen handmatige kastenlijst nodig zoals de voorbeeldquery in `README.md` sectie 5.
+  Klikken op de waarde is een drill-down: de `$kast`-variabele (en dus het paneel hieronder)
+  beperkt zich dan tot alleen de kasten van die generator, recursief hoe diep de keten ook
+  vertakt (bijv. via een terreinverdeler) — via `topology_edges`, geen losse sub-dashboards nodig
 - Paneel per kast (stroom per fase, geen los "totale stroom"-paneel — een CEE-aansluiting is per
   fase gerated, niet cumulatief) herhaalt automatisch via een `$kast`-variabele, inclusief
   batterij-/piekscheerderkasten
@@ -168,7 +171,3 @@ zetten zonder code aan te passen.
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
       sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina.
-- [ ] **Drill-down vanaf de generator-totalen.** Het samenvattingspaneel bovenaan het dashboard
-      staat er (zie Features); een klikbare drill-down per generator naar een sub-dashboard met
-      de direct-gevoede kasten (voor kasten die zelf weer vertakken, bijv. een terreinverdeler)
-      staat nog open — via Grafana dashboard-links of variabelen.

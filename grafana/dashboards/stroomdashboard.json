@@ -24,11 +24,11 @@
         "current": {}
       },
       {
-        "name": "kast",
-        "label": "Kast",
+        "name": "generator",
+        "label": "Generator/groep",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
-        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> keep(columns: [\"kast\"])\n  |> distinct(column: \"kast\")\n  |> group()\n  |> sort()",
+        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> keep(columns: [\"generator\"])\n  |> distinct(column: \"generator\")\n  |> group()\n  |> sort()",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -36,11 +36,12 @@
         "current": {}
       },
       {
-        "name": "generator",
-        "label": "Generator/groep",
+        "name": "kast",
+        "label": "Kast",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
-        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> keep(columns: [\"generator\"])\n  |> distinct(column: \"generator\")\n  |> group()\n  |> sort()",
+        "description": "Automatisch beperkt tot de kasten die (recursief, hoe diep ook) onder de gekozen $generator hangen — zie de drill-down-link op het generator-totalenpaneel bovenaan.",
+        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r.generator =~ /^${generator:regex}$/)\n  |> keep(columns: [\"kast\"])\n  |> distinct(column: \"kast\")\n  |> group()\n  |> sort()",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -62,13 +63,22 @@
       "id": 8,
       "type": "stat",
       "title": "Totaal energieverbruik $generator - editie $editie",
-      "description": "Geschat energieverbruik (kWh) van alleen de kasten die rechtstreeks op deze generator/groep hangen (parent == generator) — downstream-kasten tellen niet apart mee, hun verbruik zit al in de meting van hun eigen bovenliggende kast. Zelfde integral(unit: 1h)-berekening als de Sankey hieronder, opgeteld i.p.v. per kast getoond. Vermogen mag cumulatief over kasten opgeteld worden (in tegenstelling tot stroom, zie README.md sectie 5).",
+      "description": "Geschat energieverbruik (kWh) van alleen de kasten die rechtstreeks op deze generator/groep hangen (parent == generator) — downstream-kasten tellen niet apart mee, hun verbruik zit al in de meting van hun eigen bovenliggende kast. Zelfde integral(unit: 1h)-berekening als de Sankey hieronder, opgeteld i.p.v. per kast getoond. Vermogen mag cumulatief over kasten opgeteld worden (in tegenstelling tot stroom, zie README.md sectie 5). Klik op de waarde voor een drill-down naar alleen de kasten van déze generator (recursief, hoe diep de keten ook vertakt, bijv. via een terreinverdeler) in de \"Per kast\"-sectie hieronder.",
       "gridPos": { "h": 4, "w": 24, "x": 0, "y": 1 },
       "repeat": "generator",
       "repeatDirection": "h",
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "fieldConfig": {
-        "defaults": { "unit": "kwatth" },
+        "defaults": {
+          "unit": "kwatth",
+          "links": [
+            {
+              "title": "Bekijk kasten onder $generator",
+              "url": "/d/stroomdashboard-overzicht/_?var-generator=${generator}&var-editie=${editie}&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": []
       },
       "targets": [
