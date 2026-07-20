@@ -132,6 +132,10 @@ zetten zonder code aan te passen.
 
 **Grafana-dashboards**
 - InfluxDB-datasource en start-dashboard worden automatisch geprovisioned bij het opstarten
+- "Totaal energieverbruik $generator"-paneel bovenaan het dashboard: telt het geschatte
+  energieverbruik (kWh, `integral(unit: 1h)` van `total_act_power`) op van alleen de kasten die
+  rechtstreeks op die generator/groep hangen (`parent == generator` in `topology_edges`) —
+  automatisch, geen handmatige kastenlijst nodig zoals de voorbeeldquery in `README.md` sectie 5
 - Paneel per kast (stroom per fase, geen los "totale stroom"-paneel — een CEE-aansluiting is per
   fase gerated, niet cumulatief) herhaalt automatisch via een `$kast`-variabele, inclusief
   batterij-/piekscheerderkasten
@@ -143,6 +147,17 @@ zetten zonder code aan te passen.
   kast, hoe diep ook) — via een Flux-`join()` tussen de vermogensdata en de `topology_edges`-reeks
   hierboven, dus automatisch actueel zodra de topologie in de webapp wijzigt
 
+**Rapport exporteren (Beheer-tabblad)**
+- PDF-terugblikrapport van een editie samenstellen en downloaden: editie + periode (hele
+  evenement/laatste 24u/aangepast) kiezen, en een checklist van onderdelen (generator-totalen,
+  stroom per kast, Sankey-energieverdeling, overschrijdingen & alarmen — dat laatste toont een
+  duidelijke "nog niet beschikbaar"-pagina, want er is nog geen alert-geschiedenis)
+- Genereren gebeurt op de achtergrond (statuskaart tijdens het wachten, resultaat-/foutkaart erna
+  met "Opnieuw proberen"; geen stille failure) — maar één generatie tegelijk
+- Onder de motorkap: Grafana's eigen `/render`-endpoint (via de `grafana-image-renderer`-service,
+  geen extra plugin nodig) geeft per aangevinkt paneel een PDF terug, die de webapp met `pdf-lib`
+  samenvoegt tot één bestand — geen Grafana Enterprise en geen losse rapportagetool nodig
+
 ## Roadmap
 
 - [ ] **Generator-EM rework.** De net toegevoegde generator/groep-monitoring (optionele rating_a,
@@ -151,15 +166,9 @@ zetten zonder code aan te passen.
       bekijken voor de volgende aanpassing.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
-      Telegram, Pushover, ntfy.sh, e-mail).
-- [ ] **PDF-export van het Grafana-dashboard voor een terugblikrapport.** Grafana OSS heeft
-      geen ingebouwde PDF-/reportfunctie (dat zit alleen in Grafana Enterprise/Cloud). Voor een
-      deelbaar rapport na afloop van een editie: een losse, gratis tool zoals
-      [IzakMarais/reporter](https://github.com/IzakMarais/reporter) of
-      [cloudeteer/grafana-pdf-report-app](https://github.com/cloudeteer/grafana-pdf-report-app)
-      toevoegen aan de stack. Tot die tijd kan het per paneel via "Inspect > Download CSV",
-      of een browser-print-to-PDF van het dashboard.
-- [ ] **Overzichtsdashboard met generator-totalen.** Eén pagina met de generator-totalen
-      bovenaan (grote getallen/gauges), daaronder per generator een rij met de direct-gevoede
-      kasten, en voor kasten die zelf weer vertakken (bijv. een terreinverdeler) een klikbare
-      drill-down naar een sub-dashboard — via Grafana dashboard-links of variabelen.
+      Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
+      sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina.
+- [ ] **Drill-down vanaf de generator-totalen.** Het samenvattingspaneel bovenaan het dashboard
+      staat er (zie Features); een klikbare drill-down per generator naar een sub-dashboard met
+      de direct-gevoede kasten (voor kasten die zelf weer vertakken, bijv. een terreinverdeler)
+      staat nog open — via Grafana dashboard-links of variabelen.

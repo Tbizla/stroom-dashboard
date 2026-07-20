@@ -45,7 +45,7 @@ Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 300
 
 Open `http://<ip-van-de-nhq-machine>:8080` — dat werkt vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 
-Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een paneel (stroom per fase, geen los "totale stroom"-paneel — zie sectie 5 hieronder waarom) dat automatisch herhaald wordt per kast via een `$kast`-variabele, plus een `$editie`-variabele. Dit dashboard bevat bewust geen generator-totalen of alarmdrempels — die vereisen kennis van de webapp-topologie (parent/child-keten, `rating_a`) die niet in InfluxDB zit; zie secties 5 en 6 hieronder om die zelf toe te voegen.
+Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een generator-totalenpaneel bovenaan, een paneel per kast (stroom per fase, geen los "totale stroom"-paneel — zie sectie 5 hieronder waarom) dat automatisch herhaald wordt via een `$kast`-variabele, en een `$editie`-variabele. Alarmdrempels bevat het dashboard bewust niet — die vereisen `rating_a` uit de webapp-topologie, die niet in InfluxDB zit; zie sectie 6 hieronder om die zelf toe te voegen.
 
 ## 4. Voorbeeldquery — één kast (paneel per kast)
 
@@ -66,6 +66,12 @@ Voor stroom per fase (a/b/c) vervang je de laatste filter door `r._field == "a_c
 **Let op:** `total_current` is de som van alle drie de fasen, en is dus alleen geschikt om een indruk te krijgen van het totale verbruik — niet om tegen `rating_a` af te zetten (zie sectie 6).
 
 ## 5. Voorbeeldquery — generator-totaal
+
+Sinds kort staat er ook automatisch een "Totaal energieverbruik $generator"-paneel bovenaan het
+Grafana-dashboard (geprovisioned, geen handmatig werk nodig) — die telt zelf alleen de kasten op
+die rechtstreeks op de generator/groep hangen, via dezelfde `topology_edges`-koppeling als de
+Sankey. De onderstaande query is er nog als naslag voor ad-hoc analyse (bijv. een live stroom-
+indicatie per fase, wat het geprovisionede paneel niet doet — zie de toelichting hieronder).
 
 Belangrijk: alleen de kasten met `parent: null` in de JSON optellen (die rechtstreeks op de generator zitten), downstream-kasten NIET meetellen — hun verbruik zit al in de bovenliggende meting.
 
@@ -125,11 +131,35 @@ Twee soorten export, voor twee soorten data:
 - **Topologie + posities** (welke kasten, ratings, kaart-coördinaten): knop "Exporteer data" bovenin de webapp (`/api/export`) — downloadt één JSON-bestand. Handig als back-up, of om over te zetten naar een nieuwe editie via "Importeer data".
 - **Historische meetdata** (stroom/spanning/vermogen over tijd): dat hoort bij InfluxDB/Grafana. Open het paneel in Grafana, klik het menu (⋮) rechtsboven in het paneel > **Inspect > Data > Download CSV**. Voor grotere exports kun je ook rechtstreeks een Flux-query op InfluxDB loslaten en het resultaat als CSV wegschrijven.
 
-## 9. Meerdere edities/jaren vergelijken
+## 9. PDF-rapport exporteren
+
+Onderaan de Beheer-tab: **"Rapport exporteren"** — editie en periode kiezen, aanvinken welke
+onderdelen erin moeten (generator-totalen, stroom per kast, Sankey-energieverdeling,
+overschrijdingen & alarmen), en op "Genereer PDF-rapport" klikken. Kan tot een minuut duren; de
+knop laat een statuskaart zien terwijl het loopt en daarna een downloadkaart (of een foutkaart met
+"Opnieuw proberen"). Er kan maar één rapport tegelijk gegenereerd worden.
+
+Onder de motorkap gebruikt dit Grafana's eigen `/render`-endpoint (via de meegeleverde
+`grafana-image-renderer`-service, `docker-compose.yml`) om per aangevinkt paneel een PDF op te
+halen, die de webapp met `pdf-lib` samenvoegt tot één bestand — geen Grafana Enterprise en geen
+losse rapportagetool nodig.
+
+**Eenmalige setup** (na de allereerste `docker compose up -d --build`): de webapp heeft een eigen
+Grafana Service Account nodig om het render-endpoint te mogen aanroepen.
+1. Open Grafana (poort 3000) > Administration > Service accounts > "Add service account"
+2. Naam bijv. `pdf-rapport-webapp`, rol **Viewer**, aanmaken
+3. Binnen dat service account: "Add service account token", token genereren en kopiëren
+4. Plak die waarde in `.env` bij `GRAFANA_REPORT_TOKEN`, en herstart de webapp-container
+   (`docker compose up -d webapp`)
+
+Zonder deze stap geeft de knop een duidelijke foutmelding ("GRAFANA_REPORT_TOKEN is niet
+ingesteld") in plaats van stil te falen.
+
+## 10. Meerdere edities/jaren vergelijken
 
 Elke keer dat je de stack opnieuw start, vul je in `.env` de `EVENT_EDITION` in (bijv. "2027"). Telegraf plakt dat als tag `editie` op elke meting, dus alle jaren blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie, of meerdere edities naast elkaar in één grafiek zetten (bijv. via een `editie`-variabele bovenaan het dashboard).
 
-## 10. Alarmering (Grafana Alerting)
+## 11. Alarmering (Grafana Alerting)
 
 Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 6 hierboven — gebruik hiervoor niet `total_current`). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
 

@@ -3,6 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const dns = require('dns');
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
@@ -512,6 +513,196 @@ app.post('/api/import', (req, res) => {
   if (!data || !data.kasten || !data.generators) return res.status(400).json({ error: 'ongeldig topologie-bestand' });
   writeTopo(data);
   res.json({ ok: true });
+});
+
+// ---------- rapport exporteren (PDF) ----------
+const GRAFANA_URL = process.env.GRAFANA_URL || 'http://grafana:3000';
+const GRAFANA_DASHBOARD_UID = process.env.GRAFANA_DASHBOARD_UID || 'stroomdashboard-overzicht';
+const GRAFANA_REPORT_TOKEN = process.env.GRAFANA_REPORT_TOKEN;
+const RAPPORT_DIR = path.join(DATA_DIR, 'rapporten');
+if (!fs.existsSync(RAPPORT_DIR)) fs.mkdirSync(RAPPORT_DIR, { recursive: true });
+
+// paneel-id's in grafana/dashboards/stroomdashboard.json, per aanvinkbaar rapportonderdeel —
+// "alarmen" heeft geen paneel (nog geen alert-geschiedenis, zie event_dashboard.md-roadmap),
+// die sectie wordt in de PDF zelf als losse placeholder-pagina toegevoegd i.p.v. via Grafana
+const RAPPORT_PANEL_IDS = { generatorTotalen: 8, kastPerFase: 4, sankey: 6 };
+const RAPPORT_PANEL_AFMETING = {
+  generatorTotalen: { width: 1400, height: 260 },
+  kastPerFase: { width: 1400, height: 650 },
+  sankey: { width: 1400, height: 750 },
+};
+
+// module-scoped, niet-persistent — zelfde conventie als simulatorEnabled hierboven: één
+// generatie tegelijk, status verdwijnt bij een herstart (er is dan toch geen lopende job meer)
+let rapportJob = {
+  status: 'idle', // 'idle' | 'bezig' | 'klaar' | 'fout'
+  editie: null, van: null, tot: null, onderdelen: null,
+  gestartOp: null, klaarOp: null,
+  bestandsnaam: null, bestandsgrootte: null, foutmelding: null,
+};
+
+async function influxQuery(flux) {
+  const res = await fetch(INFLUX_URL + '/api/v2/query?org=' + encodeURIComponent(INFLUX_ORG), {
+    method: 'POST',
+    headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'application/vnd.flux', Accept: 'application/csv' },
+    body: flux,
+  });
+  if (!res.ok) throw new Error('InfluxDB-query gaf ' + res.status + ': ' + (await res.text()));
+  return res.text();
+}
+
+// bewust geen generieke CSV-parser: leest alleen de ene kolom die de twee queries hieronder
+// nodig hebben, en faalt duidelijk (lege lijst) bij iets onverwachts i.p.v. te gokken
+function csvKolomWaarden(csv, kolom) {
+  // InfluxDB's CSV-respons gebruikt \r\n-regeleindes; zonder normaliseren blijft dat \r aan de
+  // laatste kolomnaam/waarde van elke regel hangen (bijv. "_value\r"), waardoor indexOf(kolom)
+  // nooit matcht en dit altijd een lege lijst teruggeeft
+  const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
+  if (!regels.length) return [];
+  const header = regels[0].split(',');
+  const idx = header.indexOf(kolom);
+  if (idx === -1) return [];
+  return regels.slice(1).map((r) => r.split(',')[idx]).filter((v) => v !== undefined && v !== '');
+}
+
+// alleen simpele, veilige tekens toegestaan in een editie-waarde die in een Flux-querystring
+// terechtkomt (voorkomt Flux-injectie via de query-param) — matcht hoe edities er in de praktijk
+// uitzien (jaartallen/korte namen, zie EVENT_EDITION in .env.example)
+function veiligeEditie(editie) {
+  if (!editie || !/^[a-zA-Z0-9_-]+$/.test(editie)) return null;
+  return editie;
+}
+
+app.get('/api/rapport/edities', async (req, res) => {
+  try {
+    const csv = await influxQuery('import "influxdata/influxdb/schema"\nschema.tagValues(bucket: "' + INFLUX_BUCKET + '", tag: "editie")');
+    res.json({ edities: csvKolomWaarden(csv, '_value') });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.get('/api/rapport/periode', async (req, res) => {
+  const editie = req.query.editie === '__alle__' ? null : veiligeEditie(req.query.editie);
+  if (req.query.editie && req.query.editie !== '__alle__' && !editie) return res.status(400).json({ error: 'ongeldige editie' });
+  const filter = editie ? '|> filter(fn: (r) => r.editie == "' + editie + '")' : '';
+  const basis =
+    'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+    '  |> range(start: -10y)\n' +
+    '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+    '  ' + filter + '\n' +
+    '  |> group()\n';
+  try {
+    const [csvVan, csvTot] = await Promise.all([
+      influxQuery(basis + '  |> min(column: "_time")\n  |> keep(columns: ["_time"])\n  |> limit(n: 1)'),
+      influxQuery(basis + '  |> max(column: "_time")\n  |> keep(columns: ["_time"])\n  |> limit(n: 1)'),
+    ]);
+    res.json({ van: csvKolomWaarden(csvVan, '_time')[0] || null, tot: csvKolomWaarden(csvTot, '_time')[0] || null });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// haalt één paneel als PDF op bij Grafana's eigen /render-endpoint (via grafana-image-renderer) —
+// ondanks een misleidende "image/png"-Content-Type-header staat er een echte PDF in de body
+// (geverifieerd op byte-niveau tijdens implementatie, zie specs/rapport-pdf-export-spec.md)
+async function haalPaneelPdfOp(panelId, { van, tot, editie, breedte, hoogte }) {
+  const params = new URLSearchParams({
+    panelId: String(panelId),
+    width: String(breedte),
+    height: String(hoogte),
+    from: String(new Date(van).getTime()),
+    to: String(new Date(tot).getTime()),
+  });
+  if (editie) params.set('var-editie', editie);
+  const url = GRAFANA_URL + '/render/d-solo/' + GRAFANA_DASHBOARD_UID + '/_?' + params.toString();
+  const res = await fetch(url, {
+    headers: { Authorization: 'Bearer ' + GRAFANA_REPORT_TOKEN },
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) throw new Error('Grafana-render gaf ' + res.status + ' voor paneel ' + panelId);
+  const buf = Buffer.from(await res.arrayBuffer());
+  // de Content-Type-header van dit endpoint claimt altijd "image/png", ook als de body écht een
+  // PDF is (geverifieerd tijdens implementatie) — dus alleen op de daadwerkelijke magic bytes
+  // afgaan. Bij bijv. een ongeldig token rendert Grafana intern een foutpagina die keurig als
+  // 200 OK terugkomt maar geen PDF is; zonder deze check krijg je hier een cryptische
+  // pdf-lib-parsefout in plaats van een begrijpelijke melding.
+  if (buf.length < 4 || buf.toString('ascii', 0, 4) !== '%PDF') {
+    throw new Error('Grafana gaf geen geldige PDF terug voor paneel ' + panelId + ' (controleer GRAFANA_REPORT_TOKEN)');
+  }
+  return buf;
+}
+
+async function voegPlaceholderPaginaToe(pdf, tekst) {
+  const pagina = pdf.addPage([842, 595]); // A4 liggend, past bij de rest van het rapport
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  pagina.drawText(tekst, { x: 50, y: 545, size: 14, font, color: rgb(0.2, 0.2, 0.2), maxWidth: 740 });
+}
+
+async function voerRapportGeneratieUit(job) {
+  const { editie, van, tot, onderdelen } = job;
+  const editieVar = editie === '__alle__' ? null : editie;
+  const dest = await PDFDocument.create();
+
+  for (const key of ['generatorTotalen', 'kastPerFase', 'sankey']) {
+    if (!onderdelen[key]) continue;
+    const afmeting = RAPPORT_PANEL_AFMETING[key];
+    const buf = await haalPaneelPdfOp(RAPPORT_PANEL_IDS[key], { van, tot, editie: editieVar, ...afmeting });
+    const bron = await PDFDocument.load(buf);
+    const paginas = await dest.copyPages(bron, bron.getPageIndices());
+    paginas.forEach((p) => dest.addPage(p));
+  }
+
+  if (onderdelen.alarmen) {
+    await voegPlaceholderPaginaToe(
+      dest,
+      'Overschrijdingen & alarmen: nog geen alert-geschiedenis beschikbaar voor deze periode ' +
+        '(notificatiekanaal staat nog op de roadmap, zie event_dashboard.md).'
+    );
+  }
+
+  if (dest.getPageCount() === 0) {
+    await voegPlaceholderPaginaToe(dest, 'Geen rapportonderdelen geselecteerd.');
+  }
+
+  const bytes = await dest.save();
+  const bestandsnaam = 'rapport_stroomdashboard_' + editie + '.pdf';
+  fs.writeFileSync(path.join(RAPPORT_DIR, bestandsnaam), bytes);
+
+  rapportJob = {
+    ...rapportJob,
+    status: 'klaar',
+    klaarOp: new Date().toISOString(),
+    bestandsnaam,
+    bestandsgrootte: bytes.length,
+  };
+}
+
+app.post('/api/rapport/genereer', (req, res) => {
+  if (!GRAFANA_REPORT_TOKEN) return res.status(400).json({ error: 'GRAFANA_REPORT_TOKEN is niet ingesteld (zie .env.example)' });
+  if (rapportJob.status === 'bezig') return res.status(409).json({ error: 'er loopt al een rapportgeneratie' });
+  const { editie, van, tot, onderdelen } = req.body || {};
+  if (!editie || !van || !tot || !onderdelen) return res.status(400).json({ error: 'editie, van, tot en onderdelen zijn verplicht' });
+  if (editie !== '__alle__' && !veiligeEditie(editie)) return res.status(400).json({ error: 'ongeldige editie' });
+
+  rapportJob = {
+    status: 'bezig', editie, van, tot, onderdelen,
+    gestartOp: new Date().toISOString(), klaarOp: null,
+    bestandsnaam: null, bestandsgrootte: null, foutmelding: null,
+  };
+  res.json({ ok: true });
+
+  voerRapportGeneratieUit(rapportJob).catch((e) => {
+    rapportJob = { ...rapportJob, status: 'fout', foutmelding: e.message };
+    console.error('rapportgeneratie mislukt:', e.message);
+  });
+});
+
+app.get('/api/rapport/status', (req, res) => res.json(rapportJob));
+
+app.get('/api/rapport/download', (req, res) => {
+  if (rapportJob.status !== 'klaar' || !rapportJob.bestandsnaam) return res.status(404).json({ error: 'geen rapport beschikbaar' });
+  res.download(path.join(RAPPORT_DIR, rapportJob.bestandsnaam), rapportJob.bestandsnaam);
 });
 
 const PORT = process.env.PORT || 8080;

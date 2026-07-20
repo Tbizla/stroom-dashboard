@@ -51,10 +51,40 @@
   },
   "panels": [
     {
+      "id": 7,
+      "type": "row",
+      "title": "Terugblik - generator-totalen",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Totaal energieverbruik $generator - editie $editie",
+      "description": "Geschat energieverbruik (kWh) van alleen de kasten die rechtstreeks op deze generator/groep hangen (parent == generator) — downstream-kasten tellen niet apart mee, hun verbruik zit al in de meting van hun eigen bovenliggende kast. Zelfde integral(unit: 1h)-berekening als de Sankey hieronder, opgeteld i.p.v. per kast getoond. Vermogen mag cumulatief over kasten opgeteld worden (in tegenstelling tot stroom, zie README.md sectie 5).",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 1 },
+      "repeat": "generator",
+      "repeatDirection": "h",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": {
+        "defaults": { "unit": "kwatth" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> filter(fn: (r) => r.parent == r.generator)\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> group()\n  |> sum(column: \"value\")",
+          "hide": false
+        }
+      ]
+    },
+    {
       "id": 1,
       "type": "row",
       "title": "Per kast - toelichting",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "collapsed": false,
       "panels": []
     },
@@ -62,17 +92,17 @@
       "id": 2,
       "type": "text",
       "title": "",
-      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 1 },
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 6 },
       "options": {
         "mode": "markdown",
-        "content": "Deze panelen worden automatisch herhaald per kast in `$kast` (bron: MQTT-topic-tags in InfluxDB, niet de webapp-topologie), inclusief batterij-/piekscheerderkasten. Bewust géén losse \"totale stroom\"-paneel: een CEE-aansluiting is per fase gerated, niet cumulatief, dus de hoogste van de 3 fasen hieronder is de waarde die telt voor overbelasting — niet de som. **Generator-totalen** (som van alleen de direct-gevoede kasten) staan hier bewust niet in, omdat dat kennis van de parent/child-keten uit de webapp vereist — zie `README.md` sectie 5 om die handmatig toe te voegen. Alarmdrempels (90% van `rating_a` per fase) zet je ook per paneel handmatig, want die rating staat in de webapp-topologie, niet in InfluxDB."
+        "content": "Deze panelen worden automatisch herhaald per kast in `$kast` (bron: MQTT-topic-tags in InfluxDB, niet de webapp-topologie), inclusief batterij-/piekscheerderkasten. Bewust géén losse \"totale stroom\"-paneel: een CEE-aansluiting is per fase gerated, niet cumulatief, dus de hoogste van de 3 fasen hieronder is de waarde die telt voor overbelasting — niet de som. Alarmdrempels (90% van `rating_a` per fase) zet je ook per paneel handmatig, want die rating staat in de webapp-topologie, niet in InfluxDB."
       }
     },
     {
       "id": 4,
       "type": "timeseries",
       "title": "Stroom per fase - $kast",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
       "repeat": "kast",
       "repeatDirection": "h",
       "datasource": { "type": "influxdb", "uid": "influxdb" },
@@ -100,7 +130,7 @@
       "id": 5,
       "type": "row",
       "title": "Terugblik - energieverdeling",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
       "collapsed": false,
       "panels": []
     },
@@ -109,7 +139,7 @@
       "type": "netsage-sankey-panel",
       "title": "Energieverdeling $generator - editie $editie",
       "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator/groep -> batterij/hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig. Herhaalt automatisch per generator/groep ($generator): één grote sankey met alle kasten samen liep bij een grotere topologie vast in de plugin (alleen tekst zichtbaar, geen diagram meer), dus elke stroombron krijgt hier zijn eigen, behapbare diagram. Bekende eigenaardigheid van de netsage-sankey-panel plugin: bij het laden van de pagina faalt de layout soms voor een willekeurig paneel (toont dan ook alleen tekst) doordat meerdere sankey's tegelijk opstarten — de data klopt gewoon, een ververs van de pagina (of het paneel los openen via het paneelmenu) lost het vrijwel altijd op.",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 13 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 18 },
       "repeat": "generator",
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "options": {
