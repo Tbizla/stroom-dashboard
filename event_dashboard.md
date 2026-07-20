@@ -163,6 +163,11 @@ zetten zonder code aan te passen.
 
 ## Roadmap
 
+> **Werkafspraak vanaf nu**: voor elk van onderstaande punten eerst een uitgebreide spec/plan
+> uitwerken en afstemmen vóórdat er gebouwd wordt — geldt voor zowel de Cowork- als de Code-kant
+> (zie ook de afspraak hierover in CLAUDE.md). Geen van de items hieronder is dus "zomaar" te
+> starten, ook niet de kleine.
+
 - [ ] **Generator-EM rework.** De net toegevoegde generator/groep-monitoring (optionele rating_a,
       zelfde live status als een kast, self-meter via `fest/<generator>/<generator>/status/em:0`)
       voelt nog niet helemaal goed — nog niet scherp wát precies, dus eerst verder gebruiken/
@@ -171,14 +176,6 @@ zetten zonder code aan te passen.
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
       sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina.
-
-### Roadmap v2
-
-> **Werkafspraak vanaf nu**: voor elk van onderstaande punten eerst een uitgebreide spec/plan
-> uitwerken en afstemmen vóórdat er gebouwd wordt — geldt voor zowel de Cowork- als de Code-kant
-> (zie ook de afspraak hierover in CLAUDE.md). Geen van de items hieronder is dus "zomaar" te
-> starten, ook niet de kleine.
-
 - [ ] **Meertalige UI (NL/EN).** De hele UI is nu hardcoded Nederlands, verspreid door
       `webapp/public/index.html`. Er is ook een Engelse versie nodig. Voorstel: alle UI-teksten
       naar een los taalbestand (bijv. een JSON met NL/EN-sleutels) verplaatsen voor onderhoud, met
