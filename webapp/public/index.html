@@ -357,6 +357,7 @@ const detailEl = document.getElementById('detail');
 const svg = document.getElementById('svgoverlay');
 const mapimg = document.getElementById('mapimg');
 const mapinner = document.getElementById('mapinner');
+const mapwrap = document.getElementById('mapwrap');
 const blankCanvas = document.getElementById('blankCanvas');
 
 // ---------- sidebar: in-/uitklapstatus per generator/kast, onthouden in localStorage ----------
@@ -885,6 +886,7 @@ function renderPins(){
     pin.style.left = (n.positie.x_pct/100*w)+'px';
     pin.style.top = (n.positie.y_pct/100*h)+'px';
     pin.title = n.naam;
+    pin.dataset.id = n.id;
     pin.onmousedown = (ev)=>{
       ev.stopPropagation();
       selectedId = n.id; renderList(); renderDetail(); renderPins();
@@ -945,7 +947,9 @@ function renderKastPopup(){
   if(!el){
     el = document.createElement('div');
     el.id = 'kastPopup';
-    mapinner.appendChild(el);
+    // buiten #mapinner (die het zoom-schaal-transform draagt) zodat de ballon zelf een constant
+    // schermformaat houdt bij uit-/inzoomen — alleen het ankerpunt (de pin) volgt de kaart mee
+    mapwrap.appendChild(el);
   }
   el.className = 'kastpopup';
   el.innerHTML = '';
@@ -1026,16 +1030,21 @@ function renderKastPopup(){
   el.appendChild(laatste);
 
   // positioneren t.o.v. de pin, boven met pijl naar beneden — of eronder/horizontaal verschoven
-  // als de ballon anders buiten #mapwrap zou uitsteken
-  const surface = getSurfaceEl();
-  const w = surface.clientWidth, h = surface.clientHeight;
-  const px = k.positie.x_pct/100*w, py = k.positie.y_pct/100*h;
-  el.style.left = px+'px'; el.style.top = py+'px';
+  // als de ballon anders buiten #mapwrap zou uitsteken. Ankerpunt = de daadwerkelijke schermpositie
+  // van de pin (getBoundingClientRect, dus altijd correct ongeacht zoom/pan), niet een herberekening
+  // uit x_pct — de ballon zelf staat buiten #mapinner dus heeft geen eigen zoomschaal.
+  const pinEl = mapinner.querySelector('.pin[data-id="'+CSS.escape(k.id)+'"]');
+  if(!pinEl){ el.remove(); return; }
+  const pinRect = pinEl.getBoundingClientRect();
+  const wrapRect = mapwrap.getBoundingClientRect();
+  // in "inhoud-coördinaten" van mapwrap (schermpositie + huidige scroll) zetten, zodat de ballon
+  // vanzelf meeschuift bij pannen tot de eerstvolgende herberekening (open/zoom/databericht)
+  const anchorX = pinRect.left + pinRect.width/2 - wrapRect.left + mapwrap.scrollLeft;
+  const anchorY = pinRect.top + pinRect.height/2 - wrapRect.top + mapwrap.scrollTop;
+  el.style.left = anchorX+'px'; el.style.top = anchorY+'px';
   el.style.transform = 'translate(-50%, calc(-100% - 14px))';
 
-  const wrapRect = mapwrap.getBoundingClientRect();
   let elRect = el.getBoundingClientRect();
-  const zoom = currentZoom();
   let onder = false;
   if(elRect.top < wrapRect.top + 4){
     onder = true;
@@ -1045,9 +1054,9 @@ function renderKastPopup(){
   }
   let extraX = 0;
   if(elRect.left < wrapRect.left + 4){
-    extraX = (wrapRect.left + 4 - elRect.left) / zoom;
+    extraX = wrapRect.left + 4 - elRect.left;
   } else if(elRect.right > wrapRect.right - 4){
-    extraX = -(elRect.right - (wrapRect.right - 4)) / zoom;
+    extraX = -(elRect.right - (wrapRect.right - 4));
   }
   if(extraX){
     const vertPart = onder ? '14px' : 'calc(-100% - 14px)';

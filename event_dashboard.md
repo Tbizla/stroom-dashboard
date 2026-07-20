@@ -90,8 +90,9 @@ zetten zonder code aan te passen.
 - Klikken op een kast-pin op de plattegrond opent een databallon ter plekke met de volledige
   MQTT-payload (stroom/spanning/act. en schijnbaar vermogen/cos φ per fase, totalen, cumulatieve
   energie in kWh, belastingsbalk, laatste-update-tijd) — naast de bestaande zij-detail, niet ter
-  vervanging. Volgt de pin mee bij pannen/zoomen; sluit bij nogmaals klikken op dezelfde pin, klik
-  elders op de kaart, het kruisje, of een tabwissel
+  vervanging. Volgt de pin mee bij pannen/zoomen, maar houdt zelf een vast schermformaat (schrompelt
+  niet mee ineen bij uitzoomen); sluit bij nogmaals klikken op dezelfde pin, klik elders op de kaart,
+  het kruisje, of een tabwissel
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (3 generators, 11 kasten, 3 niveaus) voor een
