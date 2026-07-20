@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Mockup — Hub optie B: herbouwd native component</title>
+<style>
+  :root{
+    --bg:#12151a; --panel:#1a1e26; --panel2:#20242e; --border:#2a2f3a;
+    --text:#e8eaed; --text2:#8b93a1; --text3:#5a6272;
+    --accent:#4fd1c5; --accent-dim:#4fd1c530;
+    --green:#3ecf6a; --amber:#f5a623; --red:#e5484d; --grey:#4a5160;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--panel);
+    border-bottom:1px solid var(--border);flex-wrap:wrap}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;color:var(--text)}
+  header h1 span{color:var(--accent)}
+  .modeswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
+  .modeswitch button{border:none;background:transparent;color:var(--text2);padding:6px 14px;
+    border-radius:6px;font-size:12.5px;font-weight:600;cursor:default;font-family:var(--sans)}
+  .hubentry{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--panel2);
+    border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:6px 12px;
+    font-size:12.5px;font-weight:600}
+  .subnav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--border);background:var(--bg)}
+  .subnav button{border:none;background:transparent;color:var(--text2);padding:8px 14px;font-size:12.5px;
+    font-weight:600;cursor:default;border-bottom:2px solid transparent;font-family:var(--sans)}
+  .subnav button.active{color:var(--accent);border-bottom:2px solid var(--accent)}
+  main{padding:20px}
+  .note{background:var(--panel2);border:1px dashed var(--text3);border-radius:8px;padding:10px 14px;
+    font-size:11.5px;color:var(--text2);margin-bottom:18px;line-height:1.5}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  .card .lbl{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .card .val{font-family:var(--mono);font-size:18px;color:var(--text);font-weight:600}
+  .card .sub{font-size:10.5px;color:var(--text2);margin-top:4px}
+  .dotstatus{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px}
+  .panel .ptitle{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:12px}
+  .bars{display:flex;align-items:flex-end;gap:10px;height:110px;padding:0 4px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%}
+  .bar .fill{width:100%;border-radius:3px 3px 0 0}
+  .bar .name{font-size:9.5px;color:var(--text3)}
+  .schemasm{display:flex;align-items:center;gap:0;font-size:10.5px;color:var(--text2)}
+  .node{padding:6px 10px;border-radius:6px;font-size:10.5px;font-weight:600;white-space:nowrap}
+  .node.gen{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent)}
+  .node.kast{background:var(--panel2);border:1px solid var(--border);color:var(--text2)}
+  .conn{width:22px;height:1px;background:var(--border)}
+  .col{display:flex;flex-direction:column;gap:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Event <span>Stroomdashboard</span></h1>
+  <div class="modeswitch">
+    <button>Beheer</button><button>Kalibreren</button><button>Schema</button><button>Live</button>
+  </div>
+  <div class="hubentry">☰ Rapportages &amp; tools</div>
+</header>
+<div class="subnav">
+  <button class="active">Overzicht</button>
+  <button>PDF-rapport</button>
+  <button>Back-up</button>
+</div>
+<main>
+  <div class="note">
+    <strong style="color:var(--text)">Optie B — herbouwd als native component.</strong> Zelfde
+    databron (InfluxDB/<code>topology_edges</code>), maar volledig in de eigen stijl van de webapp:
+    zelfde kleuren, typografie en interactiepatronen als Beheer/Kalibreren/Schema/Live.
+  </div>
+  <div class="cards">
+    <div class="card"><div class="lbl">Generator zuid</div><div class="val">41,2 kWh</div>
+      <div class="sub"><span class="dotstatus" style="background:var(--green)"></span>72% van kVA</div></div>
+    <div class="card"><div class="lbl">Generator noord</div><div class="val">28,7 kWh</div>
+      <div class="sub"><span class="dotstatus" style="background:var(--amber)"></span>89% van kVA</div></div>
+    <div class="card"><div class="lbl">Centrum (groep)</div><div class="val">96,4 kWh</div>
+      <div class="sub"><span class="dotstatus" style="background:var(--green)"></span>54% van kVA</div></div>
+    <div class="card"><div class="lbl">Kasten totaal</div><div class="val">80</div>
+      <div class="sub"><span class="dotstatus" style="background:var(--red)"></span>2 boven 90%</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel">
+      <div class="ptitle">Stroom per kast — zwaarst belaste fase</div>
+      <div class="bars">
+        <div class="bar"><div class="fill" style="height:55%;background:var(--green)"></div><div class="name">Podium 1</div></div>
+        <div class="bar"><div class="fill" style="height:70%;background:var(--green)"></div><div class="name">Podium 2</div></div>
+        <div class="bar"><div class="fill" style="height:88%;background:var(--amber)"></div><div class="name">Bar 2</div></div>
+        <div class="bar"><div class="fill" style="height:40%;background:var(--green)"></div><div class="name">Foodtr. Z</div></div>
+        <div class="bar"><div class="fill" style="height:97%;background:var(--red)"></div><div class="name">Terreinv.</div></div>
+        <div class="bar"><div class="fill" style="height:62%;background:var(--green)"></div><div class="name">Kantoor</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">Energieverdeling (Sankey-stijl)</div>
+      <div class="col">
+        <div class="schemasm"><div class="node gen">Generator zuid</div><div class="conn"></div><div class="node kast">Podium 1</div></div>
+        <div class="schemasm" style="padding-left:32px"><div class="conn"></div><div class="node kast">Foodtrucks Z</div></div>
+        <div class="schemasm"><div class="node gen">Centrum (groep)</div><div class="conn"></div><div class="node kast">Terreinverdeler</div></div>
+        <div class="schemasm" style="padding-left:32px"><div class="conn"></div><div class="node kast">+ 8 kasten</div></div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

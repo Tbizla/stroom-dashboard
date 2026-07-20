@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Mockup — PDF-rapport formatting (cover, footer, alarmen-pagina)</title>
+<style>
+  :root{
+    --accent:#0e8f7e; --ink:#1c2126; --ink2:#5b6470; --ink3:#8b93a1; --line:#dfe3e8; --paper:#ffffff; --paper2:#f5f6f8;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#2b2f36;color:var(--ink);font-family:var(--sans);padding:24px;display:flex;flex-direction:column;gap:22px;align-items:center}
+  .pagelabel{color:#aab0b8;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:-8px;align-self:flex-start;margin-left:4px}
+  .page{width:842px;height:595px;background:var(--paper);box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;overflow:hidden;flex-shrink:0}
+
+  .cover{padding:56px 64px;display:flex;flex-direction:column;height:100%}
+  .cover .logobox{display:flex;align-items:center;gap:14px}
+  .logoph{width:52px;height:52px;border-radius:10px;background:var(--accent);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .cover .eventname{font-size:15px;color:var(--ink2)}
+  .cover h1{font-size:30px;margin:40px 0 6px;color:var(--ink);font-weight:600}
+  .cover .meta{font-size:13px;color:var(--ink2);margin-bottom:34px}
+  .cover .meta b{color:var(--ink)}
+  .toc{border-top:1px solid var(--line);padding-top:18px;flex:1}
+  .toc .tocitem{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px;color:var(--ink)}
+  .toc .tocitem .n{font-family:var(--mono);color:var(--accent);font-weight:700;width:22px}
+  .toc .tocitem.uit{color:var(--ink3)}
+  .toc .tocitem.uit .n{color:var(--ink3)}
+  .cover .footer{margin-top:auto;font-size:10.5px;color:var(--ink3);border-top:1px solid var(--line);padding-top:12px}
+
+  .panelpage{padding:0}
+  .chartarea{position:absolute;inset:0 0 44px 0;background:var(--paper2);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:12px}
+  .footerstrip{position:absolute;bottom:0;left:0;right:0;height:44px;border-top:1px solid var(--line);
+    display:flex;align-items:center;padding:0 24px;gap:10px;font-size:10.5px;color:var(--ink2)}
+  .footerstrip .flogo{width:18px;height:18px;border-radius:5px;background:var(--accent)}
+  .footerstrip .pnum{margin-left:auto;font-family:var(--mono)}
+
+  .alarmpage{padding:56px 64px}
+  .alarmpage h2{font-size:18px;color:var(--ink);margin:0 0 10px}
+  .alarmbox{background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:26px;
+    display:flex;gap:16px;align-items:flex-start;margin-top:18px}
+  .alarmbox .icon{width:36px;height:36px;border-radius:8px;background:#fde8c8;color:#a9600a;display:flex;
+    align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+  .alarmbox p{margin:0;font-size:13px;color:var(--ink2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="pagelabel">Mockup 1 — coverpagina (nieuw, bestaat nu niet)</div>
+<div class="page cover">
+  <div class="logobox"><div class="logoph">LOGO</div><div class="eventname">Zomerfestival Nieuwehaven</div></div>
+  <h1>Terugblikrapport — stroomvoorziening</h1>
+  <div class="meta"><b>Editie</b> 2026 &nbsp;·&nbsp; <b>Periode</b> 18 jul 09:00 – 21 jul 02:00 &nbsp;·&nbsp; <b>Gegenereerd op</b> 21 jul 2026, 14:02</div>
+  <div class="toc">
+    <div class="tocitem"><span class="n">01</span>Overzicht generator-totalen per generator/groep</div>
+    <div class="tocitem"><span class="n">02</span>Stroom per kast, per fase</div>
+    <div class="tocitem"><span class="n">03</span>Energieverdeling (Sankey)</div>
+    <div class="tocitem uit"><span class="n">—</span>Overschrijdingen &amp; alarmen (niet aangevinkt voor dit rapport)</div>
+  </div>
+  <div class="footer">Event Stroomdashboard · automatisch gegenereerd</div>
+</div>
+
+<div class="pagelabel">Mockup 2 — voettekst op elke paneelpagina (Grafana-paneel blijft ongewijzigd, footer wordt overlayed)</div>
+<div class="page panelpage">
+  <div class="chartarea">(bestaande Grafana-paneelpagina — ongewijzigd)</div>
+  <div class="footerstrip"><div class="flogo"></div><span>Zomerfestival Nieuwehaven · editie 2026</span><span class="pnum">2 / 4</span></div>
+</div>
+
+<div class="pagelabel">Mockup 3 — alarmen-placeholder herstyled (was: kale grijze regel tekst)</div>
+<div class="page alarmpage">
+  <h2>Overschrijdingen &amp; alarmen</h2>
+  <div class="alarmbox">
+    <div class="icon">!</div>
+    <p>Nog geen alert-geschiedenis beschikbaar voor deze periode. Het notificatiekanaal voor<br>
+    alerting staat nog op de roadmap (zie event_dashboard.md) — zodra dat er is, wordt deze<br>
+    pagina automatisch gevuld met overschrijdingen per kast/generator.</p>
+  </div>
+  <div class="footerstrip" style="position:absolute"><div class="flogo"></div><span>Zomerfestival Nieuwehaven · editie 2026</span><span class="pnum">4 / 4</span></div>
+</div>
+
+</body>
+</html>

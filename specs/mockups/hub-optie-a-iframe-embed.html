@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Mockup — Hub optie A: iframe-embed</title>
+<style>
+  :root{
+    --bg:#12151a; --panel:#1a1e26; --panel2:#20242e; --border:#2a2f3a;
+    --text:#e8eaed; --text2:#8b93a1; --text3:#5a6272;
+    --accent:#4fd1c5; --accent-dim:#4fd1c530;
+    --green:#3ecf6a; --amber:#f5a623; --red:#e5484d; --grey:#4a5160;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --gf-blue:#3274d9; --gf-orange:#eb7b18;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--panel);
+    border-bottom:1px solid var(--border);flex-wrap:wrap}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;color:var(--text)}
+  header h1 span{color:var(--accent)}
+  .modeswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
+  .modeswitch button{border:none;background:transparent;color:var(--text2);padding:6px 14px;
+    border-radius:6px;font-size:12.5px;font-weight:600;cursor:default;font-family:var(--sans)}
+  .hubentry{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--panel2);
+    border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:6px 12px;
+    font-size:12.5px;font-weight:600}
+  .subnav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--border);background:var(--bg)}
+  .subnav button{border:none;background:transparent;color:var(--text2);padding:8px 14px;font-size:12.5px;
+    font-weight:600;cursor:default;border-bottom:2px solid transparent;font-family:var(--sans)}
+  .subnav button.active{color:var(--accent);border-bottom:2px solid var(--accent)}
+  main{padding:20px}
+  .note{background:var(--panel2);border:1px dashed var(--text3);border-radius:8px;padding:10px 14px;
+    font-size:11.5px;color:var(--text2);margin-bottom:18px;line-height:1.5}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .gfpanel{background:#161a24;border:1px solid #2b3542;border-radius:6px;overflow:hidden}
+  .gfhead{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
+    background:#1f2530;border-bottom:1px solid #2b3542}
+  .gfhead .title{font-size:12.5px;color:#d8d9da;font-weight:500}
+  .gftag{font-size:9.5px;color:#8e9297;background:#2b3542;padding:2px 6px;border-radius:3px;
+    font-family:var(--mono)}
+  .gfhead .menu{color:#8e9297;font-size:14px}
+  .gfbody{padding:14px;position:relative;height:150px}
+  .gfframe{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#5a6272;font-size:10px;flex-direction:column;gap:6px}
+  .gfframe .label{font-family:var(--mono)}
+  .gffoot{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;
+    border-top:1px solid #2b3542;background:#1a1e26}
+  .gffoot a{color:var(--accent);font-size:10.5px;text-decoration:none;font-weight:600}
+  .kicker{font-size:10px;color:var(--text3);font-family:var(--mono)}
+  svg{overflow:visible}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Event <span>Stroomdashboard</span></h1>
+  <div class="modeswitch">
+    <button>Beheer</button><button>Kalibreren</button><button>Schema</button><button>Live</button>
+  </div>
+  <div class="hubentry">☰ Rapportages &amp; tools</div>
+</header>
+<div class="subnav">
+  <button class="active">Overzicht</button>
+  <button>PDF-rapport</button>
+  <button>Back-up</button>
+</div>
+<main>
+  <div class="note">
+    <strong style="color:var(--text)">Optie A — iframe-embed.</strong> De onderstaande panelen zijn
+    live Grafana-panelen, ingebed via <span class="kicker">&lt;iframe src=".../d-solo/...&amp;theme=dark&amp;kiosk"&gt;</span>.
+    Grafana's eigen paneel-chrome (⋮-menu, tijdrange, kleurpalet) blijft zichtbaar — dit is een
+    ander visueel systeem dan de rest van de webapp, in een eigen kader gezet.
+  </div>
+  <div class="grid">
+    <div class="gfpanel">
+      <div class="gfhead">
+        <span class="title">Totaal energieverbruik $generator</span>
+        <span style="display:flex;align-items:center;gap:8px"><span class="gftag">grafana</span><span class="menu">⋮</span></span>
+      </div>
+      <div class="gfbody">
+        <svg width="100%" height="100%" viewBox="0 0 260 120" preserveAspectRatio="none">
+          <polyline points="0,90 30,80 60,85 90,60 120,65 150,40 180,45 210,20 240,30 260,15"
+            fill="none" stroke="#3274d9" stroke-width="2"/>
+          <polyline points="0,100 30,95 60,98 90,90 120,92 150,80 180,82 210,70 240,75 260,68"
+            fill="none" stroke="#eb7b18" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="gffoot"><span class="kicker">laatste 15m · live</span><a href="#">Open in Grafana ↗</a></div>
+    </div>
+    <div class="gfpanel">
+      <div class="gfhead">
+        <span class="title">Stroom per fase — Podium 1</span>
+        <span style="display:flex;align-items:center;gap:8px"><span class="gftag">grafana</span><span class="menu">⋮</span></span>
+      </div>
+      <div class="gfbody">
+        <svg width="100%" height="100%" viewBox="0 0 260 120" preserveAspectRatio="none">
+          <polyline points="0,70 30,72 60,60 90,65 120,55 150,58 180,50 210,52 240,48 260,50"
+            fill="none" stroke="#73bf69" stroke-width="2"/>
+          <polyline points="0,80 30,78 60,82 90,75 120,79 150,74 180,77 210,72 240,74 260,70"
+            fill="none" stroke="#f2cc0c" stroke-width="2"/>
+          <polyline points="0,95 30,93 60,90 90,92 120,88 150,90 180,86 210,88 240,85 260,87"
+            fill="none" stroke="#f2495c" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="gffoot"><span class="kicker">a/b/c-fase · live</span><a href="#">Open in Grafana ↗</a></div>
+    </div>
+  </div>
+</main>
+</body>
+</html>
