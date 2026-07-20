@@ -87,6 +87,11 @@ zetten zonder code aan te passen.
 - Zij-lijst met generators en kasten is in-/uitklapbaar (met status-badges per generator en een
   "N onderliggend"-indicator bij geneste kasten), doorzoekbaar op naam/afkorting en filterbaar op
   amber/rood; in-/uitklapstatus per item wordt onthouden
+- Klikken op een kast-pin op de plattegrond opent een databallon ter plekke met de volledige
+  MQTT-payload (stroom/spanning/act. en schijnbaar vermogen/cos φ per fase, totalen, cumulatieve
+  energie in kWh, belastingsbalk, laatste-update-tijd) — naast de bestaande zij-detail, niet ter
+  vervanging. Volgt de pin mee bij pannen/zoomen; sluit bij nogmaals klikken op dezelfde pin, klik
+  elders op de kaart, het kruisje, of een tabwissel
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (2 generators, 6 kasten, 3 niveaus) voor een
@@ -118,6 +123,9 @@ zetten zonder code aan te passen.
   per kast. Een generator/groep met een ingevulde rating (A) telt op dezelfde manier op uit alles
   wat er rechtstreeks op is aangesloten, dus de hele keten (generator → hoofdverdeler → eindkast)
   klopt getalsmatig van beneden naar boven, zoals in het echt
+- Publiceert ook `status/emdata:0` (cumulatieve energie per fase, Shelly-veldnamen als
+  `a_total_act_energy`/`total_act`) naast `status/em:0`, geïntegreerd uit de daadwerkelijk
+  gepubliceerde stroom — begint bij 0 zodra de simulator start en loopt op zolang 'ie draait
 - Ververst de topologie elke 5 seconden vanuit de webapp, dus wisselen tussen testtopologieën
   (of wijzigingen tijdens een editie) werkt zonder de simulator-container te herstarten
 

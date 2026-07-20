@@ -52,6 +52,25 @@ function maakPayload(stroom) {
   };
 }
 
+// nominale spanning gebruikt om de cumulatieve energie (Wh) te integreren uit de gemeten stroom —
+// een simpele vaste waarde is hier prima, de energieteller hoeft niet millivolt-precies te zijn
+// om er in de popup (specs/kast-popup-mqtt-spec.md) realistisch uit te zien
+const NOMINAL_VOLTAGE = 230;
+
+// Shelly Pro 3EM-veldnamen voor status/emdata:0 (EMData.GetStatus): *_total_act_energy per fase
+// in Wh, plus een totaal. *_ret_energy (teruggeleverde energie) simuleren we niet — geen
+// terugleverscenario in deze stack — en blijft dus altijd 0.
+function maakEmdataPayload(energie) {
+  return {
+    id: 0,
+    a_total_act_energy: round2(energie.a), a_total_act_ret_energy: 0,
+    b_total_act_energy: round2(energie.b), b_total_act_ret_energy: 0,
+    c_total_act_energy: round2(energie.c), c_total_act_ret_energy: 0,
+    total_act: round2(energie.a + energie.b + energie.c),
+    total_act_ret: 0,
+  };
+}
+
 // een kast met eigen kinderen (bijv. een hoofdverdeler) is electrisch vooral een doorlus-punt:
 // het overgrote deel van de gemeten stroom is wat de kinderen er onderaan vragen, niet wat er
 // rechtstreeks op die kast zelf is aangesloten. Alleen leaf-kasten (geen kinderen, het daadwerkelijke
@@ -83,6 +102,21 @@ async function main() {
   const state = {};
   topo.kasten.forEach(k => { state[k.id] = rand(0.2, 0.5); });
 
+  // cumulatieve energie per fase (Wh) per kast/generator-zelfmeter, begint bij 0 (nieuw geïnstalleerde
+  // meter) en telt op zolang de simulator draait; los van `state` want dit moet nooit terugvallen
+  const energyState = {};
+  function initEnergie(id) { if (!(id in energyState)) energyState[id] = { a: 0, b: 0, c: 0 }; }
+  topo.kasten.forEach(k => initEnergie(k.id));
+  (topo.generators || []).forEach(g => initEnergie(g.id));
+  function accumuleerEnergie(id, stroom, intervalMs) {
+    const uren = intervalMs / 1000 / 3600;
+    const e = energyState[id];
+    e.a += stroom.a * NOMINAL_VOLTAGE * uren;
+    e.b += stroom.b * NOMINAL_VOLTAGE * uren;
+    e.c += stroom.c * NOMINAL_VOLTAGE * uren;
+    return e;
+  }
+
   // topologie periodiek verversen (bijv. wisselen tussen de eenvoudige en uitgebreide
   // testtopologie op het Testdata-tabblad) zonder dat de container herstart hoeft te worden
   setInterval(async () => {
@@ -95,7 +129,8 @@ async function main() {
         console.log('[simulator] topologie gewijzigd: ' + topo.kasten.length + ' -> ' + data.kasten.length + ' kasten');
       }
       topo = data;
-      topo.kasten.forEach(k => { if (!(k.id in state)) state[k.id] = rand(0.2, 0.5); });
+      topo.kasten.forEach(k => { if (!(k.id in state)) state[k.id] = rand(0.2, 0.5); initEnergie(k.id); });
+      (topo.generators || []).forEach(g => initEnergie(g.id));
     } catch (e) { /* webapp tijdelijk niet bereikbaar, volgende poging opnieuw */ }
   }, 5000);
 
@@ -139,6 +174,8 @@ async function main() {
       const stroom = { a: round2(a), b: round2(b), c: round2(c) };
       berekend[k.id] = stroom;
       client.publish(k.mqtt_topic_prefix + '/status/em:0', JSON.stringify(maakPayload(stroom)));
+      initEnergie(k.id);
+      client.publish(k.mqtt_topic_prefix + '/status/emdata:0', JSON.stringify(maakEmdataPayload(accumuleerEnergie(k.id, stroom, INTERVAL_MS))));
       return stroom;
     }
     topo.kasten.forEach(berekenKast);
@@ -156,8 +193,10 @@ async function main() {
         a += kp.a; b += kp.b; c += kp.c;
       });
       const stroom = { a: round2(a), b: round2(b), c: round2(c) };
-      const topic = 'fest/' + gen.id + '/' + gen.id + '/status/em:0';
-      client.publish(topic, JSON.stringify(maakPayload(stroom)));
+      const prefix = 'fest/' + gen.id + '/' + gen.id;
+      client.publish(prefix + '/status/em:0', JSON.stringify(maakPayload(stroom)));
+      initEnergie(gen.id);
+      client.publish(prefix + '/status/emdata:0', JSON.stringify(maakEmdataPayload(accumuleerEnergie(gen.id, stroom, INTERVAL_MS))));
     });
   }, INTERVAL_MS);
 }

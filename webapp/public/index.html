@@ -69,6 +69,30 @@
   .pinlabel{position:absolute;transform:translate(-50%,4px);top:100%;font-size:10px;color:var(--text2);
             background:rgba(18,21,26,.85);padding:1px 5px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:4}
 
+  .kastpopup{position:absolute;z-index:30;width:270px;background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.45);padding:12px 14px;font-size:12px;
+    transform:translate(-50%,calc(-100% - 14px))}
+  .kastpopup-arrow{position:absolute;left:50%;width:11px;height:11px;background:var(--panel);
+    border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+    transform:translateX(-50%) rotate(45deg);bottom:-6px}
+  .kastpopup.onder .kastpopup-arrow{bottom:auto;top:-6px;border-right:none;border-bottom:none;
+    border-left:1px solid var(--border);border-top:1px solid var(--border)}
+  .kastpopup-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text3);font-size:13px;line-height:1}
+  .kastpopup-close:hover{color:var(--text)}
+  .kastpopup-head{display:flex;align-items:center;gap:7px;padding-right:16px}
+  .kastpopup-head .naam{font-weight:700;color:var(--text);font-size:13px}
+  .kastpopup-sub{color:var(--text3);font-size:10.5px;line-height:1.5;margin:3px 0 9px}
+  .kastpopup table{width:100%;border-collapse:collapse;margin-bottom:8px}
+  .kastpopup table th{text-align:right;font-size:9px;color:var(--text3);font-weight:600;padding:2px 3px;text-transform:uppercase}
+  .kastpopup table th:first-child{text-align:left}
+  .kastpopup table td{text-align:right;font-family:var(--mono);font-size:11px;padding:2px 3px;color:var(--text2)}
+  .kastpopup table td:first-child{text-align:left;color:var(--text3);font-family:var(--sans)}
+  .kastpopup .kprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
+    padding:4px 0;border-top:1px dashed var(--border);color:var(--text2)}
+  .kastpopup .kprow .k{font-family:var(--sans);color:var(--text3)}
+  .kastpopup .laatste{font-size:10px;color:var(--text3);margin-top:7px;text-align:right}
+  .kastpopup .geendata{padding:6px 0;color:var(--text3);font-style:italic}
+
   aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
   .listhead{padding:12px 14px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}
   .list{overflow-y:auto;flex:1}
@@ -323,6 +347,10 @@ let armedId = null;
 let selectedId = null;
 let mqttClient = null;
 const liveData = {};
+const liveEnergyData = {};
+// id van de kast waarvan de MQTT-databallon open staat op de plattegrond (Live-modus), zie
+// specs/kast-popup-mqtt-spec.md — null = geen ballon open
+let openPopupKastId = null;
 
 const listEl = document.getElementById('list');
 const detailEl = document.getElementById('detail');
@@ -380,6 +408,7 @@ function applyZoom(){
   }
   document.getElementById('zoomLabel').textContent = Math.round(z * 100) + '%';
   centerContentInViewport();
+  renderKastPopup();
 }
 function setZoom(z){
   z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
@@ -859,6 +888,10 @@ function renderPins(){
     pin.onmousedown = (ev)=>{
       ev.stopPropagation();
       selectedId = n.id; renderList(); renderDetail(); renderPins();
+      if(mode==='live' && !isGen(n)){
+        openPopupKastId = (openPopupKastId===n.id) ? null : n.id;
+        renderKastPopup();
+      }
       if(mode!=='cal') return;
       const move = (mv)=>{
         const rect = getSurfaceEl().getBoundingClientRect();
@@ -885,6 +918,142 @@ function renderPins(){
     label.textContent = isGen(n) ? typeIcon(n)+' '+n.naam : (n.type==='batterij'?'🔋 ':'')+n.naam;
     mapinner.appendChild(label);
   });
+
+  renderKastPopup();
+}
+
+// ---------- kast-databallon op de plattegrond (Live-modus), zie specs/kast-popup-mqtt-spec.md ----------
+function fmtVeld(v, eenheid, decimals){
+  if(v==null) return '—';
+  const d = decimals==null ? 2 : decimals;
+  return v.toFixed(d) + (eenheid ? ' '+eenheid : '');
+}
+
+function renderKastPopup(){
+  let el = document.getElementById('kastPopup');
+  if(mode!=='live' || !openPopupKastId){
+    if(el) el.remove();
+    return;
+  }
+  const k = TOPO.kasten.find(x=>x.id===openPopupKastId);
+  if(!k || !k.positie || k.positie.x_pct==null){
+    openPopupKastId = null;
+    if(el) el.remove();
+    return;
+  }
+
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'kastPopup';
+    mapinner.appendChild(el);
+  }
+  el.className = 'kastpopup';
+  el.innerHTML = '';
+
+  const arrow = document.createElement('div');
+  arrow.className = 'kastpopup-arrow';
+  el.appendChild(arrow);
+
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'kastpopup-close';
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = ()=>{ openPopupKastId = null; renderKastPopup(); };
+  el.appendChild(closeBtn);
+
+  const head = document.createElement('div');
+  head.className = 'kastpopup-head';
+  const dot = document.createElement('span');
+  dot.className = 'dot2 ' + statusClass(k);
+  const naam = document.createElement('span');
+  naam.className = 'naam';
+  naam.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam;
+  head.appendChild(dot); head.appendChild(naam);
+  el.appendChild(head);
+
+  const gevoedVanaf = k.parent ? nodeById(k.parent).naam : genNaam(k.generator);
+  const sub = document.createElement('div');
+  sub.className = 'kastpopup-sub';
+  sub.innerHTML = 'Rating ' + k.rating_a + 'A per fase · gevoed vanaf ' + gevoedVanaf + '<br>' + k.mqtt_topic_prefix;
+  el.appendChild(sub);
+
+  const d = liveData[k.id];
+  if(!d){
+    const geen = document.createElement('div');
+    geen.className = 'geendata';
+    geen.textContent = 'Geen data ontvangen';
+    el.appendChild(geen);
+  } else {
+    const tabel = document.createElement('table');
+    tabel.innerHTML =
+      '<tr><th></th><th>A</th><th>B</th><th>C</th></tr>'+
+      '<tr><td>Stroom</td><td>'+fmtVeld(d.a_current,'A')+'</td><td>'+fmtVeld(d.b_current,'A')+'</td><td>'+fmtVeld(d.c_current,'A')+'</td></tr>'+
+      '<tr><td>Spanning</td><td>'+fmtVeld(d.a_voltage,'V',0)+'</td><td>'+fmtVeld(d.b_voltage,'V',0)+'</td><td>'+fmtVeld(d.c_voltage,'V',0)+'</td></tr>'+
+      '<tr><td>Act. vermogen</td><td>'+fmtVeld(d.a_act_power,'W',0)+'</td><td>'+fmtVeld(d.b_act_power,'W',0)+'</td><td>'+fmtVeld(d.c_act_power,'W',0)+'</td></tr>'+
+      '<tr><td>Schijnb. vermogen</td><td>'+fmtVeld(d.a_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.b_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.c_aprt_power,'VA',0)+'</td></tr>'+
+      '<tr><td>cos φ</td><td>'+fmtVeld(d.a_pf,'',2)+'</td><td>'+fmtVeld(d.b_pf,'',2)+'</td><td>'+fmtVeld(d.c_pf,'',2)+'</td></tr>';
+    el.appendChild(tabel);
+
+    const totRow = document.createElement('div');
+    totRow.className = 'kprow';
+    totRow.innerHTML = '<span class="k">Totale stroom</span><span>'+fmtVeld(d.total_current,'A')+'</span>';
+    el.appendChild(totRow);
+    const totRow2 = document.createElement('div');
+    totRow2.className = 'kprow';
+    totRow2.innerHTML = '<span class="k">Totaal schijnbaar vermogen</span><span>'+fmtVeld(d.total_aprt_power,'VA',0)+'</span>';
+    el.appendChild(totRow2);
+  }
+
+  const ed = liveEnergyData[k.id];
+  const energieRow = document.createElement('div');
+  energieRow.className = 'kprow';
+  energieRow.innerHTML = '<span class="k">Cumulatieve energie</span><span>'+(ed && ed.total_act!=null ? (ed.total_act/1000).toFixed(2)+' kWh' : 'geen data')+'</span>';
+  el.appendChild(energieRow);
+
+  // statusbalk: zelfde logica als de aside-detail (metingenHtml) — hoogste fase t.o.v. rating_a,
+  // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 6)
+  const maxFase = maxFaseStroom(d);
+  const pct = maxFase!=null ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
+  const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+  const barwrap = document.createElement('div');
+  barwrap.className = 'barwrap';
+  barwrap.style.marginTop = '8px';
+  barwrap.innerHTML = '<div class="bar" style="width:'+pct+'%;background:'+cls+'"></div>';
+  el.appendChild(barwrap);
+
+  const laatste = document.createElement('div');
+  laatste.className = 'laatste';
+  laatste.textContent = d ? 'laatste update ' + Math.max(0, Math.round((Date.now()-d.ts)/1000)) + 's geleden' : 'geen data ontvangen';
+  el.appendChild(laatste);
+
+  // positioneren t.o.v. de pin, boven met pijl naar beneden — of eronder/horizontaal verschoven
+  // als de ballon anders buiten #mapwrap zou uitsteken
+  const surface = getSurfaceEl();
+  const w = surface.clientWidth, h = surface.clientHeight;
+  const px = k.positie.x_pct/100*w, py = k.positie.y_pct/100*h;
+  el.style.left = px+'px'; el.style.top = py+'px';
+  el.style.transform = 'translate(-50%, calc(-100% - 14px))';
+
+  const wrapRect = mapwrap.getBoundingClientRect();
+  let elRect = el.getBoundingClientRect();
+  const zoom = currentZoom();
+  let onder = false;
+  if(elRect.top < wrapRect.top + 4){
+    onder = true;
+    el.classList.add('onder');
+    el.style.transform = 'translate(-50%, 14px)';
+    elRect = el.getBoundingClientRect();
+  }
+  let extraX = 0;
+  if(elRect.left < wrapRect.left + 4){
+    extraX = (wrapRect.left + 4 - elRect.left) / zoom;
+  } else if(elRect.right > wrapRect.right - 4){
+    extraX = -(elRect.right - (wrapRect.right - 4)) / zoom;
+  }
+  if(extraX){
+    const vertPart = onder ? '14px' : 'calc(-100% - 14px)';
+    el.style.transform = 'translate(calc(-50% + '+extraX+'px), '+vertPart+')';
+    arrow.style.left = 'calc(50% - '+extraX+'px)';
+  }
 }
 
 // ---------- schema: automatisch gegenereerd stroomschema (parent/child-boom), geen plattegrond nodig ----------
@@ -993,8 +1162,9 @@ function renderSchema(){
 }
 
 mapinner.addEventListener('click', (ev)=>{
+  if(ev.target.classList.contains('pin') || ev.target.closest('.kastpopup')) return;
+  if(mode==='live' && openPopupKastId){ openPopupKastId = null; renderKastPopup(); }
   if(mode!=='cal' || !armedId) return;
-  if(ev.target.classList.contains('pin')) return;
   const rect = getSurfaceEl().getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width)*100;
   const y = ((ev.clientY-rect.top)/rect.height)*100;
@@ -1067,6 +1237,9 @@ document.getElementById('importFile').onchange = (ev)=>{
 // ---------- mode switching ----------
 function setActiveModeButton(id){
   ['modeBeheer','modeCal','modeSchema','modeLive','modeTest'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
+  // geen kaart meer zichtbaar (of niet meer Live) na een tabwissel, dus een eventueel open
+  // MQTT-databalonnetje heeft dan geen ankerpunt meer — zie specs/kast-popup-mqtt-spec.md
+  if(openPopupKastId){ openPopupKastId = null; renderKastPopup(); }
 }
 document.getElementById('modeBeheer').onclick = ()=>{
   mode='beheer';
@@ -1622,6 +1795,7 @@ document.getElementById('connectBtn').onclick = ()=>{
     mqttClient.on('connect', ()=>{
       dot.className='dot ok'; label.textContent='verbonden';
       mqttClient.subscribe('fest/+/+/status/em:0');
+      mqttClient.subscribe('fest/+/+/status/emdata:0');
     });
     mqttClient.on('error', (e)=>{ dot.className='dot err'; label.textContent='fout: '+e.message; });
     mqttClient.on('close', ()=>{ dot.className='dot'; label.textContent='niet verbonden'; });
@@ -1630,12 +1804,14 @@ document.getElementById('connectBtn').onclick = ()=>{
       const kastId = parts[2];
       let data;
       try{ data = JSON.parse(payload.toString()); }catch(e){ return; }
-      liveData[kastId] = {
-        a_current:data.a_current, b_current:data.b_current, c_current:data.c_current,
-        a_voltage:data.a_voltage, b_voltage:data.b_voltage, c_voltage:data.c_voltage,
-        total_current:data.total_current, total_act_power:data.total_act_power,
-        ts: Date.now()
-      };
+      if(topic.endsWith('/status/emdata:0')){
+        liveEnergyData[kastId] = { total_act: data.total_act, ts: Date.now() };
+        if(openPopupKastId===kastId) renderKastPopup();
+        return;
+      }
+      // alle velden bewaren (niet alleen de subset die de aside-detail gebruikt) — de MQTT-
+      // databallon (specs/kast-popup-mqtt-spec.md) toont ook act_power/aprt_power/pf per fase
+      liveData[kastId] = { ...data, ts: Date.now() };
       renderList(); renderPins(); if(mode==='schema') renderSchema(); if(selectedId===kastId) renderDetail();
     });
   }catch(e){ dot.className='dot err'; label.textContent='fout: '+e.message; }
