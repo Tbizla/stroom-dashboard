@@ -94,7 +94,7 @@ zetten zonder code aan te passen.
   elders op de kaart, het kruisje, of een tabwissel
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
-- Eén klik een voorbeeldtopologie laden: **eenvoudig** (2 generators, 6 kasten, 3 niveaus) voor een
+- Eén klik een voorbeeldtopologie laden: **eenvoudig** (3 generators, 11 kasten, 3 niveaus) voor een
   snelle demo, of **uitgebreid** (5 generators — waarvan één een groep van 4 aggregaten + batterij
   met bypass, en 2 daisy-chained routes van 8 kasten — 80 kasten totaal, tot 10 niveaus diep) als
   stresstest van de lijst/schema/plattegrond/Sankey en de Telegraf/InfluxDB/simulator-doorvoer
