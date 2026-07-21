@@ -47,7 +47,10 @@ zetten zonder code aan te passen.
   **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
   generators/accu's bestaat (bijv. een centrale met meerdere aggregaten + een batterijcontainer die
   load-sharen of elkaar met auto-start back-uppen). Kasten koppelen aan de groep zelf, niet aan een
-  los lid; de leden zijn beschrijvend (naam/kVA/type) en geen eigen topologie-node
+  los lid; een lid heeft naam/kVA/type en, sinds de generator-EM-rework, een eigen stabiele id +
+  automatisch gegenereerde `mqtt_topic_prefix` en optionele rating (A) — alleen relevant als dat lid
+  ook echt een eigen Shelly+CT-klem heeft. Leden zijn nog steeds geen losse topologie-node (niet los
+  te plaatsen op de plattegrond)
 - Kasten aanmaken/bewerken/verwijderen (naam, afkorting, ampèrage, gekoppelde generator/groep), met
   een type: gewone **kast**, of **batterij** (piekscheerder die tussen een generator(groep) en de
   eronder hangende kasten in zit, met optioneel een bypass-vlag voor als 'm bij overbelasting
@@ -97,13 +100,24 @@ zetten zonder code aan te passen.
   (indien uitgelezen) generators/groepen
 - Zij-lijst met generators en kasten is in-/uitklapbaar (met status-badges per generator en een
   "N onderliggend"-indicator bij geneste kasten), doorzoekbaar op naam/afkorting en filterbaar op
-  amber/rood; in-/uitklapstatus per item wordt onthouden
-- Klikken op een kast-pin op de plattegrond opent een databallon ter plekke met de volledige
-  MQTT-payload (stroom/spanning/act. en schijnbaar vermogen/cos φ per fase, totalen, cumulatieve
-  energie in kWh, belastingsbalk, laatste-update-tijd) — naast de bestaande zij-detail, niet ter
-  vervanging. Volgt de pin mee bij pannen/zoomen, maar houdt zelf een vast schermformaat (schrompelt
-  niet mee ineen bij uitzoomen); sluit bij nogmaals klikken op dezelfde pin, klik elders op de kaart,
-  het kruisje, of een tabwissel
+  amber/rood; in-/uitklapstatus per item wordt onthouden. Een generatorrij toont twee losse regels:
+  bovenaan de eigen self-meter-status (stip) van de generator/groep zelf, daaronder expliciet
+  gelabeld "onderliggend:" de opgetelde groen/amber/rood-badges van de kasten die eraan hangen — zelfde
+  onderscheid ook op de Overzicht-kaarten (Rapportages-tabblad)
+- Klikken op een kast-, generator- of groep-pin op de plattegrond opent een databallon ter plekke:
+  voor een kast of los aggregaat/generator de volledige MQTT-payload (stroom/spanning/act. en
+  schijnbaar vermogen/cos φ per fase, totalen, cumulatieve energie in kWh, belastingsbalk,
+  laatste-update-tijd); voor een **groep** een compacte per-lid-tabel (stroom + belasting per lid,
+  i.p.v. een A/B/C-fasetabel die de groep zelf niet zinvol heeft) — naast de bestaande zij-detail,
+  niet ter vervanging. Volgt de pin mee bij pannen/zoomen, maar houdt zelf een vast schermformaat
+  (schrompelt niet mee ineen bij uitzoomen); sluit bij nogmaals klikken op dezelfde pin, klik elders
+  op de kaart, het kruisje, of een tabwissel
+- Leden van een groep krijgen individuele live-status in de zij-detail: een `.ledenblok` onder de
+  bestaande ledenlijst toont per lid type-icoon, naam, live stroom + belastingspercentage en een
+  eigen groen/amber/rood-stip (op basis van dat lid's eigen optionele rating) — een lid zonder eigen
+  rating/self-meter toont gewoon geen stip/waarde, geen verplichte migratie-actie voor bestaande
+  topologieën (bestaande leden krijgen bij de eerstvolgende load automatisch een stabiele id +
+  `mqtt_topic_prefix`, zelfde patroon als bij kasten)
 - Fasekleuren NL-conventie: een klein rond kleurvlakje (bruin/antraciet/grijs, `--fase1`/`--fase2`/
   `--fase3`) vóór het fase-label in de kastpopup-tabelkop (A/B/C) en de aside-detail (Fase A/B/C-
   rijen) — losstaand naast de bestaande groen/amber/rood-statuskleur, geen samensmelting van de
@@ -144,6 +158,9 @@ zetten zonder code aan te passen.
   gepubliceerde stroom — begint bij 0 zodra de simulator start en loopt op zolang 'ie draait
 - Ververst de topologie elke 5 seconden vanuit de webapp, dus wisselen tussen testtopologieën
   (of wijzigingen tijdens een editie) werkt zonder de simulator-container te herstarten
+- Publiceert ook per lid van een groep (als dat lid een eigen rating (A) heeft) — onafhankelijke
+  meetpunten, geen optel-keten zoals bij kasten, want elk lid heeft in het echt zijn eigen
+  Shelly+CT-klem
 
 **Grafana-dashboards**
 - InfluxDB-datasource en start-dashboard worden automatisch geprovisioned bij het opstarten
@@ -212,10 +229,6 @@ Grafana:
 > (zie ook de afspraak hierover in CLAUDE.md). Geen van de items hieronder is dus "zomaar" te
 > starten, ook niet de kleine.
 
-- [ ] **Generator-EM rework.** De net toegevoegde generator/groep-monitoring (optionele rating_a,
-      zelfde live status als een kast, self-meter via `fest/<generator>/<generator>/status/em:0`)
-      voelt nog niet helemaal goed — nog niet scherp wát precies, dus eerst verder gebruiken/
-      bekijken voor de volgende aanpassing.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-

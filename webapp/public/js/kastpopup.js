@@ -1,6 +1,6 @@
 // ---------- kast-databallon op de plattegrond (Live-modus), zie specs/kast-popup-mqtt-spec.md ----------
 import { state, liveData, liveEnergyData, mapwrap, mapinner } from './state.js';
-import { nodeById, genNaam, statusClass, maxFaseStroom } from './topology.js';
+import { nodeById, genNaam, statusClass, maxFaseStroom, isGen, typeIcon } from './topology.js';
 import { t } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
 
@@ -16,7 +16,9 @@ export function renderKastPopup(){
     if(el) el.remove();
     return;
   }
-  const k = state.TOPO.kasten.find(x=>x.id===state.openPopupKastId);
+  // via nodeById() i.p.v. alleen state.TOPO.kasten: sinds de generator-EM-rework (zie
+  // specs/generator-em-rework-plan.md §3) opent deze ballon ook voor generator/groep-pins
+  const k = nodeById(state.openPopupKastId);
   if(!k || !k.positie || k.positie.x_pct==null){
     state.openPopupKastId = null;
     if(el) el.remove();
@@ -49,18 +51,46 @@ export function renderKastPopup(){
   dot.className = 'dot2 ' + statusClass(k);
   const naam = document.createElement('span');
   naam.className = 'naam';
-  naam.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam;
+  naam.textContent = (isGen(k) ? typeIcon(k)+' ' : (k.type==='batterij'?'🔋 ':'')) + k.naam;
   head.appendChild(dot); head.appendChild(naam);
   el.appendChild(head);
 
-  const gevoedVanaf = k.parent ? nodeById(k.parent).naam : genNaam(k.generator);
   const sub = document.createElement('div');
   sub.className = 'kastpopup-sub';
-  sub.innerHTML = t('kastpopup.ratingSub', {rating: k.rating_a, bron: gevoedVanaf}) + '<br>' + k.mqtt_topic_prefix;
+  if(isGen(k)){
+    // een generator/groep heeft geen parent/generator-veld (dat is kast-specifiek) — sub-regel
+    // toont hier vermogen + type/koppelsoort i.p.v. "gevoed vanaf", zie generator-em-rework-plan.md §3
+    const typeLabel = k.type==='batterij' ? t('detail.typeBatterij') : k.type==='groep' ? t('detail.typeGroep') : t('detail.typeGenerator');
+    let regel = k.vermogen_kva + ' kVA · ' + typeLabel;
+    if(k.type==='groep'){
+      const soortLabel = k.groep_soort==='parallel' ? t('detail.soortParallel') : k.groep_soort==='backup' ? t('detail.soortBackup') : k.groep_soort==='hybride' ? t('detail.soortHybride') : t('detail.soortOnbekend');
+      regel = k.vermogen_kva + ' kVA · ' + soortLabel + ' · ' + k.leden.length + ' ' + t('kastpopup.leden');
+    }
+    sub.innerHTML = regel + '<br>' + (k.mqtt_topic_prefix||'');
+  } else {
+    const gevoedVanaf = k.parent ? nodeById(k.parent).naam : genNaam(k.generator);
+    sub.innerHTML = t('kastpopup.ratingSub', {rating: k.rating_a, bron: gevoedVanaf}) + '<br>' + k.mqtt_topic_prefix;
+  }
   el.appendChild(sub);
 
   const d = liveData[k.id];
-  if(!d){
+  if(k.type==='groep'){
+    // groep heeft geen eigen zinvolle enkele fasemeting los van zijn leden (elk lid heeft zijn
+    // eigen Shelly) — compacte per-lid-tabel i.p.v. de A/B/C-fasetabel, zie §3 van de rework-spec
+    const tabel = document.createElement('table');
+    tabel.className = 'lidtabel';
+    tabel.innerHTML =
+      '<tr><th></th><th>'+t('kastpopup.stroom')+'</th><th>'+t('kastpopup.belasting')+'</th></tr>' +
+      k.leden.map(lid=>{
+        const ld = lid.rating_a!=null ? liveData[lid.id] : null;
+        const maxFase = maxFaseStroom(ld);
+        const stroom = maxFase!=null ? fmtVeld(maxFase,'A') : '—';
+        const belasting = (lid.rating_a!=null && maxFase!=null) ? Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
+        const dotCls = lid.rating_a!=null ? 'dot2 '+statusClass(lid) : 'dot2';
+        return '<tr><td><span class="'+dotCls+'" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td>'+stroom+'</td><td>'+belasting+'</td></tr>';
+      }).join('');
+    el.appendChild(tabel);
+  } else if(!d){
     const geen = document.createElement('div');
     geen.className = 'geendata';
     geen.textContent = t('kastpopup.geenDataBlok');
@@ -95,7 +125,7 @@ export function renderKastPopup(){
   // statusbalk: zelfde logica als de aside-detail (metingenHtml) — hoogste fase t.o.v. rating_a,
   // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 6)
   const maxFase = maxFaseStroom(d);
-  const pct = maxFase!=null ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
+  const pct = (maxFase!=null && k.rating_a!=null) ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
   const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
   const barwrap = document.createElement('div');
   barwrap.className = 'barwrap';

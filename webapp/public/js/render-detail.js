@@ -1,7 +1,24 @@
 import { state, detailEl, liveData } from './state.js';
-import { nodeById, isGen, genNaam, typeIcon, maxFaseStroom } from './topology.js';
+import { nodeById, isGen, genNaam, typeIcon, maxFaseStroom, statusClass } from './topology.js';
 import { t, huidigeLocale } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
+
+// per-lid live rijen onder de bestaande ledenlijst van een groep (naam/kVA/soort blijft
+// ongewijzigd) — zie specs/generator-em-rework-plan.md §2. Een lid zonder eigen rating_a heeft
+// geen self-meter en toont dus bewust geen stip/waarde (zelfde graceful fallback als generators
+// zonder rating_a elders in de app), geen verplichte migratie-actie voor bestaande leden.
+function ledenblokHtml(gen){
+  if(gen.type!=='groep' || !gen.leden || !gen.leden.length) return '';
+  const rijen = gen.leden.map(lid=>{
+    if(lid.rating_a==null){
+      return '<div class="lidrow"><span class="dot2"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val">—</span></div>';
+    }
+    const maxFase = maxFaseStroom(liveData[lid.id]);
+    const waarde = maxFase!=null ? maxFase.toFixed(2)+' A · '+Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
+    return '<div class="lidrow"><span class="dot2 '+statusClass(lid)+'"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val">'+waarde+'</span></div>';
+  }).join('');
+  return '<div class="ledenblok"><div class="ledenblok-head">'+t('detail.ledenblokHead', {n: gen.leden.length})+'</div>'+rijen+'</div>';
+}
 
 // meetdata-blok (fasen, vermogen, belastingsbalk) — gedeeld tussen kasten (rating_a altijd
 // verplicht) en generators (rating_a optioneel, alleen gezet als 'm ook echt uitgelezen wordt)
@@ -47,6 +64,7 @@ export function renderDetail(){
       html += '<div class="metric"><span class="k">'+t('detail.leden', {n: n.leden.length})+'</span><span>'+n.leden.map(l=>typeIcon(l)+' '+l.naam+(l.vermogen_kva?' ('+l.vermogen_kva+'kVA)':'')).join(', ')+'</span></div>';
     }
     html += metingenHtml(n, d);
+    html += ledenblokHtml(n);
   }
   html += '<div class="metric" style="margin-top:10px"><span class="k">'+t('detail.positie')+'</span><span>'+(n.positie && n.positie.x_pct!=null? n.positie.x_pct.toFixed(1)+'%, '+n.positie.y_pct.toFixed(1)+'%' : t('detail.nogNietGeplaatst'))+'</span></div>';
   detailEl.innerHTML = html;

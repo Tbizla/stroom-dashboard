@@ -101,13 +101,17 @@ async function main() {
   // per kast een startbelasting als fractie van de eigen rating_a, die random-walkt over tijd
   const state = {};
   topo.kasten.forEach(k => { state[k.id] = rand(0.2, 0.5); });
+  // leden van een groep (generator-EM-rework, specs/generator-em-rework-plan.md §1) zijn voor de
+  // simulator gewoon losse meetpunten met hun eigen rating_a, zelfde random-walk als een kast
+  (topo.generators || []).forEach(g => (g.leden || []).forEach(l => { if (l.id) state[l.id] = rand(0.2, 0.5); }));
 
-  // cumulatieve energie per fase (Wh) per kast/generator-zelfmeter, begint bij 0 (nieuw geïnstalleerde
-  // meter) en telt op zolang de simulator draait; los van `state` want dit moet nooit terugvallen
+  // cumulatieve energie per fase (Wh) per kast/generator/lid-zelfmeter, begint bij 0 (nieuw
+  // geïnstalleerde meter) en telt op zolang de simulator draait; los van `state` want dit moet
+  // nooit terugvallen
   const energyState = {};
   function initEnergie(id) { if (!(id in energyState)) energyState[id] = { a: 0, b: 0, c: 0 }; }
   topo.kasten.forEach(k => initEnergie(k.id));
-  (topo.generators || []).forEach(g => initEnergie(g.id));
+  (topo.generators || []).forEach(g => { initEnergie(g.id); (g.leden || []).forEach(l => { if (l.id) initEnergie(l.id); }); });
   function accumuleerEnergie(id, stroom, intervalMs) {
     const uren = intervalMs / 1000 / 3600;
     const e = energyState[id];
@@ -130,7 +134,10 @@ async function main() {
       }
       topo = data;
       topo.kasten.forEach(k => { if (!(k.id in state)) state[k.id] = rand(0.2, 0.5); initEnergie(k.id); });
-      (topo.generators || []).forEach(g => initEnergie(g.id));
+      (topo.generators || []).forEach(g => {
+        initEnergie(g.id);
+        (g.leden || []).forEach(l => { if (!l.id) return; if (!(l.id in state)) state[l.id] = rand(0.2, 0.5); initEnergie(l.id); });
+      });
     } catch (e) { /* webapp tijdelijk niet bereikbaar, volgende poging opnieuw */ }
   }, 5000);
 
@@ -185,6 +192,31 @@ async function main() {
     // publiceren als er een rating (A) is ingevuld, want dat betekent dat 'm ook echt uitgelezen
     // wordt (native telemetrie of een toegevoegde Shelly met CT-klem)
     (topo.generators || []).forEach(gen => {
+      // leden van een groep zijn onafhankelijke meetpunten (elk hun eigen Shelly+CT-klem) en staan
+      // los van de eigen self-meter van de groep zelf — dus vóór (niet ná) de `rating_a==null`-
+      // early-return hieronder, anders zou een groep zonder eigen rating nooit lid-data publiceren
+      // ook al hebben individuele leden wel een rating_a (zie generator-em-rework-plan.md §1/§2)
+      (gen.leden || []).forEach(lid => {
+        if (lid.rating_a == null || !lid.mqtt_topic_prefix || !lid.id) return;
+        let fractie = (state[lid.id] != null ? state[lid.id] : rand(0.2, 0.5)) + rand(-0.04, 0.04);
+        if (Math.random() < PIEK_KANS) fractie += rand(0.3, 0.6);
+        fractie = Math.max(0.05, Math.min(1.15, fractie));
+        state[lid.id] = fractie;
+        const eigenBasis = fractie * lid.rating_a;
+        const lidStroom = {
+          a: round2(Math.max(0, eigenBasis + rand(-0.3, 0.3))),
+          b: round2(Math.max(0, eigenBasis + rand(-0.3, 0.3))),
+          c: round2(Math.max(0, eigenBasis + rand(-0.3, 0.3))),
+        };
+        initEnergie(lid.id);
+        client.publish(lid.mqtt_topic_prefix + '/status/em:0', JSON.stringify(maakPayload(lidStroom)));
+        client.publish(lid.mqtt_topic_prefix + '/status/emdata:0', JSON.stringify(maakEmdataPayload(accumuleerEnergie(lid.id, lidStroom, INTERVAL_MS))));
+      });
+
+      // generators (en groepen) zijn zelf pure bron/doorlus-punten zonder eigen belasting — hun
+      // gemeten stroom is precies de som van alles wat er rechtstreeks op is aangesloten. Alleen
+      // publiceren als er een rating (A) is ingevuld, want dat betekent dat 'm ook echt uitgelezen
+      // wordt (native telemetrie of een toegevoegde Shelly met CT-klem)
       if (gen.rating_a == null) return;
       const kinderen = topo.kasten.filter(k => k.generator === gen.id && !k.parent);
       let a = 0, b = 0, c = 0;

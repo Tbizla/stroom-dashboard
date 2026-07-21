@@ -4,7 +4,7 @@
 // en een nieuw server-endpoint (/api/overzicht/energie) dat dezelfde influxQuery()-helper
 // hergebruikt als het PDF-rapport. Zie specs/rebuild-plan-v2-implementatie.md Fase D4b.
 import { state, liveData } from './state.js';
-import { listChildrenOf, collectDescendantKasten, statusOf, maxFaseStroom } from './topology.js';
+import { listChildrenOf, collectDescendantKasten, statusOf, statusCounts, maxFaseStroom } from './topology.js';
 import { apiCall } from './api.js';
 import { t } from './i18n.js';
 import { renderPins } from './render-pins.js';
@@ -21,6 +21,19 @@ function belastingPct(node){
   return Math.min(999, Math.round((maxFase/node.rating_a)*100));
 }
 
+function badgesHtml(node){
+  // zelfde "eigen vs. onderliggend"-onderscheid als de sidebar-generatorrij (render-list.js),
+  // hier ook toegepast op de Overzicht-kaart — zie specs/generator-em-rework-plan.md §4. Label
+  // staat er zodra er kasten onder hangen, ook als er nog geen live status is (zelfde als sidebar)
+  if(!collectDescendantKasten(node).length) return '';
+  const counts = statusCounts(node);
+  let badges = '';
+  if(counts.green) badges += '<span class="badge badge-green">'+counts.green+'</span>';
+  if(counts.amber) badges += '<span class="badge badge-amber">'+counts.amber+'</span>';
+  if(counts.red) badges += '<span class="badge badge-red">'+counts.red+'</span>';
+  return '<div class="sub"><span class="taglabel">'+t('aside.onderliggendLabel')+'</span><div class="badges">'+badges+'</div></div>';
+}
+
 function renderOverzichtCards(){
   const container = document.getElementById('overzichtCards');
   container.innerHTML = '';
@@ -35,7 +48,8 @@ function renderOverzichtCards(){
     card.innerHTML =
       '<div class="lbl"></div>'+
       '<div class="val"></div>'+
-      '<div class="sub"><span class="dotstatus" style="background:'+(STATUS_KLEUR[status]||'var(--grey)')+'"></span><span class="subtext"></span></div>';
+      '<div class="sub"><span class="dotstatus" style="background:'+(STATUS_KLEUR[status]||'var(--grey)')+'"></span><span class="subtext"></span></div>'+
+      badgesHtml(gen);
     card.querySelector('.lbl').textContent = gen.naam;
     card.querySelector('.val').textContent = kwh!=null ? kwh.toFixed(1)+' kWh' : '—';
     card.querySelector('.subtext').textContent = pct!=null ? pct+'%' : t('overzicht.geenRating');

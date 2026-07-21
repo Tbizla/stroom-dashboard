@@ -73,6 +73,7 @@
   "aside.nietGeplaatst": "not placed",
   "aside.onderliggend": "{n} downstream",
   "aside.ledenSuffix": "({n} members)",
+  "aside.onderliggendLabel": "downstream:",
 
   "detail.totaleStroom": "Total current (3 phases)",
   "detail.fase": "Phase",
@@ -96,6 +97,7 @@
   "detail.soortHybride": "Hybrid (generators + storage)",
   "detail.soortOnbekend": "unknown",
   "detail.leden": "Members ({n})",
+  "detail.ledenblokHead": "Members ({n}) — live per member",
 
   "kastpopup.stroom": "Current",
   "kastpopup.spanning": "Voltage",
@@ -110,6 +112,8 @@
   "kastpopup.laatsteGeen": "no data received",
   "kastpopup.laatsteUpdate": "last update {n}s ago",
   "kastpopup.ratingSub": "Rating {rating}A per phase · fed from {bron}",
+  "kastpopup.belasting": "Load",
+  "kastpopup.leden": "members",
 
   "beheer.evenementlogo": "Event logo",
   "beheer.logoUploaden": "Upload logo",
@@ -127,6 +131,7 @@
   "beheer.typeBatterij": "🔋 Battery",
   "beheer.typeGroep": "🏭 Group",
   "beheer.ratingTitle": "Only fill in if this generator/group is itself metered too (native or via Shelly+CT clamp)",
+  "beheer.ledenRatingTitle": "Only fill in if this member is itself metered too (its own Shelly+CT clamp)",
   "beheer.soortLeeg": "—",
   "beheer.soortParallel": "Parallel (load-sharing)",
   "beheer.soortBackup": "N+1 backup (auto-start)",

@@ -108,6 +108,13 @@ export function renderList(){
     const gh = document.createElement('div');
     gh.className = 'genrow' + (gen.id===state.selectedId?' selected':'') + (state.mode==='cal' && gen.id===state.armedId?' selected':'');
 
+    // bovenste regel: chev + eigen statusstip (self-meter t.o.v. eigen rating_a) + naam + eigen
+    // waarde. Onderste regel (sub, alleen als er kinderen zijn): expliciet gelabeld "onderliggend:"
+    // vóór de badges, zodat niet twee losse signalen (eigen status vs. status van de kasten
+    // eronder) door elkaar naast de naam lijken te staan — zie generator-em-rework-plan.md §4.
+    const top = document.createElement('div');
+    top.className = 'genrow-top';
+
     const chev = document.createElement('span');
     chev.className = 'chev';
     let open = false;
@@ -116,32 +123,42 @@ export function renderList(){
       chev.textContent = open ? '▾' : '▸';
       chev.onclick = (e)=>{ e.stopPropagation(); sidebarState[gen.id] = !openStates[gen.id]; saveSidebarState(); renderList(); };
     }
-    gh.appendChild(chev);
+    top.appendChild(chev);
 
     if(gen.rating_a!=null){
       const dot = document.createElement('div');
       dot.className = 'dot2 ' + statusClass(gen);
-      gh.appendChild(dot);
+      top.appendChild(dot);
     }
 
     const genName = document.createElement('div');
     genName.className = 'name';
     genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' '+t('aside.ledenSuffix', {n: gen.leden.length}) : '');
-    gh.appendChild(genName);
-
-    const counts = statusCounts(gen);
-    const badges = document.createElement('div');
-    badges.className = 'badges';
-    if(counts.green) badges.appendChild(makeBadge('green', counts.green));
-    if(counts.amber) badges.appendChild(makeBadge('amber', counts.amber));
-    if(counts.red) badges.appendChild(makeBadge('red', counts.red));
-    gh.appendChild(badges);
+    top.appendChild(genName);
 
     const genVal = document.createElement('div');
     genVal.className = 'val';
     const genMaxFase = maxFaseStroom(liveData[gen.id]);
     genVal.textContent = genMaxFase!=null ? genMaxFase.toFixed(1)+'A' : (gen.positie && gen.positie.x_pct!=null ? '—' : t('aside.nietGeplaatst'));
-    gh.appendChild(genVal);
+    top.appendChild(genVal);
+    gh.appendChild(top);
+
+    if(heeftKinderen){
+      const counts = statusCounts(gen);
+      const sub = document.createElement('div');
+      sub.className = 'genrow-sub';
+      const label = document.createElement('span');
+      label.className = 'taglabel';
+      label.textContent = t('aside.onderliggendLabel');
+      sub.appendChild(label);
+      const badges = document.createElement('div');
+      badges.className = 'badges';
+      if(counts.green) badges.appendChild(makeBadge('green', counts.green));
+      if(counts.amber) badges.appendChild(makeBadge('amber', counts.amber));
+      if(counts.red) badges.appendChild(makeBadge('red', counts.red));
+      sub.appendChild(badges);
+      gh.appendChild(sub);
+    }
 
     gh.onclick = ()=>{
       if(state.mode==='cal'){ state.armedId = gen.id; document.getElementById('armedLabel').textContent = t('calbar.armedLabel', {naam: gen.naam}); }

@@ -73,6 +73,7 @@
   "aside.nietGeplaatst": "niet geplaatst",
   "aside.onderliggend": "{n} onderliggend",
   "aside.ledenSuffix": "({n} leden)",
+  "aside.onderliggendLabel": "onderliggend:",
 
   "detail.totaleStroom": "Totale stroom (3 fasen)",
   "detail.fase": "Fase",
@@ -96,6 +97,7 @@
   "detail.soortHybride": "Hybride (generators + opslag)",
   "detail.soortOnbekend": "onbekend",
   "detail.leden": "Leden ({n})",
+  "detail.ledenblokHead": "Leden ({n}) — live per lid",
 
   "kastpopup.stroom": "Stroom",
   "kastpopup.spanning": "Spanning",
@@ -110,6 +112,8 @@
   "kastpopup.laatsteGeen": "geen data ontvangen",
   "kastpopup.laatsteUpdate": "laatste update {n}s geleden",
   "kastpopup.ratingSub": "Rating {rating}A per fase · gevoed vanaf {bron}",
+  "kastpopup.belasting": "Belasting",
+  "kastpopup.leden": "leden",
 
   "beheer.evenementlogo": "Evenementlogo",
   "beheer.logoUploaden": "Logo uploaden",
@@ -127,6 +131,7 @@
   "beheer.typeBatterij": "🔋 Batterij",
   "beheer.typeGroep": "🏭 Groep",
   "beheer.ratingTitle": "Alleen invullen als deze generator/groep zelf ook uitgelezen wordt (native of via Shelly+CT-klem)",
+  "beheer.ledenRatingTitle": "Alleen invullen als dit lid zelf ook uitgelezen wordt (eigen Shelly+CT-klem)",
   "beheer.soortLeeg": "—",
   "beheer.soortParallel": "Parallel (load-sharing)",
   "beheer.soortBackup": "N+1 backup (auto-start)",

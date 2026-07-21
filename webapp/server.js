@@ -55,7 +55,25 @@ app.use(express.json());
 // wat verwarrend is bij het testen van fixes
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res) => res.set('Cache-Control', 'no-store') }));
 
-function readTopo() { return JSON.parse(fs.readFileSync(TOPO_FILE, 'utf8')); }
+// migreert oudere topologieën waarin generators/leden nog geen `mqtt_topic_prefix` (generators) of
+// `id`/`mqtt_topic_prefix` (leden van een groep) hebben — zie specs/generator-em-rework-plan.md §1.
+// Draait bij elke read, is een no-op zodra alles al gemigreerd is (geen aparte migratiestap nodig).
+function migreerGeneratorsEnLeden(data) {
+  let gewijzigd = false;
+  data.generators.forEach(gen => {
+    if (!gen.mqtt_topic_prefix) { gen.mqtt_topic_prefix = mqttPrefix(gen.id, gen.id); gewijzigd = true; }
+    if (gen.type === 'groep' && Array.isArray(gen.leden) && gen.leden.some(l => !l.id || !l.mqtt_topic_prefix)) {
+      voorzieLedenVanIdEnPrefix(gen, data);
+      gewijzigd = true;
+    }
+  });
+  return gewijzigd;
+}
+function readTopo() {
+  const data = JSON.parse(fs.readFileSync(TOPO_FILE, 'utf8'));
+  if (migreerGeneratorsEnLeden(data)) fs.writeFileSync(TOPO_FILE, JSON.stringify(data, null, 2), 'utf8');
+  return data;
+}
 function writeTopo(data) {
   fs.writeFileSync(TOPO_FILE, JSON.stringify(data, null, 2), 'utf8');
   syncTopologyToInflux(data).catch((e) => console.error('kon topologie niet naar InfluxDB syncen:', e.message));
@@ -154,8 +172,11 @@ app.post('/api/topology/positie', (req, res) => {
 // een 'groep' zijn: één logische krachtbron die intern uit meerdere generators/accu's bestaat (bijv. een
 // centrale met 6 aggregaten + een CAT-batterijcontainer die onderling load-sharen of elkaar back-uppen met
 // automatische start). Kasten koppelen dan aan de groep zelf, niet aan een los lid — precies zoals het er
-// in het veld ook uitziet (één aansluitpunt, intern beheerd). De leden zijn puur beschrijvend (naam/kVA/type)
-// en geen eigen topologie-nodes: ze worden niet los gemonitord of geplaatst.
+// in het veld ook uitziet (één aansluitpunt, intern beheerd). Een lid heeft naam/kVA/type, en sinds de
+// generator-EM-rework (specs/generator-em-rework-plan.md §1) ook een eigen stabiele `id` +
+// `mqtt_topic_prefix` (fest/<generator_id>/<lid_id>) en optionele `rating_a` — net als bij een generator
+// alleen relevant als dat lid ook echt via een eigen Shelly+CT-klem wordt uitgelezen. Leden zijn nog
+// steeds geen losse topologie-nodes: ze worden niet los geplaatst op de plattegrond.
 const GEN_TYPES = ['generator', 'batterij', 'groep'];
 const GROEP_SOORTEN = ['parallel', 'backup', 'hybride'];
 
@@ -165,11 +186,40 @@ function valideerLeden(leden) {
     if (!lid || typeof lid.naam !== 'string' || !lid.naam.trim()) return 'elk lid heeft een naam nodig';
     if (lid.vermogen_kva !== undefined && lid.vermogen_kva !== null && isNaN(Number(lid.vermogen_kva))) return 'ongeldig vermogen_kva bij lid ' + lid.naam;
     if (lid.type && !['generator', 'batterij'].includes(lid.type)) return 'ongeldig type bij lid ' + lid.naam;
+    if (lid.rating_a !== undefined && lid.rating_a !== null && lid.rating_a !== '' && isNaN(Number(lid.rating_a))) return 'ongeldige rating_a bij lid ' + lid.naam;
   }
   return null;
 }
+// bewaart een reeds bestaand `id` (meegestuurd door de client, zie huidigeLeden() in
+// render-beheer.js) zodat een lid zijn MQTT-prefix niet verliest bij een simpele naam/kVA-edit —
+// alleen een nieuw lid (zonder id) krijgt er hierna via voorzieLedenVanIdEnPrefix() een toegewezen
 function normaliseerLeden(leden) {
-  return leden.map(l => ({ naam: l.naam.trim(), vermogen_kva: l.vermogen_kva != null ? Number(l.vermogen_kva) : null, type: l.type === 'batterij' ? 'batterij' : 'generator' }));
+  return leden.map(l => {
+    const lid = {
+      naam: l.naam.trim(),
+      vermogen_kva: l.vermogen_kva != null ? Number(l.vermogen_kva) : null,
+      type: l.type === 'batterij' ? 'batterij' : 'generator',
+      // net als bij een generator: optioneel, alleen gezet als dit lid ook echt een eigen
+      // Shelly+CT-klem heeft (zie specs/generator-em-rework-plan.md §2)
+      rating_a: (l.rating_a != null && l.rating_a !== '') ? Number(l.rating_a) : null,
+    };
+    if (l.id) lid.id = l.id;
+    return lid;
+  });
+}
+// wijst elk lid zonder `id` een stabiele id + `mqtt_topic_prefix` toe (zelfde patroon als
+// mqttPrefix() voor kasten: fest/<generator_id>/<lid_id>) — id blijft staan bij volgende edits
+// omdat normaliseerLeden() 'm doorgeeft, dus dit is idempotent voor al gemigreerde leden
+function voorzieLedenVanIdEnPrefix(gen, data) {
+  const alleIds = [...data.generators.map(g => g.id), ...data.kasten.map(k => k.id)];
+  data.generators.forEach(g => (g.leden || []).forEach(l => { if (l.id) alleIds.push(l.id); }));
+  (gen.leden || []).forEach(lid => {
+    if (!lid.id) {
+      lid.id = uniekeId(slugify(lid.naam), alleIds);
+      alleIds.push(lid.id);
+    }
+    lid.mqtt_topic_prefix = mqttPrefix(gen.id, lid.id);
+  });
 }
 
 app.post('/api/generators', (req, res) => {
@@ -188,6 +238,7 @@ app.post('/api/generators', (req, res) => {
     // topic is zelfreferentieel (fest/<id>/<id>/status/em:0): een generator is voor de meetpijplijn
     // gewoon zijn eigen "kast", geen apart telegraf/InfluxDB-schema nodig.
     rating_a: rating_a ? Number(rating_a) : null,
+    mqtt_topic_prefix: mqttPrefix(id, id),
   };
   data.generators.push(gen);
   writeTopo(data);
@@ -220,6 +271,7 @@ app.put('/api/generators/:id', (req, res) => {
     const fout = valideerLeden(leden);
     if (fout) return res.status(400).json({ error: fout });
     gen.leden = normaliseerLeden(leden);
+    voorzieLedenVanIdEnPrefix(gen, data);
   }
   writeTopo(data);
   res.json({ ok: true, generator: gen });

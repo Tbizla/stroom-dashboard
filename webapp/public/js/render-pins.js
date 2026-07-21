@@ -36,7 +36,7 @@ export function renderPins(){
     pin.onmousedown = (ev)=>{
       ev.stopPropagation();
       state.selectedId = n.id; renderList(); renderDetail(); renderPins();
-      if(state.mode==='live' && !isGen(n)){
+      if(state.mode==='live'){
         state.openPopupKastId = (state.openPopupKastId===n.id) ? null : n.id;
         renderKastPopup();
       }

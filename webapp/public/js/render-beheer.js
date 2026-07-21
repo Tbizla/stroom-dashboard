@@ -282,12 +282,13 @@ export function renderBeheer(){
       '</tr>';
     if(isGroep && expandedGroepen.has(g.id)){
       gh += '<tr class="ledenrow"><td colspan="8"><table class="btable ledentable">'+
-        '<tr><th>'+t('beheer.ledenTableThNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:90px">'+t('beheer.thKva')+'</th><th style="min-width:70px"></th></tr>'+
+        '<tr><th>'+t('beheer.ledenTableThNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:90px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th><th style="min-width:70px"></th></tr>'+
         g.leden.map((l,i)=>
           '<tr>'+
             '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
             '<td><select data-lid-type="'+g.id+'|'+i+'"><option value="generator"'+(l.type!=='batterij'?' selected':'')+'>'+t('beheer.typeGenerator')+'</option><option value="batterij"'+(l.type==='batterij'?' selected':'')+'>'+t('beheer.typeBatterij')+'</option></select></td>'+
             '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
+            '<td><input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'"></td>'+
             '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
           '</tr>'
         ).join('')+
@@ -295,6 +296,7 @@ export function renderBeheer(){
           '<td><input placeholder="'+t('beheer.ledenNewPlaceholder')+'" data-lid-new-naam="'+g.id+'"></td>'+
           '<td><select data-lid-new-type="'+g.id+'"><option value="generator">'+t('beheer.typeGenerator')+'</option><option value="batterij">'+t('beheer.typeBatterij')+'</option></select></td>'+
           '<td><input type="number" placeholder="'+t('beheer.kvaPlaceholder')+'" data-lid-new-kva="'+g.id+'"></td>'+
+          '<td></td>'+
           '<td><button data-lid-add="'+g.id+'">+</button></td>'+
         '</tr>'+
         '</table></td></tr>';
@@ -302,8 +304,11 @@ export function renderBeheer(){
   });
   genTable.innerHTML = gh;
 
-  // stuurt de volledige ledenlijst van een groep naar de server; index-gebaseerd (geen eigen id's nodig,
-  // leden zijn puur beschrijvend en worden nergens anders naar verwezen)
+  // stuurt de volledige ledenlijst van een groep naar de server; edits zelf blijven index-gebaseerd
+  // (simpelste manier om vanuit deze tabel te muteren), maar huidigeLeden() kopieert ook het
+  // bestaande `id`/`mqtt_topic_prefix`/`rating_a` van elk lid mee, dus die blijven behouden — de
+  // server genereert alleen een nieuw id voor een lid dat er nog geen heeft (zie
+  // voorzieLedenVanIdEnPrefix() in server.js, specs/generator-em-rework-plan.md §1)
   async function saveLeden(genId, leden){
     try{ await apiCall('/api/generators/'+genId, 'PUT', {leden}); await loadTopology(); }
     catch(e){ alert(e.message); }
@@ -348,6 +353,11 @@ export function renderBeheer(){
   genTable.querySelectorAll('[data-lid-kva]').forEach(el=>el.onchange = async ()=>{
     const [genId, idx] = el.dataset.lidKva.split('|');
     const leden = huidigeLeden(genId); leden[idx].vermogen_kva = el.value ? Number(el.value) : null;
+    await saveLeden(genId, leden);
+  });
+  genTable.querySelectorAll('[data-lid-rating]').forEach(el=>el.onchange = async ()=>{
+    const [genId, idx] = el.dataset.lidRating.split('|');
+    const leden = huidigeLeden(genId); leden[idx].rating_a = el.value ? Number(el.value) : null;
     await saveLeden(genId, leden);
   });
   genTable.querySelectorAll('[data-lid-del]').forEach(el=>el.onclick = async ()=>{

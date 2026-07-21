@@ -13,12 +13,14 @@ Alles begint leeg. Open de webapp (zie stap 3), je start automatisch in **Beheer
 
 Elke kast krijgt automatisch een `mqtt_topic_prefix` (`fest/<generator_id>/<kast_id>`) — die vul je in de Shelly zelf in onder Settings > MQTT > Custom MQTT prefix.
 
-## 2. Shelly's instellen (eenmalig, per kast)
+Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontainer die samen als één krachtbron optreden)? Kasten koppel je dan aan de groep zelf. Wil je ook de losse leden van die groep live volgen, geef het lid dan een eigen rating (A) in de ledentabel (uitklapbaar via de generatorregel) — het lid krijgt dan net als een kast automatisch een eigen `mqtt_topic_prefix` (`fest/<generator_id>/<lid_id>`).
+
+## 2. Shelly's instellen (eenmalig, per kast/generator/lid)
 
 Op elke Shelly Pro 3EM: Settings > MQTT
 - Enable MQTT: aan
 - Server: IP-adres van de machine bij NHQ, poort 1883
-- Custom MQTT prefix: de waarde die de webapp voor die kast heeft gegenereerd (zichtbaar in de kasten-tabel in Beheer-modus, en in een export)
+- Custom MQTT prefix: de waarde die de webapp gegenereerd heeft. Zichtbaar door in **Live**-modus op de betreffende pin te klikken (kast, generator, of groep) — de databallon toont 'm onder de naam — of in een export (`/api/export`). Voor een generator die zelf ook uitgelezen wordt geldt hetzelfde (rating (A) invullen bij die generator/groep), en voor een los lid van een groep ook (rating (A) invullen bij dat lid in de ledentabel).
 
 Na deze stap publiceert elke Shelly automatisch naar o.a.:
 - `fest/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).
@@ -115,7 +117,7 @@ docker compose --profile test up -d
 Dit start ook daadwerkelijk de `simulator`-container mee (die anders niet meedraait, ook niet bij een gewone `docker compose up -d`). De webapp herkent zelf of dat profile actief is — geen aparte instelling in `.env` nodig — en geeft dan pas de testendpoints en het **Testdata**-tabblad vrij; zonder `--profile test` geven die endpoints een 404 en blijft het tabblad verborgen.
 
 Op het **Testdata**-tabblad in de webapp, twee varianten:
-- **"Laad eenvoudige testtopologie"** — 2 generators, 6 kasten, 3 niveaus diep. Snelle demo van de werking.
+- **"Laad eenvoudige testtopologie"** — 3 generators, 11 kasten, 3 niveaus diep. Snelle demo van de werking.
 - **"Laad uitgebreide testtopologie (stresstest)"** — 5 generators (waarvan Centrum een **groep** is: 4 aggregaten van 550 kVA + een batterijcontainer met bypass, die op zijn beurt 2 daisy-chained routes van 8 kasten voedt), 80 kasten totaal, tot 10 niveaus diep per generator. Voor het testen van de lijst/schema/plattegrond/Sankey en de doorvoer van Telegraf/InfluxDB/de simulator onder realistische belasting, inclusief generatorgroepen en batterij-/piekscheerderkasten.
 
 Beide overschrijven de huidige generators en kasten, en je kunt op elk moment tussen de twee wisselen — de simulator pikt de wijziging binnen enkele seconden op.
@@ -133,9 +135,10 @@ Twee soorten export, voor twee soorten data:
 
 ## 9. PDF-rapport exporteren
 
-Onderaan de Beheer-tab: **"Rapport exporteren"** — editie en periode kiezen, aanvinken welke
+Tab **Rapportages > PDF-rapport**: editie en periode kiezen, aanvinken welke
 onderdelen erin moeten (generator-totalen, stroom per kast, Sankey-energieverdeling,
-overschrijdingen & alarmen), en op "Genereer PDF-rapport" klikken. Kan tot een minuut duren; de
+overschrijdingen & alarmen), eventueel de rapporttaal omzetten met de schuifknop (NL/EN, staat los
+van de taal van de UI zelf), en op "Genereer PDF-rapport" klikken. Kan tot een minuut duren; de
 knop laat een statuskaart zien terwijl het loopt en daarna een downloadkaart (of een foutkaart met
 "Opnieuw proberen"). Er kan maar één rapport tegelijk gegenereerd worden.
 
