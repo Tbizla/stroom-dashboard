@@ -1,5 +1,5 @@
 {
-  "name": "stroomdashboard-telegraf-herstarter",
+  "name": "stroom-dashboard-telegraf-herstarter",
   "version": "1.0.0",
   "private": true,
   "main": "index.js",

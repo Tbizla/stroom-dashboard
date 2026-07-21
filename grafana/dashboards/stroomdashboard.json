@@ -1,6 +1,6 @@
 {
   "title": "Stroom-Dashboard - overzicht",
-  "uid": "stroomdashboard-overzicht",
+  "uid": "stroom-dashboard-overzicht",
   "tags": ["stroom"],
   "timezone": "browser",
   "editable": true,
@@ -87,7 +87,7 @@
           "links": [
             {
               "title": "Bekijk kasten onder $generator",
-              "url": "/d/stroomdashboard-overzicht/_?var-generator=${generator}&var-editie=${editie}&var-evenement=${evenement}&${__url_time_range}",
+              "url": "/d/stroom-dashboard-overzicht/_?var-generator=${generator}&var-editie=${editie}&var-evenement=${evenement}&${__url_time_range}",
               "targetBlank": false
             }
           ]

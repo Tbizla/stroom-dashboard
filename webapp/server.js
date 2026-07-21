@@ -650,7 +650,7 @@ app.post('/api/import', (req, res) => {
 
 // ---------- rapport exporteren (PDF) ----------
 const GRAFANA_URL = process.env.GRAFANA_URL || 'http://grafana:3000';
-const GRAFANA_DASHBOARD_UID = process.env.GRAFANA_DASHBOARD_UID || 'stroomdashboard-overzicht';
+const GRAFANA_DASHBOARD_UID = process.env.GRAFANA_DASHBOARD_UID || 'stroom-dashboard-overzicht';
 const GRAFANA_REPORT_TOKEN = process.env.GRAFANA_REPORT_TOKEN;
 const RAPPORT_DIR = path.join(DATA_DIR, 'rapporten');
 if (!fs.existsSync(RAPPORT_DIR)) fs.mkdirSync(RAPPORT_DIR, { recursive: true });
@@ -1053,7 +1053,7 @@ async function voerRapportGeneratieUit(job) {
   await voegVoettekstToe(dest, taal, editie);
 
   const bytes = await dest.save();
-  const bestandsnaam = 'rapport_stroomdashboard_' + editie + '.pdf';
+  const bestandsnaam = 'rapport_stroom-dashboard_' + editie + '.pdf';
   fs.writeFileSync(path.join(RAPPORT_DIR, bestandsnaam), bytes);
 
   rapportJob = {
@@ -1156,7 +1156,7 @@ async function genereerMeetdataBestanden(meetdataPeriode) {
 }
 
 async function voerBackupGeneratieUit(meetdataPeriode) {
-  const bestandsnaam = 'backup_stroomdashboard_' + Date.now() + '.zip';
+  const bestandsnaam = 'backup_stroom-dashboard_' + Date.now() + '.zip';
   const bestandspad = path.join(BACKUP_DIR, bestandsnaam);
 
   await new Promise((resolve, reject) => {

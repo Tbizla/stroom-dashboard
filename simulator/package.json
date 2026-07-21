@@ -1,5 +1,5 @@
 {
-  "name": "stroomdashboard-simulator",
+  "name": "stroom-dashboard-simulator",
   "version": "1.0.0",
   "private": true,
   "main": "index.js",

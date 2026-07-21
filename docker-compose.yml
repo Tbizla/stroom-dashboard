@@ -98,7 +98,7 @@ services:
       - INFLUX_ORG=site
       - INFLUX_BUCKET=stroomdata
       - GRAFANA_URL=http://grafana:3000
-      - GRAFANA_DASHBOARD_UID=stroomdashboard-overzicht
+      - GRAFANA_DASHBOARD_UID=stroom-dashboard-overzicht
       - GRAFANA_REPORT_TOKEN=${GRAFANA_REPORT_TOKEN}
       - EVENT_NAME=${EVENT_NAME}
       - EVENT_EDITION=${EVENT_EDITION}
