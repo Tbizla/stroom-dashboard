@@ -21,8 +21,8 @@ document.getElementById('connectBtn').onclick = ()=>{
     state.mqttClient = mqtt.connect('ws://'+host+':'+port+'/mqtt');
     state.mqttClient.on('connect', ()=>{
       dot.className='dot ok'; label.textContent=t('header.connVerbonden');
-      state.mqttClient.subscribe('fest/+/+/status/em:0');
-      state.mqttClient.subscribe('fest/+/+/status/emdata:0');
+      state.mqttClient.subscribe('site/+/+/status/em:0');
+      state.mqttClient.subscribe('site/+/+/status/emdata:0');
     });
     state.mqttClient.on('error', (e)=>{ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; });
     state.mqttClient.on('close', ()=>{ dot.className='dot'; label.textContent=t('header.connNietVerbonden'); });

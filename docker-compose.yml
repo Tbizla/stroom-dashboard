@@ -20,7 +20,7 @@ services:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
       - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_PASSWORD}
-      - DOCKER_INFLUXDB_INIT_ORG=festival
+      - DOCKER_INFLUXDB_INIT_ORG=site
       - DOCKER_INFLUXDB_INIT_BUCKET=stroomdata
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN}
     volumes:
@@ -95,7 +95,7 @@ services:
     environment:
       - INFLUX_URL=http://influxdb:8086
       - INFLUX_TOKEN=${INFLUX_TOKEN}
-      - INFLUX_ORG=festival
+      - INFLUX_ORG=site
       - INFLUX_BUCKET=stroomdata
       - GRAFANA_URL=http://grafana:3000
       - GRAFANA_DASHBOARD_UID=stroomdashboard-overzicht

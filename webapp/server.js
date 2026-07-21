@@ -18,7 +18,7 @@ const TEST_TOPO_UITGEBREID = path.join(__dirname, 'test_topologie_uitgebreid.jso
 
 const INFLUX_URL = process.env.INFLUX_URL || 'http://influxdb:8086';
 const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
-const INFLUX_ORG = process.env.INFLUX_ORG || 'festival';
+const INFLUX_ORG = process.env.INFLUX_ORG || 'site';
 const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
 // klein, apart servicetje (telegraf-herstarter/) dat de échte /var/run/docker.sock heeft en
 // precies één actie aanbiedt: telegraf herstarten met nieuwe EVENT_NAME/EVENT_EDITION-waarden —
@@ -145,7 +145,7 @@ function uniekeId(basis, bestaandeIds) {
   while (bestaandeIds.includes(id)) { id = basis + '_' + n; n++; }
   return id;
 }
-function mqttPrefix(generatorId, kastId) { return 'fest/' + generatorId + '/' + kastId; }
+function mqttPrefix(generatorId, kastId) { return 'site/' + generatorId + '/' + kastId; }
 
 // true als het instellen van kast[kastId].parent = nieuweParentId een cyclus zou maken
 function maaktCyclus(data, kastId, nieuweParentId) {
@@ -246,7 +246,7 @@ app.post('/api/topology/positie', (req, res) => {
 // automatische start). Kasten koppelen dan aan de groep zelf, niet aan een los lid — precies zoals het er
 // in het veld ook uitziet (één aansluitpunt, intern beheerd). Een lid heeft naam/kVA/type, en sinds de
 // generator-EM-rework (specs/generator-em-rework-plan.md §1) ook een eigen stabiele `id` +
-// `mqtt_topic_prefix` (fest/<generator_id>/<lid_id>) en optionele `rating_a` — net als bij een generator
+// `mqtt_topic_prefix` (site/<generator_id>/<lid_id>) en optionele `rating_a` — net als bij een generator
 // alleen relevant als dat lid ook echt via een eigen Shelly+CT-klem wordt uitgelezen. Leden zijn nog
 // steeds geen losse topologie-nodes: ze worden niet los geplaatst op de plattegrond.
 const GEN_TYPES = ['generator', 'batterij', 'groep'];
@@ -280,7 +280,7 @@ function normaliseerLeden(leden) {
   });
 }
 // wijst elk lid zonder `id` een stabiele id + `mqtt_topic_prefix` toe (zelfde patroon als
-// mqttPrefix() voor kasten: fest/<generator_id>/<lid_id>) — id blijft staan bij volgende edits
+// mqttPrefix() voor kasten: site/<generator_id>/<lid_id>) — id blijft staan bij volgende edits
 // omdat normaliseerLeden() 'm doorgeeft, dus dit is idempotent voor al gemigreerde leden
 function voorzieLedenVanIdEnPrefix(gen, data) {
   const alleIds = [...data.generators.map(g => g.id), ...data.kasten.map(k => k.id)];
@@ -307,7 +307,7 @@ app.post('/api/generators', (req, res) => {
     // niet elke generator is uit te lezen (sommige krijgen alsnog een Shelly met CT-klem erbij,
     // andere (nog) niet) — rating_a is dus, anders dan bij een kast, optioneel; zonder rating_a
     // kan er geen belastingspercentage/status berekend worden, ook al komt er wel meetdata binnen.
-    // topic is zelfreferentieel (fest/<id>/<id>/status/em:0): een generator is voor de meetpijplijn
+    // topic is zelfreferentieel (site/<id>/<id>/status/em:0): een generator is voor de meetpijplijn
     // gewoon zijn eigen "kast", geen apart telegraf/InfluxDB-schema nodig.
     rating_a: rating_a ? Number(rating_a) : null,
     mqtt_topic_prefix: mqttPrefix(id, id),

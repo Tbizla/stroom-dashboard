@@ -11,9 +11,9 @@ Alles begint leeg. Open de webapp (zie stap 3), je start automatisch in **Beheer
 - Koppel elke kast aan de kast waar 'ie stroomtechnisch op doorgelust is via het dropdown-veld **"Gevoed vanaf"** (leeg = rechtstreeks op de generator). De app voorkomt dat je per ongeluk een lus/cyclus maakt.
 - Kast verwijderen? Kasten die daarop waren doorgelust, worden automatisch doorgekoppeld naar wat erboven zat, zodat de keten intact blijft.
 
-Elke kast krijgt automatisch een `mqtt_topic_prefix` (`fest/<generator_id>/<kast_id>`) — die vul je in de Shelly zelf in onder Settings > MQTT > Custom MQTT prefix.
+Elke kast krijgt automatisch een `mqtt_topic_prefix` (`site/<generator_id>/<kast_id>`) — die vul je in de Shelly zelf in onder Settings > MQTT > Custom MQTT prefix.
 
-Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontainer die samen als één krachtbron optreden)? Kasten koppel je dan aan de groep zelf. Wil je ook de losse leden van die groep live volgen, geef het lid dan een eigen rating (A) in de ledentabel (uitklapbaar via de generatorregel) — het lid krijgt dan net als een kast automatisch een eigen `mqtt_topic_prefix` (`fest/<generator_id>/<lid_id>`).
+Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontainer die samen als één krachtbron optreden)? Kasten koppel je dan aan de groep zelf. Wil je ook de losse leden van die groep live volgen, geef het lid dan een eigen rating (A) in de ledentabel (uitklapbaar via de generatorregel) — het lid krijgt dan net als een kast automatisch een eigen `mqtt_topic_prefix` (`site/<generator_id>/<lid_id>`).
 
 ## 2. Shelly's instellen (eenmalig, per kast/generator/lid)
 
@@ -23,8 +23,8 @@ Op elke Shelly Pro 3EM: Settings > MQTT
 - Custom MQTT prefix: de waarde die de webapp gegenereerd heeft. Zichtbaar door in **Live**-modus op de betreffende pin te klikken (kast, generator, of groep) — de databallon toont 'm onder de naam — of in een export (`/api/export`). Voor een generator die zelf ook uitgelezen wordt geldt hetzelfde (rating (A) invullen bij die generator/groep), en voor een los lid van een groep ook (rating (A) invullen bij dat lid in de ledentabel).
 
 Na deze stap publiceert elke Shelly automatisch naar o.a.:
-- `fest/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).
-- `fest/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh), ongeveer eens per minuut
+- `site/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).
+- `site/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh), ongeveer eens per minuut
 
 ### Optioneel: sneller dan 15s met een Shelly Script
 
@@ -198,3 +198,29 @@ Voorbeeld alert-conditie in Grafana (per kast-paneel):
 - For: 30s (voorkomt vals alarm bij een korte piek)
 
 Zodra je een kanaal kiest, voeg je die toe onder Alerting > Contact points, en koppel je 'm aan een notification policy. Ondersteunde opties: Telegram, Pushover, ntfy.sh, e-mail, Slack, webhook, en meer.
+
+## 13. Migreren van een bestaande `fest`/`festival`-instance naar `site`
+
+De MQTT-topic-prefix (was `fest/<generator>/<kast>/...`) en de InfluxDB-organisatienaam (was
+`festival`) heten nu allebei `site` — een bewuste harde knip, geen automatische compatibiliteit met
+de oude naamgeving (zie [specs/mqtt-prefix-migratie-plan.md](specs/mqtt-prefix-migratie-plan.md)
+voor de volledige afweging). Draai je al een instance van vóór deze wijziging, dan moet je drie
+dingen doen — in deze volgorde, tussen twee evenementen door (niet vlak voor of tijdens een
+evenement, want tussen stap 2 en 3 zijn alle Shelly's die nog niet zijn omgezet even onzichtbaar
+voor de app):
+
+1. **InfluxDB-organisatie hernoemen** (bestaande data blijft intact — dit is een naam-wijziging op
+   de bestaande org, geen nieuwe/lege org aanmaken):
+   ```
+   docker compose exec influxdb influx org list --token <INFLUX_TOKEN-uit-.env>
+   docker compose exec influxdb influx org update --id <ORG_ID_HIERBOVEN> --name site --token <INFLUX_TOKEN-uit-.env>
+   ```
+2. **Bestaande topologie bijwerken**: exporteer je huidige topologie (knop "Exporteer data",
+   `/api/export`), vervang daarin elke `"fest/` door `"site/` (puur opgeslagen tekst per kast/
+   generator/lid, geen berekende waarde), en importeer 'm terug via "Importeer data".
+3. **Elke fysieke Shelly**: Settings > MQTT > Custom MQTT prefix bijwerken naar de nieuwe
+   `site/<generator_id>/<kast_id>`-waarde (zichtbaar in de kastpopup of de net bijgewerkte export).
+4. Pas ná stap 1-3: herstart de stack met de nieuwe code/config (`docker compose up -d --build`).
+
+Nieuwe/nog niet eerder gebruikte instances hebben niets van het bovenstaande nodig — die krijgen
+`site` gewoon vanaf de eerste opstart.

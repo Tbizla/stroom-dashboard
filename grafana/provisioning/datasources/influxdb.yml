@@ -10,7 +10,7 @@ datasources:
     editable: false
     jsonData:
       version: Flux
-      organization: festival
+      organization: site
       defaultBucket: stroomdata
       tlsSkipVerify: true
     secureJsonData:

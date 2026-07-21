@@ -225,7 +225,7 @@ async function main() {
         a += kp.a; b += kp.b; c += kp.c;
       });
       const stroom = { a: round2(a), b: round2(b), c: round2(c) };
-      const prefix = 'fest/' + gen.id + '/' + gen.id;
+      const prefix = 'site/' + gen.id + '/' + gen.id;
       client.publish(prefix + '/status/em:0', JSON.stringify(maakPayload(stroom)));
       initEnergie(gen.id);
       client.publish(prefix + '/status/emdata:0', JSON.stringify(maakEmdataPayload(accumuleerEnergie(gen.id, stroom, INTERVAL_MS))));

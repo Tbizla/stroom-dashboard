@@ -258,15 +258,11 @@ Grafana:
 > (zie ook de afspraak hierover in CLAUDE.md). Geen van de items hieronder is dus "zomaar" te
 > starten, ook niet de kleine.
 
-- [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
-      aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
-      Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
-      sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina.
-- [ ] **MQTT-topic-prefix van `fest` naar iets generieks (`event`).** `fest/<generator>/<kast>/...`
-      is een restant van toen de scope nog specifiek festivals was; de scope is inmiddels breder
-      ("events"). Raakt `mqttPrefix()` in `server.js`, de topic-parsing in `telegraf.conf`, de
-      Shelly-configuratie-instructies in README.md, en (impliciet) elke Shelly die al met de oude
-      prefix is ingesteld. Vraagt een bewuste migratie, geen kale zoek-en-vervang.
+- [x] **MQTT-topic-prefix van `fest` naar `site`, plus InfluxDB-org `festival` → `site`.** Afgerond
+      — zie [specs/mqtt-prefix-migratie-plan.md](specs/mqtt-prefix-migratie-plan.md) en README.md
+      §13 voor de migratiestappen op een bestaande instance (InfluxDB-org hernoemen, topologie-data
+      bijwerken, fysieke Shelly's herconfigureren). **Laatste openstaande punt voor v2 — v2-roadmap
+      is hiermee compleet.**
 - [x] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Afgerond — zie
       [specs/shelly-data-audit.md](specs/shelly-data-audit.md). Conclusie: er mist data. Eén
       bevinding (fasefrequenties) wordt nu opgepakt, zie hieronder; de rest is doorgeschoven naar
@@ -296,3 +292,8 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
 - [ ] **Generator-EM-rework-vervolg: native telemetrie-protocolintegratie.** Bewust uitgesteld
       tijdens de Generator-EM-rework (zie [specs/generator-em-rework-plan.md](specs/generator-em-rework-plan.md))
       — generators die niet via Shelly+CT-klem maar via een eigen protocol uit te lezen zijn.
+- [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
+      aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
+      Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
+      sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina. Hangt
+      ook samen met het uitgestelde "per-fase fout-/vlagindicatoren"-punt hierboven.
