@@ -824,6 +824,12 @@ app.get('/api/overzicht/energie', async (req, res) => {
         '  |> filter(fn: (r) => r._field == "total_act_power")\n' +
         '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
         '  |> group(columns: ["kast"])\n' +
+        // group() hierboven merget series van verschillende Telegraf-"generaties" in elkaar (een
+        // Telegraf-herstart via telegraf-herstarter/ krijgt een nieuwe host-tag, dus een andere
+        // oorspronkelijke tabel) zonder de rijvolgorde te garanderen — integral() vereist expliciet
+        // op _time gesorteerde input, anders kan het (soms negatieve) onzin-uitkomsten geven zodra
+        // een periode over zo'n herstart heen loopt
+        '  |> sort(columns: ["_time"])\n' +
         '  |> integral(unit: 1h)\n' +
         '  |> group()\n' +
         '  |> sum()\n' +
