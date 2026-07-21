@@ -41,9 +41,9 @@ function maakPayload(stroom) {
   const gemVoltage = (a.voltage + b.voltage + c.voltage) / 3;
   return {
     id: 0,
-    a_current: a.current, a_voltage: a.voltage, a_act_power: a.power, a_aprt_power: a.power, a_pf: 0.98,
-    b_current: b.current, b_voltage: b.voltage, b_act_power: b.power, b_aprt_power: b.power, b_pf: 0.98,
-    c_current: c.current, c_voltage: c.voltage, c_act_power: c.power, c_aprt_power: c.power, c_pf: 0.98,
+    a_current: a.current, a_voltage: a.voltage, a_act_power: a.power, a_aprt_power: a.power, a_pf: 0.98, a_freq: round1(rand(49.9, 50.1)),
+    b_current: b.current, b_voltage: b.voltage, b_act_power: b.power, b_aprt_power: b.power, b_pf: 0.98, b_freq: round1(rand(49.9, 50.1)),
+    c_current: c.current, c_voltage: c.voltage, c_act_power: c.power, c_aprt_power: c.power, c_pf: 0.98, c_freq: round1(rand(49.9, 50.1)),
     n_current: null,
     total_current: totaalStroom,
     total_act_power: round1(totaalStroom * gemVoltage),

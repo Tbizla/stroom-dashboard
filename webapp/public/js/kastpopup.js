@@ -103,7 +103,8 @@ export function renderKastPopup(){
       '<tr><td>'+t('kastpopup.spanning')+'</td><td>'+fmtVeld(d.a_voltage,'V',0)+'</td><td>'+fmtVeld(d.b_voltage,'V',0)+'</td><td>'+fmtVeld(d.c_voltage,'V',0)+'</td></tr>'+
       '<tr><td>'+t('kastpopup.actVermogen')+'</td><td>'+fmtVeld(d.a_act_power,'W',0)+'</td><td>'+fmtVeld(d.b_act_power,'W',0)+'</td><td>'+fmtVeld(d.c_act_power,'W',0)+'</td></tr>'+
       '<tr><td>'+t('kastpopup.schijnbVermogen')+'</td><td>'+fmtVeld(d.a_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.b_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.c_aprt_power,'VA',0)+'</td></tr>'+
-      '<tr><td>'+t('kastpopup.cosPhi')+'</td><td>'+fmtVeld(d.a_pf,'',2)+'</td><td>'+fmtVeld(d.b_pf,'',2)+'</td><td>'+fmtVeld(d.c_pf,'',2)+'</td></tr>';
+      '<tr><td>'+t('kastpopup.cosPhi')+'</td><td>'+fmtVeld(d.a_pf,'',2)+'</td><td>'+fmtVeld(d.b_pf,'',2)+'</td><td>'+fmtVeld(d.c_pf,'',2)+'</td></tr>'+
+      '<tr><td>'+t('kastpopup.frequentie')+'</td><td>'+fmtVeld(d.a_freq,'Hz',1)+'</td><td>'+fmtVeld(d.b_freq,'Hz',1)+'</td><td>'+fmtVeld(d.c_freq,'Hz',1)+'</td></tr>';
     el.appendChild(tabel);
 
     const totRow = document.createElement('div');

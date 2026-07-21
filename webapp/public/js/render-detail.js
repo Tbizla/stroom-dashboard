@@ -28,7 +28,7 @@ export function metingenHtml(node, d){
   if(d && d.total_current!=null) html += '<div class="metric"><span class="k">'+t('detail.totaleStroom')+'</span><span>'+d.total_current.toFixed(2)+' A</span></div>';
   if(d){
     ['a','b','c'].forEach((ph, i)=>{
-      if(d[ph+'_current']!=null) html += '<div class="metric"><span class="k">'+faseSwatch(i)+t('detail.fase')+' '+ph.toUpperCase()+'</span><span>'+d[ph+'_current'].toFixed(2)+' A · '+(d[ph+'_voltage']?d[ph+'_voltage'].toFixed(0)+'V':'')+'</span></div>';
+      if(d[ph+'_current']!=null) html += '<div class="metric"><span class="k">'+faseSwatch(i)+t('detail.fase')+' '+ph.toUpperCase()+'</span><span>'+d[ph+'_current'].toFixed(2)+' A · '+(d[ph+'_voltage']?d[ph+'_voltage'].toFixed(0)+'V':'')+(d[ph+'_freq']!=null?' · '+d[ph+'_freq'].toFixed(1)+'Hz':'')+'</span></div>';
     });
     if(d.total_act_power!=null) html += '<div class="metric"><span class="k">'+t('detail.vermogen')+'</span><span>'+d.total_act_power.toFixed(0)+' W</span></div>';
     html += '<div class="metric"><span class="k">'+t('detail.laatsteUpdate')+'</span><span>'+new Date(d.ts).toLocaleTimeString(huidigeLocale())+'</span></div>';

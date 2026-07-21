@@ -112,6 +112,11 @@ zetten zonder code aan te passen.
   bovenaan de eigen self-meter-status (stip) van de generator/groep zelf, daaronder expliciet
   gelabeld "onderliggend:" de opgetelde groen/amber/rood-badges van de kasten die eraan hangen — zelfde
   onderscheid ook op de Overzicht-kaarten (Rapportages-tabblad)
+- Frequentie per fase (`a_freq`/`b_freq`/`c_freq`, Hz): eigen rij in de kastpopup-tabel (1 decimaal,
+  zelfde patroon als Stroom/Spanning/Act. vermogen) en toegevoegd aan de per-fase metric-regel in de
+  aside-detail ("Fase A: X A · Y V · Z Hz") — zie
+  [specs/fase-frequenties-plan.md](specs/fase-frequenties-plan.md). Geen nieuwe databron (komt al
+  ongewijzigd door Telegraf heen) en geen eigen statuskleur/alert-drempel
 - Klikken op een kast-, generator- of groep-pin op de plattegrond opent een databallon ter plekke:
   voor een kast of los aggregaat/generator de volledige MQTT-payload (stroom/spanning/act. en
   schijnbaar vermogen/cos φ per fase, totalen, cumulatieve energie in kWh, belastingsbalk,
@@ -262,9 +267,32 @@ Grafana:
       ("events"). Raakt `mqttPrefix()` in `server.js`, de topic-parsing in `telegraf.conf`, de
       Shelly-configuratie-instructies in README.md, en (impliciet) elke Shelly die al met de oude
       prefix is ingesteld. Vraagt een bewuste migratie, geen kale zoek-en-vervang.
-- [ ] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Controleren of de Shelly Pro 3EM
-      daadwerkelijk alles doorstuurt wat 'm aan data zou kunnen leveren (vergelijk met de volledige
-      Shelly EM-API/documentatie). **Als blijkt dat dit niet het geval is: eerst een analyse-
-      document opstellen** (wat mist, wat zou dat toevoegen, wat vraagt dat van Telegraf/InfluxDB/
-      de webapp) — geen code voordat die analyse er is.
+- [x] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Afgerond — zie
+      [specs/shelly-data-audit.md](specs/shelly-data-audit.md). Conclusie: er mist data. Eén
+      bevinding (fasefrequenties) wordt nu opgepakt, zie hieronder; de rest is doorgeschoven naar
+      v3 (zie Roadmap v3).
+- [x] **Fasefrequenties tonen (`a_freq`/`b_freq`/`c_freq`).** Afgerond — zie
+      [specs/fase-frequenties-plan.md](specs/fase-frequenties-plan.md) en de Live-monitoring-feature
+      hierboven.
 - [ ] *(meer volgt)*
+
+## Roadmap v3 (nog niet gestart)
+
+Bewust nog niet oppakken — komt aan de beurt ná de huidige v2-roadmap. Volgt dezelfde
+werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
+
+- [ ] **Per-fase fout-/vlagindicatoren + neutrale stroom** (`a_errors`/`a_flags`/`b_*`/`c_*`/
+      `n_current`/`n_errors`/component-brede `errors`) — uit de Shelly-audit. Waardevol (directe
+      device-eigen overvoltage/overcurrent/overpower/bekabelingsfout-detectie), maar eerst moet
+      geverifieerd worden of Telegraf's standaard JSON-parser deze array-velden momenteel al dan
+      niet stilzwijgend laat vallen. Hangt bovendien samen met het nog openstaande
+      "Notificatiekanaal voor alerting"-item hierboven — niet in isolatie oppakken.
+- [ ] **`EMData`-component-brede `errors`** (`database_error`/`ct_type_not_set`) — zelfde
+      array-kanttekening als hierboven, device-zelfdiagnose, lage prioriteit.
+- [ ] **Interval-aggregaten** (`EMData.GetRecords`/`GetData`/`GetNetEnergies`: min/max/gemiddelde
+      per fase, reactief vermogen) — komen niet binnen via de huidige MQTT-architectuur, vereisen
+      een fundamenteel andere ophaalmethode (HTTP-polling of een Shelly Script). Alleen oppakken bij
+      concrete behoefte, bijv. vanuit een rijker PDF-rapport.
+- [ ] **Generator-EM-rework-vervolg: native telemetrie-protocolintegratie.** Bewust uitgesteld
+      tijdens de Generator-EM-rework (zie [specs/generator-em-rework-plan.md](specs/generator-em-rework-plan.md))
+      — generators die niet via Shelly+CT-klem maar via een eigen protocol uit te lezen zijn.
