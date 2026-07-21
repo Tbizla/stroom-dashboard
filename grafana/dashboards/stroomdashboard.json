@@ -76,7 +76,7 @@
       "id": 8,
       "type": "stat",
       "title": "Totaal energieverbruik $generator - editie $editie ($evenement)",
-      "description": "Geschat energieverbruik (kWh) van alleen de kasten die rechtstreeks op deze generator/groep hangen (parent == generator) — downstream-kasten tellen niet apart mee, hun verbruik zit al in de meting van hun eigen bovenliggende kast. Zelfde integral(unit: 1h)-berekening als de Sankey hieronder, opgeteld i.p.v. per kast getoond. Vermogen mag cumulatief over kasten opgeteld worden (in tegenstelling tot stroom, zie README.md sectie 5). Klik op de waarde voor een drill-down naar alleen de kasten van déze generator (recursief, hoe diep de keten ook vertakt, bijv. via een terreinverdeler) in de \"Per kast\"-sectie hieronder.",
+      "description": "Geschat energieverbruik (kWh) van alleen de kasten die rechtstreeks op deze generator/groep hangen (parent == generator) — downstream-kasten tellen niet apart mee, hun verbruik zit al in de meting van hun eigen bovenliggende kast. Zelfde integral(unit: 1h)-berekening als de Sankey hieronder, opgeteld i.p.v. per kast getoond. Vermogen mag cumulatief over kasten opgeteld worden (in tegenstelling tot stroom, zie README.md sectie 6). Klik op de waarde voor een drill-down naar alleen de kasten van déze generator (recursief, hoe diep de keten ook vertakt, bijv. via een terreinverdeler) in de \"Per kast\"-sectie hieronder.",
       "gridPos": { "h": 4, "w": 24, "x": 0, "y": 1 },
       "repeat": "generator",
       "repeatDirection": "h",

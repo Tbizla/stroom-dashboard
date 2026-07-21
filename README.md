@@ -3,9 +3,57 @@
 Praktische handleiding: stack opzetten, Shelly's koppelen, Grafana-queries en export/import.
 Voor een projectoverzicht (omschrijving, features, roadmap) zie [event_dashboard.md](event_dashboard.md).
 
-## 1. Generators en kasten invoeren
+## 1. Eerste installatie op een nieuwe locatie (checklist)
 
-Alles begint leeg. Open de webapp (zie stap 3), je start automatisch in **Beheer**-modus:
+Voor een verse Linux-machine op een nieuwe locatie, in deze volgorde. (Draai je al een instance van
+vóór de `fest`/`festival` → `site`-migratie? Zie §14 — dit hoofdstuk gaat over een echt nieuwe,
+nog niet eerder gebruikte machine.)
+
+1. **Docker**: Docker Engine + de Compose-v2-plugin (`docker compose version` moet werken — niet
+   het losse, oude `docker-compose` v1, dat kent `--profile` niet). Gebruiker toevoegen aan de
+   `docker`-groep scheelt overal `sudo` moeten typen.
+2. **Vast IP-adres**: reserveer een vaste DHCP-lease (of een statische configuratie) voor deze
+   machine — dat adres komt terug in elke Shelly-config (§3) en in elke browser-bookmark van de
+   crew, dus niet iets om halverwege een editie te wijzigen.
+3. **Firewall**: zorg dat poorten 1883 (MQTT), 8080 (webapp) en 3000 (Grafana) bereikbaar zijn
+   vanaf het lokale netwerk. Deze stack is niet bedoeld om publiek (internet) open te zetten.
+4. **Code ophalen**:
+   ```
+   git clone <repo-url>
+   cd event_stroom_dashboard
+   git checkout dev
+   ```
+   Let op: **`dev`**, niet `main` — `main` is nog de oude v1-stand van vóór de v2-rebuild.
+5. **`.env` invullen**:
+   ```
+   cp .env.example .env
+   ```
+   Vul `INFLUX_PASSWORD`, `INFLUX_TOKEN`, `GRAFANA_PASSWORD` (zelfgekozen, lang/random) en
+   `EVENT_NAME`/`EVENT_EDITION` in.
+6. **Eerst droogtesten met de simulator**, vóórdat er fysieke Shelly's bij komen:
+   ```
+   docker compose --profile test up -d --build
+   ```
+   Open `http://<ip-van-de-machine>:8080`, laad een testtopologie (**Testdata**-tabblad), start de
+   simulator, controleer de **Live**-tab, en probeer één PDF-rapport te genereren (§11) — dat dekt
+   in één keer de hele pijplijn (MQTT → Telegraf → InfluxDB → Grafana → render → webapp). Dit is
+   ook hét moment om machine-specifieke verrassingen te ontdekken (bijv. of alle images op deze
+   hardware/CPU-architectuur draaien) — niet pas op de dag van het evenement zelf.
+7. **Testmodus uit, echte topologie invoeren**:
+   ```
+   docker compose up -d --build
+   ```
+   (zonder `--profile test` — dit stopt de simulator en verbergt het Testdata-tabblad). Dan in
+   **Beheer**: generators/kasten invoeren, plattegrond uploaden, kalibreren (§2).
+8. **Shelly's instellen**, één keer per kast/generator/lid (§3).
+9. **Eenmalige Grafana-setup** voor PDF-rapporten: service-account-token aanmaken (§11).
+10. **Vlak vóór het echte evenement**: nogmaals `docker compose up -d` (zonder `--profile test`)
+    draaien, zodat je zeker weet dat de simulator/het Testdata-tabblad niet meedraait tijdens het
+    evenement zelf.
+
+## 2. Generators en kasten invoeren
+
+Alles begint leeg. Open de webapp (zie §4), je start automatisch in **Beheer**-modus:
 - Maak eerst je generators aan (naam + kVA)
 - Maak per generator de kasten aan (naam, ampèrage, eventueel een afkorting zoals "P1")
 - Koppel elke kast aan de kast waar 'ie stroomtechnisch op doorgelust is via het dropdown-veld **"Gevoed vanaf"** (leeg = rechtstreeks op de generator). De app voorkomt dat je per ongeluk een lus/cyclus maakt.
@@ -15,7 +63,7 @@ Elke kast krijgt automatisch een `mqtt_topic_prefix` (`site/<generator_id>/<kast
 
 Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontainer die samen als één krachtbron optreden)? Kasten koppel je dan aan de groep zelf. Wil je ook de losse leden van die groep live volgen, geef het lid dan een eigen rating (A) in de ledentabel (uitklapbaar via de generatorregel) — het lid krijgt dan net als een kast automatisch een eigen `mqtt_topic_prefix` (`site/<generator_id>/<lid_id>`).
 
-## 2. Shelly's instellen (eenmalig, per kast/generator/lid)
+## 3. Shelly's instellen (eenmalig, per kast/generator/lid)
 
 Op elke Shelly Pro 3EM: Settings > MQTT
 - Enable MQTT: aan
@@ -35,7 +83,7 @@ Het script staat kant-en-klaar in [`shelly/em-fast-publish.js`](shelly/em-fast-p
 2. Settings > Scripts > "+ Add script", plak de inhoud van `em-fast-publish.js`, Save.
 3. Zet "Run on startup" aan en start het script.
 
-## 3. Stack starten
+## 4. Stack starten
 
 ```
 cp .env.example .env
@@ -43,13 +91,13 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000), het stroomdashboard zelf (poort 8080), en een klein `telegraf-herstarter`-servicetje (herstart Telegraf op de achtergrond zodra je de evenementnaam/editie in Beheer wijzigt, zie sectie 11 — heeft de Docker-socket nodig, maar biedt zelf maar één vaste actie aan). Niets hoeft meer los gekopieerd of ingesteld te worden.
+Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000), het stroomdashboard zelf (poort 8080), en een klein `telegraf-herstarter`-servicetje (herstart Telegraf op de achtergrond zodra je de evenementnaam/editie in Beheer wijzigt, zie sectie 12 — heeft de Docker-socket nodig, maar biedt zelf maar één vaste actie aan). Niets hoeft meer los gekopieerd of ingesteld te worden.
 
 Open `http://<ip-van-de-nhq-machine>:8080` — dat werkt vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 
-Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een generator-totalenpaneel bovenaan, een paneel per kast (stroom per fase, geen los "totale stroom"-paneel — zie sectie 5 hieronder waarom) dat automatisch herhaald wordt via een `$kast`-variabele, en een `$editie`-variabele. Alarmdrempels bevat het dashboard bewust niet — die vereisen `rating_a` uit de webapp-topologie, die niet in InfluxDB zit; zie sectie 6 hieronder om die zelf toe te voegen.
+Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een generator-totalenpaneel bovenaan, een paneel per kast (stroom per fase, geen los "totale stroom"-paneel — zie sectie 6 hieronder waarom) dat automatisch herhaald wordt via een `$kast`-variabele, en een `$editie`-variabele. Alarmdrempels bevat het dashboard bewust niet — die vereisen `rating_a` uit de webapp-topologie, die niet in InfluxDB zit; zie sectie 7 hieronder om die zelf toe te voegen.
 
-## 4. Voorbeeldquery — één kast (paneel per kast)
+## 5. Voorbeeldquery — één kast (paneel per kast)
 
 De onderstaande queries gebruiken voorbeeldnamen (`podium1`, `foodtrucks_zuid`, ...). Jouw eigen kast-id's zie je in de Beheer-modus van de webapp — dat zijn de namen die je zelf hebt ingevoerd, verwerkt tot een technische naam (bijv. "Podium 1" → `podium1`).
 
@@ -65,9 +113,9 @@ from(bucket: "stroomdata")
 
 Voor stroom per fase (a/b/c) vervang je de laatste filter door `r._field == "a_current" or r._field == "b_current" or r._field == "c_current"` — zo krijg je drie lijnen in één paneel.
 
-**Let op:** `total_current` is de som van alle drie de fasen, en is dus alleen geschikt om een indruk te krijgen van het totale verbruik — niet om tegen `rating_a` af te zetten (zie sectie 6).
+**Let op:** `total_current` is de som van alle drie de fasen, en is dus alleen geschikt om een indruk te krijgen van het totale verbruik — niet om tegen `rating_a` af te zetten (zie sectie 7).
 
-## 5. Voorbeeldquery — generator-totaal
+## 6. Voorbeeldquery — generator-totaal
 
 Sinds kort staat er ook automatisch een "Totaal energieverbruik $generator"-paneel bovenaan het
 Grafana-dashboard (geprovisioned, geen handmatig werk nodig) — die telt zelf alleen de kasten op
@@ -92,19 +140,19 @@ from(bucket: "stroomdata")
   |> sum()
 ```
 
-Dit geeft drie lijnen (a/b/c) met de opgetelde stroom van die fase over alle drie de kasten — vergelijk elke lijn apart met de generator-rating (zie sectie 6), of neem er met een `max()`-transform in het paneel nog de zwaarst belaste fase uit.
+Dit geeft drie lijnen (a/b/c) met de opgetelde stroom van die fase over alle drie de kasten — vergelijk elke lijn apart met de generator-rating (zie sectie 7), of neem er met een `max()`-transform in het paneel nog de zwaarst belaste fase uit.
 
 Generator noord (podium2 + bar2) werkt hetzelfde, met die twee kasten in de filter.
 
 Vermogen (kVA-schatting) werkt hetzelfde, maar met `r._field == "total_aprt_power"` in plaats van de fase-velden — vermogen optellen over kasten heen is geen probleem, dat is al een 3-fasen-som per kast en dus prima cumulatief.
 
-## 6. Alarmdrempels per kast
+## 7. Alarmdrempels per kast
 
 Elke kast heeft in de webapp (Beheer-modus) een `rating_a` — dat is de stroom die de **aansluiting per fase** aankan (standaard bij CEE-koppelingen: een "63A"-kast mag op élke fase 63A dragen, niet 63A in totaal over de drie fasen samen). Zet in Grafana een drempel op bijvoorbeeld 90% van die waarde tegen de **zwaarst belaste fase** (`a_current`, `b_current` of `c_current`, per timestamp de hoogste van de drie) — bijvoorbeeld een 63A-kast op 56,7A, een 32A-kast op 28,8A. Gebruik hiervoor **niet** `total_current`: dat is de som van alle drie de fasen en zal bij een normale, redelijk gebalanceerde belasting al rond de 300% van `rating_a` liggen voordat er überhaupt een fase overbelast is — een drempel daarop levert dus valse rust (of, bij ongebalanceerde belasting, een gemiste waarschuwing). De ratings van al je eigen kasten zie je in één oogopslag terug in de kasten-tabel in Beheer-modus, of in de export (`/api/export`).
 
-Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie per fase (kVA x 1000 / (3 x 230V) voor een driefasesysteem) en gebruik je diezelfde 90%-vuistregel tegen de zwaarst belaste fase-som uit sectie 5, of je laat het gewoon bij een kVA-drempel op het totaalpaneel (vermogen mag wel cumulatief, zie hierboven).
+Voor de generatoren reken je de kVA om naar een ruwe stroomindicatie per fase (kVA x 1000 / (3 x 230V) voor een driefasesysteem) en gebruik je diezelfde 90%-vuistregel tegen de zwaarst belaste fase-som uit sectie 6, of je laat het gewoon bij een kVA-drempel op het totaalpaneel (vermogen mag wel cumulatief, zie hierboven).
 
-## 7. Testen met fake data
+## 8. Testen met fake data
 
 Er zit een simulator bij die realistisch ogende meetdata voor alle kasten publiceert, zonder dat er Shelly's aangesloten hoeven te zijn. Hij haalt de kastenlijst automatisch op bij de webapp en ververst die elke 5 seconden, dus je hoeft niets handmatig te synchroniseren of te herstarten als je van testtopologie wisselt. Elke kast krijgt een langzaam wisselende belasting, en af en toe (standaard ~1% kans per tik) een kunstmatige piek — handig om de groen/amber/rood-status en later de alerts te testen.
 
@@ -126,14 +174,14 @@ Beide overschrijven de huidige generators en kasten, en je kunt op elk moment tu
 
 Zodra het echte evenement begint: start gewoon opnieuw op zonder `--profile test` (`docker compose up -d`) — de simulator-container stopt dan mee en de testendpoints/het tabblad zijn meteen niet meer bereikbaar.
 
-## 8. Data exporteren
+## 9. Data exporteren
 
 Twee soorten export, voor twee soorten data:
 
 - **Topologie + posities** (welke kasten, ratings, kaart-coördinaten): knop "Exporteer data" bovenin de webapp (`/api/export`) — downloadt één JSON-bestand. Handig als back-up, of om over te zetten naar een nieuwe editie via "Importeer data".
 - **Historische meetdata** (stroom/spanning/vermogen over tijd): dat hoort bij InfluxDB/Grafana. Open het paneel in Grafana, klik het menu (⋮) rechtsboven in het paneel > **Inspect > Data > Download CSV**. Voor grotere exports kun je ook rechtstreeks een Flux-query op InfluxDB loslaten en het resultaat als CSV wegschrijven.
 
-## 9. Back-up herstellen (restore)
+## 10. Back-up herstellen (restore)
 
 Tab **Rapportages > Back-up**, onder de bestaande "Back-up maken"-sectie: zet een eerder gemaakte
 back-up (zip, met de meetdata-optie aangevinkt) terug, in twee modi:
@@ -148,9 +196,9 @@ back-up (zip, met de meetdata-optie aangevinkt) terug, in twee modi:
 Onder de motorkap bevat een back-up-zip met meetdata sinds kort ook een `meetdata.lp`-bestand
 (InfluxDB line-protocol, naast de bestaande leesbare `meetdata.csv`) en een snapshot van
 `topology_edges` (nodig om de Sankey/generator-drilldown ook historisch, per editie, te laten
-kloppen — zie sectie 5). Oudere back-ups zonder `meetdata.lp` kunnen niet hersteld worden.
+kloppen — zie sectie 6). Oudere back-ups zonder `meetdata.lp` kunnen niet hersteld worden.
 
-## 10. PDF-rapport exporteren
+## 11. PDF-rapport exporteren
 
 Tab **Rapportages > PDF-rapport**: editie en periode kiezen, aanvinken welke
 onderdelen erin moeten (generator-totalen, stroom per kast, Sankey-energieverdeling,
@@ -175,9 +223,9 @@ Grafana Service Account nodig om het render-endpoint te mogen aanroepen.
 Zonder deze stap geeft de knop een duidelijke foutmelding ("GRAFANA_REPORT_TOKEN is niet
 ingesteld") in plaats van stil te falen.
 
-## 11. Meerdere edities/jaren vergelijken
+## 12. Meerdere edities/jaren vergelijken
 
-`.env` vult bij de allereerste opstart de startwaarde van `EVENT_EDITION` (bijv. "2027") en `EVENT_NAME` (bijv. "Zomerfestival") in. Telegraf plakt die als tags `editie`/`evenement` op elke meting, dus alle jaren (en evenementen) blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie/evenement, of meerdere edities naast elkaar in één grafiek zetten (via de `$editie`/`$evenement`-variabelen bovenaan het dashboard). `EVENT_NAME` disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. "2026" bij zowel een zomerfestival als een kermis) — belangrijk zodra je back-ups van meerdere evenementen in één archief-instance combineert (zie sectie 9).
+`.env` vult bij de allereerste opstart de startwaarde van `EVENT_EDITION` (bijv. "2027") en `EVENT_NAME` (bijv. "Zomerfestival") in. Telegraf plakt die als tags `editie`/`evenement` op elke meting, dus alle jaren (en evenementen) blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie/evenement, of meerdere edities naast elkaar in één grafiek zetten (via de `$editie`/`$evenement`-variabelen bovenaan het dashboard). `EVENT_NAME` disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. "2026" bij zowel een zomerfestival als een kermis) — belangrijk zodra je back-ups van meerdere evenementen in één archief-instance combineert (zie sectie 10).
 
 **Beide waarden zijn daarna gewoon aan te passen vanuit de webapp** (Beheer > Systeeminstellingen),
 niet alleen via `.env` bij het opstarten — bijv. bij een jaarwisseling, of halverwege een editie na
@@ -185,12 +233,12 @@ een hardwarewissel. Op "Wijzigingen doorvoeren" klikken schrijft de nieuwe waard
 Telegraf kort op de achtergrond (een paar seconden aan metingen rond dat moment kunnen gemist
 worden) zodat nieuwe metingen ook echt de nieuwe tags krijgen — Telegraf leest deze waarden namelijk
 alleen in bij het *aanmaken* van zijn container, niet bij een gewone restart. Dat herstarten gebeurt
-via het kleine `telegraf-herstarter`-servicetje (zie sectie 3): dat heeft de Docker-socket, de
+via het kleine `telegraf-herstarter`-servicetje (zie sectie 4): dat heeft de Docker-socket, de
 webapp zelf niet.
 
-## 12. Alarmering (Grafana Alerting)
+## 13. Alarmering (Grafana Alerting)
 
-Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 6 hierboven — gebruik hiervoor niet `total_current`). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
+Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 7 hierboven — gebruik hiervoor niet `total_current`). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
 
 Voorbeeld alert-conditie in Grafana (per kast-paneel):
 - Query: `a_current`, `b_current` en `c_current` van de betreffende kast, laatste 1 minuut, met een `max()`-transform (of Flux `pivot` + `map` om per timestamp de hoogste fase te berekenen) zodat je één "hoogste fase"-reeks overhoudt
@@ -199,7 +247,7 @@ Voorbeeld alert-conditie in Grafana (per kast-paneel):
 
 Zodra je een kanaal kiest, voeg je die toe onder Alerting > Contact points, en koppel je 'm aan een notification policy. Ondersteunde opties: Telegram, Pushover, ntfy.sh, e-mail, Slack, webhook, en meer.
 
-## 13. Migreren van een bestaande `fest`/`festival`-instance naar `site`
+## 14. Migreren van een bestaande `fest`/`festival`-instance naar `site`
 
 De MQTT-topic-prefix (was `fest/<generator>/<kast>/...`) en de InfluxDB-organisatienaam (was
 `festival`) heten nu allebei `site` — een bewuste harde knip, geen automatische compatibiliteit met

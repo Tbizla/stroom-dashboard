@@ -803,7 +803,7 @@ app.get('/api/rapport/periode', async (req, res) => {
 // ---------- Overzicht-subtab (Rapportages-tab, roadmap-item 6 / §11.3 optie B): periode-kWh-totalen
 // per generator/groep, hergebruikt influxQuery() net als het PDF-rapport hierboven. Zelfde principe
 // als het "Totaal energieverbruik $generator"-paneel in Grafana (zie event_dashboard.md sectie
-// Grafana-dashboards / README.md sectie 5): alleen de kasten met parent:null bij een generator
+// Grafana-dashboards / README.md sectie 6): alleen de kasten met parent:null bij een generator
 // optellen, downstream-kasten NIET meetellen (hun verbruik zit al in de bovenliggende meting) ----------
 app.get('/api/overzicht/energie', async (req, res) => {
   const { van, tot } = req.query;

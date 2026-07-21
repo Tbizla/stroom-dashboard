@@ -124,7 +124,7 @@ export function renderKastPopup(){
   el.appendChild(energieRow);
 
   // statusbalk: zelfde logica als de aside-detail (metingenHtml) — hoogste fase t.o.v. rating_a,
-  // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 6)
+  // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 7)
   const maxFase = maxFaseStroom(d);
   const pct = (maxFase!=null && k.rating_a!=null) ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
   const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';

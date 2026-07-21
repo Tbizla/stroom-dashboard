@@ -180,7 +180,7 @@ zetten zonder code aan te passen.
 - "Totaal energieverbruik $generator"-paneel bovenaan het dashboard: telt het geschatte
   energieverbruik (kWh, `integral(unit: 1h)` van `total_act_power`) op van alleen de kasten die
   rechtstreeks op die generator/groep hangen (`parent == generator` in `topology_edges`) —
-  automatisch, geen handmatige kastenlijst nodig zoals de voorbeeldquery in `README.md` sectie 5.
+  automatisch, geen handmatige kastenlijst nodig zoals de voorbeeldquery in `README.md` sectie 6.
   Klikken op de waarde is een drill-down: de `$kast`-variabele (en dus het paneel hieronder)
   beperkt zich dan tot alleen de kasten van die generator, recursief hoe diep de keten ook
   vertakt (bijv. via een terreinverdeler) — via `topology_edges`, geen losse sub-dashboards nodig

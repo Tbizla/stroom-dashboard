@@ -27,7 +27,7 @@ duidelijk is, bij Claude Code.
 - **Edities vergelijken bestaat al, zolang de InfluxDB-data blijft staan**: elke meting krijgt een
   `editie`-tag (`EVENT_EDITION` in `.env`, doorgezet door Telegraf), en Grafana heeft al een
   `$editie`-variabele om edities naast elkaar te zetten in dezelfde bucket (`stroomdata`) — zie
-  README.md sectie 10. Dit werkt dus al **mits dezelfde InfluxDB-instance/volume blijft bestaan**
+  README.md sectie 12. Dit werkt dus al **mits dezelfde InfluxDB-instance/volume blijft bestaan**
   tussen edities.
 - **Topologie is altijd single-instance**: de webapp kent maar één actieve topologie tegelijk
   (`readTopo()`/`writeTopo()`), met `/api/export`/`/api/import` als enige manier om die tussen
@@ -141,7 +141,7 @@ wijzigingen (technisch fundament voor Code, geen designbeslissing):
    alleen de rijen van de huidige editie (predicate uitbreiden met `editie="<huidige>"`) i.p.v. de
    hele measurement — zo blijven oudere edities' edges los bewaard i.p.v. overschreven.
 2. **Grafana's Sankey-paneel filtert/joint mee op `$editie`.** De bestaande Flux-`join()` tussen de
-   vermogensdata en `topology_edges` (zie README.md sectie 5/event_dashboard.md) moet de editie
+   vermogensdata en `topology_edges` (zie README.md sectie 6/event_dashboard.md) moet de editie
    erbij betrekken, anders lopen edges van verschillende edities door elkaar zodra er meerdere in
    dezelfde bucket staan.
 3. **Back-up/herstel neemt `topology_edges` mee als onderdeel van "meetdata".** Nu expliciet
