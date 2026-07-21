@@ -1,7 +1,7 @@
 {
   "title": "Stroomdashboard - overzicht",
   "uid": "stroomdashboard-overzicht",
-  "tags": ["stroom", "festival"],
+  "tags": ["stroom"],
   "timezone": "browser",
   "editable": true,
   "graphTooltip": 1,
