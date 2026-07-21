@@ -5,9 +5,11 @@ const path = require('path');
 const dns = require('dns');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const archiver = require('archiver');
+const AdmZip = require('adm-zip');
 
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
+const INSTELLINGEN_FILE = path.join(DATA_DIR, 'instellingen.json');
 const MAP_BASENAME = path.join(DATA_DIR, 'kaart');
 const LOGO_BASENAME = path.join(DATA_DIR, 'logo');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
@@ -43,6 +45,14 @@ async function alleenInTestmodus(req, res, next) {
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(TOPO_FILE)) fs.copyFileSync(DEFAULT_TOPO, TOPO_FILE);
+// eerste-opstart-default komt uit de .env-variabelen (zelfde als Telegraf nu al gebruikt); wordt
+// hierna uitsluitend via Beheer/`/api/instellingen` beheerd, zie specs/single-use-vs-edities-diagnose.md
+if (!fs.existsSync(INSTELLINGEN_FILE)) {
+  fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify({
+    event_name: veiligeTagWaarde(process.env.EVENT_NAME),
+    event_edition: veiligeTagWaarde(process.env.EVENT_EDITION),
+  }, null, 2), 'utf8');
+}
 
 // niet-persistent: staat na elke herstart van de webapp weer standaard uit, zodat een
 // vergeten aan-gezette simulator nooit per ongeluk blijft doorlopen na een herstart.
@@ -82,14 +92,18 @@ function writeTopo(data) {
 // Schrijft de parent/child-structuur (welke kast op welke kast/generator hangt) als losse
 // punten naar InfluxDB, zodat Grafana de live vermogensdata kan koppelen aan de actuele
 // topologie voor bijv. een multi-level Sankey-diagram — zonder dat er iets aan de Shelly's
-// (MQTT-prefix) hoeft te veranderen. InfluxDB is append-only en "kast" is een tag, dus een kast
-// die ooit bestond (hernoemd/verwijderd/oude testtopologie) blijft anders voor altijd als losse
-// reeks staan — vandaar eerst de hele measurement wissen en daarna de actuele set opnieuw
-// schrijven, zodat topology_edges altijd precies (en alleen) de huidige topologie weerspiegelt,
-// ook na "Alles wissen" (dan blijft er na de delete gewoon niets over om te herschrijven).
-// Best effort: als InfluxDB niet bereikbaar is, faalt de topologie-opslag zelf niet mee.
+// (MQTT-prefix) hoeft te veranderen. Getagd met de huidige editie+evenement (uit instellingen.json,
+// zie /api/instellingen) en de delete-predicate is daartoe beperkt — zodat oudere edities/
+// evenementen (bijv. teruggezet via het restore-endpoint) niet worden weggegooid bij een
+// live Beheer-wijziging van de huidige editie. InfluxDB is append-only en "kast" is een tag, dus
+// een kast die ooit bestond (hernoemd/verwijderd/oude testtopologie) blijft anders voor altijd als
+// losse reeks staan binnen de huidige editie — vandaar eerst de scoped delete en daarna de actuele
+// set opnieuw schrijven, ook na "Alles wissen" (dan blijft er na de delete niets over om te
+// herschrijven). Best effort: als InfluxDB niet bereikbaar is, faalt de topologie-opslag zelf niet mee.
 async function syncTopologyToInflux(data) {
   if (!INFLUX_TOKEN) return;
+  const { event_name, event_edition } = readInstellingen();
+  if (!event_name || !event_edition) return; // nog geen (geldige) instellingen: niets te taggen
   const deleteUrl = INFLUX_URL + '/api/v2/delete?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET);
   const deleteRes = await fetch(deleteUrl, {
     method: 'POST',
@@ -97,14 +111,15 @@ async function syncTopologyToInflux(data) {
     body: JSON.stringify({
       start: '1970-01-01T00:00:00Z',
       stop: new Date(Date.now() + 1000).toISOString(),
-      predicate: '_measurement="topology_edges"',
+      predicate: '_measurement="topology_edges" AND editie="' + event_edition + '" AND evenement="' + event_name + '"',
     }),
   });
   if (!deleteRes.ok) throw new Error('InfluxDB delete (topology_edges) gaf ' + deleteRes.status + ': ' + (await deleteRes.text()));
   if (!data.kasten.length) return;
   const lines = data.kasten.map((k) => {
     const parent = k.parent || k.generator;
-    return 'topology_edges,kast=' + k.id + ',parent=' + parent + ',generator=' + k.generator + ' value=1';
+    return 'topology_edges,kast=' + k.id + ',parent=' + parent + ',generator=' + k.generator +
+      ',editie=' + event_edition + ',evenement=' + event_name + ' value=1';
   });
   const writeUrl = INFLUX_URL + '/api/v2/write?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET) + '&precision=s';
   const res = await fetch(writeUrl, {
@@ -142,6 +157,23 @@ function maaktCyclus(data, kastId, nieuweParentId) {
 
 // ---------- topologie ophalen ----------
 app.get('/api/topology', (req, res) => res.json(readTopo()));
+
+// ---------- instellingen: event_name/event_edition, bewerkbaar vanuit Beheer i.p.v. alleen via
+// .env — enige bron van waarheid aan de webapp-kant voor de editie/evenement-tags die
+// syncTopologyToInflux() (topology_edges) en het restore-endpoint (collision-check) gebruiken.
+// Zie specs/single-use-vs-edities-diagnose.md §A4. ----------
+function readInstellingen() { return JSON.parse(fs.readFileSync(INSTELLINGEN_FILE, 'utf8')); }
+function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+
+app.get('/api/instellingen', (req, res) => res.json(readInstellingen()));
+app.put('/api/instellingen', (req, res) => {
+  const { event_name, event_edition } = req.body || {};
+  if (!veiligeTagWaarde(event_name) || !veiligeTagWaarde(event_edition)) {
+    return res.status(400).json({ error: 'evenementnaam en editie zijn verplicht en mogen alleen letters, cijfers, "_" of "-" bevatten' });
+  }
+  writeInstellingen({ event_name, event_edition });
+  res.json({ ok: true });
+});
 
 // zodat de webapp-UI het Testdata-tabblad alleen toont als de bijbehorende endpoints ook echt werken
 app.get('/api/test-mode', async (req, res) => res.json({ testMode: await isTestMode() }));
@@ -613,6 +645,67 @@ async function influxQuery(flux) {
   return res.text();
 }
 
+// zelfde als influxQuery(), maar zonder de Flux-annotatieregels (#datatype/#group/#default) —
+// alleen bruikbaar als de query zelf al is opgezet (pivot(), group()) om precies één tabel met
+// een stabiel kolomschema terug te geven, zodat csvNaarLineProtocol() een simpele header + rijen
+// kan aannemen i.p.v. een volwaardige multi-tabel-Flux-CSV-parser nodig te hebben. Zie §A3,
+// specs/single-use-vs-edities-diagnose.md.
+async function influxQueryPlatteCsv(flux) {
+  const res = await fetch(INFLUX_URL + '/api/v2/query?org=' + encodeURIComponent(INFLUX_ORG), {
+    method: 'POST',
+    headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'application/json', Accept: 'application/csv' },
+    body: JSON.stringify({ query: flux, dialect: { annotations: [], header: true, delimiter: ',' } }),
+  });
+  if (!res.ok) throw new Error('InfluxDB-query gaf ' + res.status + ': ' + (await res.text()));
+  return res.text();
+}
+
+// welke kolomnamen van een measurement daadwerkelijk tags zijn (i.p.v. een hardcoded lijst, die
+// zou breken zodra Telegraf ooit een tag toevoegt die we niet kennen — bijv. `host`/`topic`, die
+// de mqtt_consumer-input er zelf al bij zet naast de tags uit topic_parsing). Ongefilterde
+// schema.tagKeys() geeft ook een paar altijd-aanwezige pseudo-kolommen terug die geen echte tag
+// zijn, die eruit filteren.
+async function haalTagKolommenOp(measurement) {
+  const csv = await influxQuery(
+    'import "influxdata/influxdb/schema"\n' +
+    'schema.tagKeys(bucket: "' + INFLUX_BUCKET + '", predicate: (r) => r._measurement == "' + measurement + '")'
+  );
+  const geenEchteTag = new Set(['_start', '_stop', '_field', '_measurement']);
+  return new Set(csvKolomWaarden(csv, '_value').filter((k) => !geenEchteTag.has(k)));
+}
+
+// zet een platte (pivot()+group()) InfluxDB-CSV-respons om naar line-protocol-regels voor
+// `meetdata.lp` — de machine-leesbare tegenhanger van `meetdata.csv`, zodat het restore-endpoint
+// (§A5) niet zelf een Flux-CSV-parser hoeft te schrijven om teruggeschreven te kunnen worden.
+// Kast-/generator-/editie-/evenementwaarden bevatten door veiligeTagWaarde()/uniekeId() nooit
+// komma's of spaties, dus een simpele split(',') per regel is hier veilig (zelfde aanname als
+// csvKolomWaarden() elders in dit bestand). Numerieke Shelly-velden hebben geen quoting nodig;
+// eventuele niet-tag string-kolommen (bijv. Telegraf's eigen `topic`) worden overgeslagen i.p.v.
+// als ongequote (en dus ongeldige) line-protocol-string-field weggeschreven.
+function csvNaarLineProtocol(csv, measurement, tagKolommen) {
+  const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
+  if (regels.length < 2) return [];
+  const kolommen = regels[0].split(',');
+  const tijdIdx = kolommen.indexOf('_time');
+  if (tijdIdx === -1) return [];
+  return regels.slice(1).map((regel) => {
+    const waarden = regel.split(',');
+    const tags = [];
+    const velden = [];
+    kolommen.forEach((kolom, i) => {
+      if (kolom === '_time' || kolom === 'result' || kolom === 'table') return;
+      const waarde = waarden[i];
+      if (waarde === undefined || waarde === '') return;
+      if (tagKolommen.has(kolom)) { tags.push(kolom + '=' + waarde); return; }
+      if (isNaN(Number(waarde))) return; // niet-numerieke, niet-tag-kolom: negeren i.p.v. ongequote wegschrijven
+      velden.push(kolom + '=' + waarde);
+    });
+    if (!velden.length) return null;
+    const ts = Math.floor(new Date(waarden[tijdIdx]).getTime() / 1000);
+    return measurement + ',' + tags.join(',') + ' ' + velden.join(',') + ' ' + ts;
+  }).filter(Boolean);
+}
+
 // bewust geen generieke CSV-parser: leest alleen de ene kolom die de twee queries hieronder
 // nodig hebben, en faalt duidelijk (lege lijst) bij iets onverwachts i.p.v. te gokken
 function csvKolomWaarden(csv, kolom) {
@@ -627,12 +720,14 @@ function csvKolomWaarden(csv, kolom) {
   return regels.slice(1).map((r) => r.split(',')[idx]).filter((v) => v !== undefined && v !== '');
 }
 
-// alleen simpele, veilige tekens toegestaan in een editie-waarde die in een Flux-querystring
-// terechtkomt (voorkomt Flux-injectie via de query-param) — matcht hoe edities er in de praktijk
-// uitzien (jaartallen/korte namen, zie EVENT_EDITION in .env.example)
-function veiligeEditie(editie) {
-  if (!editie || !/^[a-zA-Z0-9_-]+$/.test(editie)) return null;
-  return editie;
+// alleen simpele, veilige tekens toegestaan in een waarde die in een Flux-querystring óf een
+// InfluxDB line-protocol-tag terechtkomt (voorkomt Flux-/line-protocol-injectie) — matcht hoe
+// edities/evenementnamen er in de praktijk uitzien (jaartallen/korte namen zonder spaties/komma's,
+// zie EVENT_EDITION/EVENT_NAME in .env.example). Gebruikt voor editie, evenement, en de
+// instellingen-velden (§A4, specs/single-use-vs-edities-diagnose.md) — allemaal dezelfde soort waarde.
+function veiligeTagWaarde(waarde) {
+  if (!waarde || !/^[a-zA-Z0-9_-]+$/.test(waarde)) return null;
+  return waarde;
 }
 
 app.get('/api/rapport/edities', async (req, res) => {
@@ -645,7 +740,7 @@ app.get('/api/rapport/edities', async (req, res) => {
 });
 
 app.get('/api/rapport/periode', async (req, res) => {
-  const editie = req.query.editie === '__alle__' ? null : veiligeEditie(req.query.editie);
+  const editie = req.query.editie === '__alle__' ? null : veiligeTagWaarde(req.query.editie);
   if (req.query.editie && req.query.editie !== '__alle__' && !editie) return res.status(400).json({ error: 'ongeldige editie' });
   const filter = editie ? '|> filter(fn: (r) => r.editie == "' + editie + '")' : '';
   const basis =
@@ -938,7 +1033,7 @@ app.post('/api/rapport/genereer', (req, res) => {
   if (rapportJob.status === 'bezig') return res.status(409).json({ error: 'er loopt al een rapportgeneratie' });
   const { editie, van, tot, onderdelen, taal } = req.body || {};
   if (!editie || !van || !tot || !onderdelen) return res.status(400).json({ error: 'editie, van, tot en onderdelen zijn verplicht' });
-  if (editie !== '__alle__' && !veiligeEditie(editie)) return res.status(400).json({ error: 'ongeldige editie' });
+  if (editie !== '__alle__' && !veiligeTagWaarde(editie)) return res.status(400).json({ error: 'ongeldige editie' });
 
   rapportJob = {
     status: 'bezig', editie, van, tot, onderdelen, taal: I18N_TALEN[taal] ? taal : 'nl',
@@ -972,6 +1067,57 @@ let backupJob = {
   bestandsnaam: null, bestandsgrootte: null, foutmelding: null,
 };
 
+// levert de twee vormen van "meetdata" voor een back-up: `meetdata.csv` (leesbaar, ongewijzigd
+// gedrag: alleen shelly_em/shelly_emdata over de gekozen periode) en `meetdata.lp` (line-protocol,
+// inclusief topology_edges, bedoeld om via het restore-endpoint terug te schrijven — zie §A3,
+// specs/single-use-vs-edities-diagnose.md). topology_edges wordt niet over de gekozen periode
+// bevraagd (het is een structuur-snapshot, geen tijdreeks) maar als laatste-bekende-stand per
+// kast, zelfde patroon als de `edges`-subquery in het Grafana-Sankey-paneel.
+async function genereerMeetdataBestanden(meetdataPeriode) {
+  const van = new Date(meetdataPeriode.van).toISOString();
+  const tot = new Date(meetdataPeriode.tot).toISOString();
+  const pivot = '|> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")\n' +
+    '  |> drop(columns: ["_start", "_stop", "_measurement"])\n  |> group()';
+
+  const csvPromise = influxQuery(
+    'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+    '  |> range(start: ' + van + ', stop: ' + tot + ')\n' +
+    '  |> filter(fn: (r) => r._measurement == "shelly_em" or r._measurement == "shelly_emdata")'
+  );
+
+  const { event_name, event_edition } = readInstellingen();
+  const lpQueries = [
+    { measurement: 'shelly_em', flux: 'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+      '  |> range(start: ' + van + ', stop: ' + tot + ')\n' +
+      '  |> filter(fn: (r) => r._measurement == "shelly_em")\n  ' + pivot },
+    { measurement: 'shelly_emdata', flux: 'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+      '  |> range(start: ' + van + ', stop: ' + tot + ')\n' +
+      '  |> filter(fn: (r) => r._measurement == "shelly_emdata")\n  ' + pivot },
+  ];
+  if (event_name && event_edition) {
+    // geen pivot() hier: topology_edges heeft toch al maar één veld (`value`), en group(columns:
+    // ["kast"]) vóór last() (nodig om per kast alleen de laatste bekende stand te pakken, zelfde
+    // patroon als de `edges`-subquery in het Grafana-Sankey-paneel) haalt generator/parent/editie/
+    // evenement al uit de group-key — pivot() zou die kolommen daarna alsnog laten vallen (het
+    // bewaart alleen rowKey- en group-key-kolommen), dus hier alleen hernoemen/opschonen i.p.v. pivotten.
+    lpQueries.push({ measurement: 'topology_edges', flux:
+      'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+      '  |> range(start: -30d)\n' +
+      '  |> filter(fn: (r) => r._measurement == "topology_edges" and r.editie == "' + event_edition + '" and r.evenement == "' + event_name + '")\n' +
+      '  |> group(columns: ["kast"])\n  |> last()\n' +
+      '  |> rename(columns: {_value: "value"})\n' +
+      '  |> drop(columns: ["_start", "_stop", "_field", "_measurement"])\n  |> group()' });
+  }
+
+  const [csv, lpCsvs, tagKolommenPerMeasurement] = await Promise.all([
+    csvPromise,
+    Promise.all(lpQueries.map((q) => influxQueryPlatteCsv(q.flux))),
+    Promise.all(lpQueries.map((q) => haalTagKolommenOp(q.measurement))),
+  ]);
+  const lp = lpQueries.flatMap((q, i) => csvNaarLineProtocol(lpCsvs[i], q.measurement, tagKolommenPerMeasurement[i]));
+  return { csv, lp };
+}
+
 async function voerBackupGeneratieUit(meetdataPeriode) {
   const bestandsnaam = 'backup_stroomdashboard_' + Date.now() + '.zip';
   const bestandspad = path.join(BACKUP_DIR, bestandsnaam);
@@ -992,12 +1138,9 @@ async function voerBackupGeneratieUit(meetdataPeriode) {
     if (!meetdataPeriode) { archive.finalize(); return; }
     // meetdata pas ná de synchrone entries toevoegen: archiver serialiseert intern, en de
     // async influxQuery() mag de finalize() niet vóór zijn (anders mist de zip dit onderdeel)
-    influxQuery(
-      'from(bucket: "' + INFLUX_BUCKET + '")\n' +
-      '  |> range(start: ' + new Date(meetdataPeriode.van).toISOString() + ', stop: ' + new Date(meetdataPeriode.tot).toISOString() + ')\n' +
-      '  |> filter(fn: (r) => r._measurement == "shelly_em" or r._measurement == "shelly_emdata")'
-    ).then((csv) => {
+    genereerMeetdataBestanden(meetdataPeriode).then(({ csv, lp }) => {
       archive.append(csv, { name: 'meetdata.csv' });
+      archive.append(lp.join('\n'), { name: 'meetdata.lp' });
       archive.finalize();
     }).catch((e) => {
       archive.append('kon meetdata niet ophalen: ' + e.message, { name: 'meetdata_FOUT.txt' });
@@ -1039,6 +1182,137 @@ app.get('/api/backup/download', (req, res) => {
   if (backupJob.status !== 'klaar' || !backupJob.bestandsnaam) return res.status(404).json({ error: 'geen back-up beschikbaar' });
   res.download(path.join(BACKUP_DIR, backupJob.bestandsnaam), backupJob.bestandsnaam);
 });
+
+// ---------- Back-up herstellen (restore, tegenhanger van hierboven) — zie
+// specs/single-use-vs-edities-diagnose.md §A5. Twee modi: "volledig" (verse/lege instance, alle
+// onderdelen) of "editie_toevoegen" (alleen meetdata, geblokkeerd bij een editie/evenement-
+// naamsbotsing met wat er al in deze instance staat). ----------
+function isZipBestand(buffer) {
+  return buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b &&
+    (buffer[2] === 0x03 || buffer[2] === 0x05 || buffer[2] === 0x07);
+}
+function zipFileFilter(req, file, cb) {
+  if (path.extname(file.originalname).toLowerCase() !== '.zip') return cb(new Error('alleen .zip-bestanden zijn toegestaan'));
+  cb(null, true);
+}
+// grotere limiet dan de afbeeldingsupload: een back-up met meetdata over een lange periode kan
+// een stuk groter zijn dan een plattegrond/logo
+const zipUpload = multer({ dest: DATA_DIR, limits: { fileSize: 500 * 1024 * 1024 }, fileFilter: zipFileFilter });
+
+// leest de tags van de eerste line-protocol-regel (alle regels in één back-up delen dezelfde
+// editie/evenement, want een back-up wordt altijd van één op dat moment actieve instance gemaakt)
+function tagsUitLineProtocolRegel(regel) {
+  const tagsDeel = regel.split(' ')[0].split(',').slice(1);
+  const tags = {};
+  tagsDeel.forEach((deel) => { const i = deel.indexOf('='); if (i > -1) tags[deel.slice(0, i)] = deel.slice(i + 1); });
+  return tags;
+}
+
+async function schrijfLineProtocol(regels) {
+  if (!regels.length) return;
+  const writeUrl = INFLUX_URL + '/api/v2/write?org=' + encodeURIComponent(INFLUX_ORG) + '&bucket=' + encodeURIComponent(INFLUX_BUCKET) + '&precision=s';
+  const res = await fetch(writeUrl, {
+    method: 'POST',
+    headers: { Authorization: 'Token ' + INFLUX_TOKEN, 'Content-Type': 'text/plain; charset=utf-8' },
+    body: regels.join('\n'),
+  });
+  if (!res.ok) throw new Error('InfluxDB write gaf ' + res.status + ': ' + (await res.text()));
+}
+
+// levert { onderdelen: ['topologie'|'media'|'meetdata', ...] } i.p.v. een kant-en-klare zin — de
+// client stelt zelf de (vertaalde) melding samen uit deze keys, zie backup.js/i18n
+async function voerHerstelUit(modus, zip, lpRegels) {
+  const onderdelen = [];
+  if (modus === 'volledig') {
+    const topoEntry = zip.getEntries().find((e) => e.entryName === 'topologie.json');
+    const data = JSON.parse(zip.readAsText(topoEntry));
+    if (!Array.isArray(data.kasten) || !Array.isArray(data.generators)) throw new Error('topologie.json in de back-up is ongeldig');
+    writeTopo(data);
+    onderdelen.push('topologie');
+
+    let mediaTeruggezet = false;
+    ['plattegrond', 'logo'].forEach((naam) => {
+      const mediaEntry = zip.getEntries().find((e) => e.entryName.startsWith(naam + '.'));
+      if (!mediaEntry) return;
+      const buffer = mediaEntry.getData();
+      const type = detecteerAfbeeldingType(buffer);
+      if (!type) return; // ongeldig media-bestand in de back-up: sla dit onderdeel over, blokkeer niet de rest van het herstel
+      const basename = naam === 'plattegrond' ? MAP_BASENAME : LOGO_BASENAME;
+      verwijderAfbeeldingsbestanden(basename);
+      fs.writeFileSync(basename + AFBEELDING_EXT_BY_TYPE[type], buffer);
+      mediaTeruggezet = true;
+    });
+    if (mediaTeruggezet) onderdelen.push('media');
+  }
+
+  await schrijfLineProtocol(lpRegels);
+  onderdelen.push('meetdata');
+  return { onderdelen };
+}
+
+// zelfde conventie als rapportJob/backupJob hierboven
+let herstelJob = {
+  status: 'idle', // 'idle' | 'bezig' | 'klaar' | 'fout'
+  gestartOp: null, klaarOp: null,
+  resultaat: null, foutmelding: null,
+};
+
+app.post('/api/backup/herstel', metUploadFoutafhandeling(zipUpload.single('backup')), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'geen bestand ontvangen (veldnaam moet "backup" zijn)' });
+  const opruimen = () => fs.unlink(req.file.path, () => {});
+
+  if (herstelJob.status === 'bezig') { opruimen(); return res.status(409).json({ error: 'er loopt al een herstel' }); }
+  const modus = req.body.modus === 'editie_toevoegen' ? 'editie_toevoegen' : 'volledig';
+
+  const buffer = fs.readFileSync(req.file.path);
+  if (!isZipBestand(buffer)) { opruimen(); return res.status(400).json({ error: 'bestand is geen geldig zip-archief' }); }
+
+  let zip;
+  try { zip = new AdmZip(buffer); } catch (e) { opruimen(); return res.status(400).json({ error: 'kon zip-bestand niet lezen: ' + e.message }); }
+
+  const entries = zip.getEntries();
+  if (modus === 'volledig' && !entries.some((e) => e.entryName === 'topologie.json')) {
+    opruimen();
+    return res.status(400).json({ error: 'back-up bevat geen topologie.json' });
+  }
+  const lpEntry = entries.find((e) => e.entryName === 'meetdata.lp');
+  if (!lpEntry) {
+    opruimen();
+    return res.status(400).json({ error: 'back-up bevat geen meetdata (meetdata.lp) — is deze back-up gemaakt zonder de meetdata-optie?' });
+  }
+  const lpRegels = zip.readAsText(lpEntry).split('\n').map((r) => r.trim()).filter(Boolean);
+  if (!lpRegels.length) { opruimen(); return res.status(400).json({ error: 'meetdata.lp in deze back-up is leeg' }); }
+  const tags = tagsUitLineProtocolRegel(lpRegels[0]);
+  if (!tags.editie || !tags.evenement) { opruimen(); return res.status(400).json({ error: 'kon editie/evenement niet uit de back-up herleiden' }); }
+
+  if (modus === 'editie_toevoegen') {
+    try {
+      const csv = await influxQuery(
+        'import "influxdata/influxdb/schema"\n' +
+        'schema.tagValues(bucket: "' + INFLUX_BUCKET + '", tag: "editie", predicate: (r) => r.evenement == "' + tags.evenement + '")'
+      );
+      if (csvKolomWaarden(csv, '_value').includes(tags.editie)) {
+        opruimen();
+        return res.status(409).json({ error: 'editie "' + tags.editie + '" bestaat al binnen evenement "' + tags.evenement + '" in deze instance — toevoegen geblokkeerd om bestaande data niet te vermengen' });
+      }
+    } catch (e) {
+      opruimen();
+      return res.status(502).json({ error: 'kon bestaande edities niet controleren: ' + e.message });
+    }
+  }
+
+  herstelJob = { status: 'bezig', gestartOp: new Date().toISOString(), klaarOp: null, resultaat: null, foutmelding: null };
+  res.json({ ok: true });
+
+  voerHerstelUit(modus, zip, lpRegels).then((resultaat) => {
+    herstelJob = { ...herstelJob, status: 'klaar', klaarOp: new Date().toISOString(), resultaat: { ...resultaat, editie: tags.editie, evenement: tags.evenement } };
+  }).catch((e) => {
+    herstelJob = { ...herstelJob, status: 'fout', foutmelding: e.message };
+    console.error('herstel mislukt:', e.message);
+  }).finally(opruimen);
+});
+
+app.get('/api/backup/herstel/status', (req, res) => res.json(herstelJob));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log('Stroomdashboard luistert op poort ' + PORT));

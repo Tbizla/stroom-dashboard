@@ -19,6 +19,7 @@ export const state = {
   overzichtGeneratorFilter: null, // id van de generator waarop de staven/boom in Overzicht gefilterd zijn (drill-down), null = geen filter
   backupPeriodeChip: 'alles',
   backupPollHandle: null,
+  herstelPollHandle: null,
 };
 
 export const liveData = {};

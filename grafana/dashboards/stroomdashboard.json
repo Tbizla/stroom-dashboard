@@ -24,11 +24,24 @@
         "current": {}
       },
       {
+        "name": "evenement",
+        "label": "Evenement",
+        "description": "Naast editie: disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. \"2026\" bij zowel Zomerfestival als Kermis) — zie specs/single-use-vs-edities-diagnose.md.",
+        "type": "query",
+        "datasource": { "type": "influxdb", "uid": "influxdb" },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"stroomdata\", tag: \"evenement\")",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "sort": 3,
+        "current": {}
+      },
+      {
         "name": "generator",
         "label": "Generator/groep",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
-        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> keep(columns: [\"generator\"])\n  |> distinct(column: \"generator\")\n  |> group()\n  |> sort()",
+        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")\n  |> keep(columns: [\"generator\"])\n  |> distinct(column: \"generator\")\n  |> group()\n  |> sort()",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -41,7 +54,7 @@
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
         "description": "Automatisch beperkt tot de kasten die (recursief, hoe diep ook) onder de gekozen $generator hangen — zie de drill-down-link op het generator-totalenpaneel bovenaan.",
-        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r.generator =~ /^${generator:regex}$/)\n  |> keep(columns: [\"kast\"])\n  |> distinct(column: \"kast\")\n  |> group()\n  |> sort()",
+        "query": "from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")\n  |> filter(fn: (r) => r.generator =~ /^${generator:regex}$/)\n  |> keep(columns: [\"kast\"])\n  |> distinct(column: \"kast\")\n  |> group()\n  |> sort()",
         "refresh": 2,
         "includeAll": true,
         "multi": true,
@@ -62,7 +75,7 @@
     {
       "id": 8,
       "type": "stat",
-      "title": "Totaal energieverbruik $generator - editie $editie",
+      "title": "Totaal energieverbruik $generator - editie $editie ($evenement)",
       "description": "Geschat energieverbruik (kWh) van alleen de kasten die rechtstreeks op deze generator/groep hangen (parent == generator) — downstream-kasten tellen niet apart mee, hun verbruik zit al in de meting van hun eigen bovenliggende kast. Zelfde integral(unit: 1h)-berekening als de Sankey hieronder, opgeteld i.p.v. per kast getoond. Vermogen mag cumulatief over kasten opgeteld worden (in tegenstelling tot stroom, zie README.md sectie 5). Klik op de waarde voor een drill-down naar alleen de kasten van déze generator (recursief, hoe diep de keten ook vertakt, bijv. via een terreinverdeler) in de \"Per kast\"-sectie hieronder.",
       "gridPos": { "h": 4, "w": 24, "x": 0, "y": 1 },
       "repeat": "generator",
@@ -74,7 +87,7 @@
           "links": [
             {
               "title": "Bekijk kasten onder $generator",
-              "url": "/d/stroomdashboard-overzicht/_?var-generator=${generator}&var-editie=${editie}&${__url_time_range}",
+              "url": "/d/stroomdashboard-overzicht/_?var-generator=${generator}&var-editie=${editie}&var-evenement=${evenement}&${__url_time_range}",
               "targetBlank": false
             }
           ]
@@ -85,7 +98,7 @@
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> filter(fn: (r) => r.parent == r.generator)\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> group()\n  |> sum(column: \"value\")",
+          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> filter(fn: (r) => r.parent == r.generator)\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> group()\n  |> sum(column: \"value\")",
           "hide": false
         }
       ]
@@ -131,7 +144,7 @@
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r._field == \"a_current\" or r._field == \"b_current\" or r._field == \"c_current\")\n  |> filter(fn: (r) => r.kast == \"${kast}\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")",
+          "query": "from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\")\n  |> filter(fn: (r) => r._field == \"a_current\" or r._field == \"b_current\" or r._field == \"c_current\")\n  |> filter(fn: (r) => r.kast == \"${kast}\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")",
           "hide": false
         }
       ]
@@ -147,7 +160,7 @@
     {
       "id": 6,
       "type": "netsage-sankey-panel",
-      "title": "Energieverdeling $generator - editie $editie",
+      "title": "Energieverdeling $generator - editie $editie ($evenement)",
       "description": "Geschat energieverbruik (kWh) per kast in de gekozen periode, berekend als de integraal van het opgenomen vermogen (total_act_power) — geen exacte meterstand. Volgt automatisch de volledige parent/child-keten uit de webapp-topologie (generator/groep -> batterij/hoofdverdeler -> kast, hoe diep ook), via de 'topology_edges'-reeks die de webapp bij elke wijziging in Beheer naar InfluxDB synct — geen handmatige koppeling nodig. Herhaalt automatisch per generator/groep ($generator): één grote sankey met alle kasten samen liep bij een grotere topologie vast in de plugin (alleen tekst zichtbaar, geen diagram meer), dus elke stroombron krijgt hier zijn eigen, behapbare diagram. Bekende eigenaardigheid van de netsage-sankey-panel plugin: bij het laden van de pagina faalt de layout soms voor een willekeurig paneel (toont dan ook alleen tekst) doordat meerdere sankey's tegelijk opstarten — de data klopt gewoon, een ververs van de pagina (of het paneel los openen via het paneelmenu) lost het vrijwel altijd op.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 18 },
       "repeat": "generator",
@@ -162,7 +175,7 @@
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\", \"parent\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> map(fn: (r) => ({ source: r.parent, target: r.kast, value: r.value }))\n  |> keep(columns: [\"source\", \"target\", \"value\"])",
+          "query": "edges = from(bucket: \"stroomdata\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"topology_edges\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> group(columns: [\"kast\"])\n  |> last()\n  |> keep(columns: [\"kast\", \"parent\"])\n\npower = from(bucket: \"stroomdata\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"shelly_em\" and r._field == \"total_act_power\")\n  |> filter(fn: (r) => r.editie == \"${editie}\" and r.evenement == \"${evenement}\")\n  |> filter(fn: (r) => r.generator == \"${generator}\")\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with value: r._value / 1000.0 }))\n  |> keep(columns: [\"kast\", \"value\"])\n\njoin(tables: {edges: edges, power: power}, on: [\"kast\"])\n  |> map(fn: (r) => ({ source: r.parent, target: r.kast, value: r.value }))\n  |> keep(columns: [\"source\", \"target\", \"value\"])",
           "hide": false
         }
       ]

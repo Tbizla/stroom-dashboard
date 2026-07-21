@@ -236,6 +236,17 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .optionrow .always{font-size:9.5px;color:var(--text3);font-family:var(--mono);margin-left:8px;font-weight:400}
 .periodchips{display:flex;gap:6px;margin-top:10px;padding-left:26px}
 
+/* back-up herstellen (restore), zie specs/mockups/backup-herstellen-mockup.html */
+.sectiescheiding{border:none;border-top:1px solid var(--border);margin:28px 0 0}
+.modechoice{display:flex;gap:10px;margin-bottom:16px}
+.modecard{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer}
+.modecard.active{border-color:var(--accent);background:var(--accent-dim)}
+.modecard .lbl{font-size:13px;font-weight:600;color:var(--text)}
+.modecard.active .lbl{color:var(--accent)}
+.modecard .desc{font-size:11.5px;color:var(--text2);margin-top:4px;line-height:1.4}
+.warnbox{background:rgba(245,166,35,.1);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;
+  font-size:11.5px;color:var(--amber);margin:10px 0;line-height:1.5}
+
 /* schuifknop (toggle switch): gebruikt voor de PDF-rapport-taalkeuze, los van de UI-taal-toggle
    in de header (.langswitch) — hier bewust een schuifknop i.p.v. een pill-toggle, op verzoek */
 .toggleswitch{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}

@@ -270,6 +270,57 @@
           <span id="backupErrorInfo" style="color:var(--red)"></span>
           <button id="backupOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
         </div>
+
+        <hr class="sectiescheiding">
+        <h2 style="margin-top:22px" data-i18n="backup.herstelTitel">Back-up herstellen</h2>
+        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.herstelSubtitel">Zet een eerder gemaakte back-up (zip) terug, of voeg 'm toe als editie aan een archief.</div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <label class="uploadbtn"><span data-i18n="backup.herstelKiesBestand">Back-up-bestand kiezen</span><input type="file" id="herstelBestand" accept=".zip" style="display:none"></label>
+          <span id="herstelBestandsnaam" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+        </div>
+
+        <div class="modechoice">
+          <div class="modecard active" data-herstelmodus="volledig">
+            <div class="lbl" data-i18n="backup.herstelVolledigLbl">Volledige restore</div>
+            <div class="desc" data-i18n="backup.herstelVolledigDesc">Voor een verse/lege instance — bijv. na een hardwarewissel op een locatie. Zet topologie, media en meetdata terug, met dezelfde editie. Geen nieuwe editie, een voortzetting.</div>
+          </div>
+          <div class="modecard" data-herstelmodus="editie_toevoegen">
+            <div class="lbl" data-i18n="backup.herstelToevoegenLbl">Editie toevoegen aan archief</div>
+            <div class="desc" data-i18n="backup.herstelToevoegenDesc">Voor het vergelijken van meerdere jaargangen — voegt alléén de meetdata van deze back-up toe als nieuwe editie naast wat er al staat. Topologie/media blijven ongemoeid.</div>
+          </div>
+        </div>
+
+        <div class="optionrow" id="herstelTopologieRow">
+          <input type="checkbox" checked disabled>
+          <div><div class="lbl" data-i18n="backup.topologieLbl">Topologie</div><div class="desc" id="herstelTopologieDesc"></div></div>
+        </div>
+        <div class="optionrow" id="herstelMediaRow">
+          <input type="checkbox" checked disabled>
+          <div><div class="lbl" data-i18n="backup.plattegrondLogoLbl">Plattegrond &amp; logo</div><div class="desc" id="herstelMediaDesc"></div></div>
+        </div>
+        <div class="optionrow">
+          <input type="checkbox" checked disabled>
+          <div><div class="lbl" data-i18n="backup.meetdataLbl">Meetdata (InfluxDB-dump)</div><div class="desc" id="herstelMeetdataDesc"></div></div>
+        </div>
+
+        <div class="warnbox" id="herstelWaarschuwing" style="display:none"></div>
+
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button id="herstelStartBtn" data-i18n="backup.herstelStartBtn">Start herstel</button>
+        </div>
+        <div id="herstelStatusCard" class="addform" style="display:none;margin-top:10px">
+          <div class="dot busy"></div>
+          <span data-i18n="backup.herstelBezig">Herstel wordt uitgevoerd...</span>
+        </div>
+        <div id="herstelResultCard" class="addform" style="display:none;margin-top:10px">
+          <div class="dot ok"></div>
+          <span id="herstelResultInfo"></span>
+        </div>
+        <div id="herstelErrorCard" class="addform" style="display:none;margin-top:10px">
+          <span id="herstelErrorInfo" style="color:var(--red)"></span>
+          <button id="herstelOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+        </div>
       </div>
     </div>
   </div>

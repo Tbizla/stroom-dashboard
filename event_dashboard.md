@@ -174,13 +174,18 @@ zetten zonder code aan te passen.
 - Paneel per kast (stroom per fase, geen los "totale stroom"-paneel — een CEE-aansluiting is per
   fase gerated, niet cumulatief) herhaalt automatisch via een `$kast`-variabele, inclusief
   batterij-/piekscheerderkasten
-- `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket)
+- `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket), en
+  een `$evenement`-variabele ernaast om ook tussen verschillende evenementen te kunnen filteren die
+  toevallig dezelfde editie-waarde gebruiken (zie "Spanningsveld: single-use vs. edities" hieronder)
 - Alerting-condities (90%-drempel van `rating_a` per fase, niet van `total_current`) zijn per paneel handmatig toe te voegen
 - Sankey-paneel ("Terugblik - energieverdeling", Netsage Sankey-plugin, automatisch geïnstalleerd
   via `GF_INSTALL_PLUGINS`) toont na afloop het geschatte energieverbruik per kast als
   stroomdiagram, met de volledige parent/child-keten (generator/groep → batterij/hoofdverdeler →
   kast, hoe diep ook) — via een Flux-`join()` tussen de vermogensdata en de `topology_edges`-reeks
-  hierboven, dus automatisch actueel zodra de topologie in de webapp wijzigt
+  hierboven, dus automatisch actueel zodra de topologie in de webapp wijzigt. `topology_edges`
+  wordt nu per `editie`+`evenement` getagd en de sync wist bij een Beheer-wijziging alleen de
+  huidige editie/evenement (i.p.v. de hele reeks) — oudere edities' edges blijven dus los bewaard,
+  zodat de Sankey ook historisch (via een teruggezette editie, zie Back-up-subtab) blijft kloppen
 
 **Rapportages-tabblad** (vijfde tab in de mode-switch, met een altijd-zichtbare subnav:
 Overzicht/PDF-rapport/Back-up)
@@ -217,10 +222,21 @@ Grafana:
 
 *Back-up-subtab* — één zip-bestand voor een volledige restore op een andere instance:
 - Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te zetten); meetdata
-  (InfluxDB-dump als CSV) is een losse optie met dezelfde periode-keuze als het PDF-rapport, i.v.m.
-  bestandsgrootte
+  (InfluxDB-dump) is een losse optie met dezelfde periode-keuze als het PDF-rapport, i.v.m.
+  bestandsgrootte. Bij meetdata zit sinds kort ook een `topology_edges`-snapshot (huidige
+  editie/evenement) en een `meetdata.lp`-bestand (InfluxDB line-protocol) naast de bestaande
+  leesbare `meetdata.csv` — nodig om de nieuwe "Back-up herstellen"-sectie hieronder te voeden
 - Zelfde status/resultaat/foutkaart-patroon als de PDF-rapportflow ("Opnieuw proberen" bij een
   mislukte poging), gebouwd met de `archiver`-library
+- **Back-up herstellen** (restore, tegenhanger van bovenstaande): een eerder gemaakte back-up-zip
+  terugzetten, in twee modi — **volledige restore** (topologie + media + meetdata, voor een
+  verse/lege instance na bijv. een hardwarewissel, geen nieuwe editie maar een voortzetting) of
+  **editie toevoegen aan archief** (alleen de meetdata, topologie/media blijven ongemoeid, voor het
+  naast elkaar zetten van meerdere jaargangen). Geblokkeerd met een duidelijke melding bij een
+  editie/evenement-naamsbotsing in de doelinstance, nooit stil overschreven/vermengd. Zip wordt
+  serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
+  (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
+  `topology_edges` en de naamsbotsing-check) — zie roadmap "Spanningsveld: single-use vs. edities"
 
 ## Roadmap
 
@@ -238,12 +254,15 @@ Grafana:
       ("events"). Raakt `mqttPrefix()` in `server.js`, de topic-parsing in `telegraf.conf`, de
       Shelly-configuratie-instructies in README.md, en (impliciet) elke Shelly die al met de oude
       prefix is ingesteld. Vraagt een bewuste migratie, geen kale zoek-en-vervang.
-- [ ] **Spanningsveld: single-use container per evenement vs. edities vergelijken.** Het wordt
-      waarschijnlijker dat de Docker-stack per evenement single-use is (opzetten, gebruiken,
-      afbreken). Tegelijk moet het mogelijk blijven om data van andere evenementen/edities te
-      importeren, te vergelijken, en er samen een PDF-rapport van te maken. Deze twee wensen staan
-      op gespannen voet met elkaar — **nog goed over nadenken voordat hier een aanpak voor gekozen
-      wordt**, dit is bewust nog geen concreet plan.
+- [x] ~~Spanningsveld: single-use container per evenement vs. edities vergelijken~~ **Deel A
+      gebouwd, Deel B nog open.** Zie `specs/single-use-vs-edities-diagnose.md`. Deel A (gedaan):
+      restore-functie (Back-up herstellen, twee modi), `editie`+`evenement`-tags op
+      `topology_edges` met scoped delete i.p.v. volledige wipe, `$evenement`-Grafana-variabele,
+      nieuwe `EVENT_NAME`-omgevingsvariabele. **Deel B (nog te bouwen):** `EVENT_NAME`/
+      `EVENT_EDITION` bewerkbaar maken vanuit Beheer i.p.v. alleen via `.env`, inclusief het
+      mechanisme om Telegraf daarna een nieuwe tag te laten gebruiken (vereist een
+      Telegraf-herstart vanuit de UI — bewust apart gehouden van Deel A vanwege de nieuwe
+      Docker-toegang die dat mechanisme vergt, zie de diagnose voor de afweging).
 - [ ] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Controleren of de Shelly Pro 3EM
       daadwerkelijk alles doorstuurt wat 'm aan data zou kunnen leveren (vergelijk met de volledige
       Shelly EM-API/documentatie). **Als blijkt dat dit niet het geval is: eerst een analyse-

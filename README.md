@@ -133,7 +133,24 @@ Twee soorten export, voor twee soorten data:
 - **Topologie + posities** (welke kasten, ratings, kaart-coördinaten): knop "Exporteer data" bovenin de webapp (`/api/export`) — downloadt één JSON-bestand. Handig als back-up, of om over te zetten naar een nieuwe editie via "Importeer data".
 - **Historische meetdata** (stroom/spanning/vermogen over tijd): dat hoort bij InfluxDB/Grafana. Open het paneel in Grafana, klik het menu (⋮) rechtsboven in het paneel > **Inspect > Data > Download CSV**. Voor grotere exports kun je ook rechtstreeks een Flux-query op InfluxDB loslaten en het resultaat als CSV wegschrijven.
 
-## 9. PDF-rapport exporteren
+## 9. Back-up herstellen (restore)
+
+Tab **Rapportages > Back-up**, onder de bestaande "Back-up maken"-sectie: zet een eerder gemaakte
+back-up (zip, met de meetdata-optie aangevinkt) terug, in twee modi:
+
+- **Volledige restore** — voor een verse/lege instance, bijv. na een hardwarewissel op een locatie
+  die nog dezelfde editie voortzet. Zet topologie, media (plattegrond/logo) én meetdata terug.
+- **Editie toevoegen aan archief** — voor het naast elkaar zetten van meerdere jaargangen in één
+  (archief-)instance. Zet **alleen** de meetdata terug als nieuwe editie; topologie/media blijven
+  ongemoeid. Bestaat de editie (binnen hetzelfde evenement) al in de doelinstance, dan wordt het
+  herstel geblokkeerd met een duidelijke melding — nooit stil overschreven of vermengd.
+
+Onder de motorkap bevat een back-up-zip met meetdata sinds kort ook een `meetdata.lp`-bestand
+(InfluxDB line-protocol, naast de bestaande leesbare `meetdata.csv`) en een snapshot van
+`topology_edges` (nodig om de Sankey/generator-drilldown ook historisch, per editie, te laten
+kloppen — zie sectie 5). Oudere back-ups zonder `meetdata.lp` kunnen niet hersteld worden.
+
+## 10. PDF-rapport exporteren
 
 Tab **Rapportages > PDF-rapport**: editie en periode kiezen, aanvinken welke
 onderdelen erin moeten (generator-totalen, stroom per kast, Sankey-energieverdeling,
@@ -158,11 +175,11 @@ Grafana Service Account nodig om het render-endpoint te mogen aanroepen.
 Zonder deze stap geeft de knop een duidelijke foutmelding ("GRAFANA_REPORT_TOKEN is niet
 ingesteld") in plaats van stil te falen.
 
-## 10. Meerdere edities/jaren vergelijken
+## 11. Meerdere edities/jaren vergelijken
 
-Elke keer dat je de stack opnieuw start, vul je in `.env` de `EVENT_EDITION` in (bijv. "2027"). Telegraf plakt dat als tag `editie` op elke meting, dus alle jaren blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie, of meerdere edities naast elkaar in één grafiek zetten (bijv. via een `editie`-variabele bovenaan het dashboard).
+Elke keer dat je de stack opnieuw start, vul je in `.env` de `EVENT_EDITION` in (bijv. "2027"), en `EVENT_NAME` (bijv. "Zomerfestival"). Telegraf plakt die als tags `editie`/`evenement` op elke meting, dus alle jaren (en evenementen) blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie/evenement, of meerdere edities naast elkaar in één grafiek zetten (via de `$editie`/`$evenement`-variabelen bovenaan het dashboard). `EVENT_NAME` disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. "2026" bij zowel een zomerfestival als een kermis) — belangrijk zodra je back-ups van meerdere evenementen in één archief-instance combineert (zie sectie 9).
 
-## 11. Alarmering (Grafana Alerting)
+## 12. Alarmering (Grafana Alerting)
 
 Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 6 hierboven — gebruik hiervoor niet `total_current`). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
 

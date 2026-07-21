@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Mockup — Back-up herstellen (restore)</title>
+<style>
+  :root{
+    --bg:#12151a; --panel:#1a1e26; --panel2:#20242e; --border:#2a2f3a;
+    --text:#e8eaed; --text2:#8b93a1; --text3:#5a6272;
+    --accent:#4fd1c5; --accent-dim:#4fd1c530;
+    --green:#3ecf6a; --amber:#f5a623; --red:#e5484d; --grey:#4a5160;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--panel);
+    border-bottom:1px solid var(--border);flex-wrap:wrap}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;color:var(--text)}
+  header h1 span{color:var(--accent)}
+  .modeswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
+  .modeswitch button{border:none;background:transparent;color:var(--text2);padding:6px 14px;
+    border-radius:6px;font-size:12.5px;font-weight:600}
+  .modeswitch button.active{background:var(--accent);color:#0b1210}
+  .subnav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--border);background:var(--bg)}
+  .subnav button{border:none;background:transparent;color:var(--text2);padding:8px 14px;font-size:12.5px;
+    font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--sans)}
+  .subnav button.active{color:var(--accent);border-bottom:2px solid var(--accent)}
+  main{padding:22px 26px;max-width:660px}
+  h2{font-size:14px;color:var(--accent);margin:26px 0 4px;text-transform:uppercase;letter-spacing:.06em}
+  h2:first-child{margin-top:0}
+  .subtitle{font-size:12px;color:var(--text3);margin-bottom:16px}
+  .uploadrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .uploadbtn{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12.5px}
+  .filename{font-size:12px;color:var(--text2);font-family:var(--mono)}
+  .modechoice{display:flex;gap:10px;margin-bottom:16px}
+  .modecard{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer}
+  .modecard.active{border-color:var(--accent);background:var(--accent-dim)}
+  .modecard .lbl{font-size:13px;font-weight:600;color:var(--text)}
+  .modecard.active .lbl{color:var(--accent)}
+  .modecard .desc{font-size:11.5px;color:var(--text2);margin-top:4px;line-height:1.4}
+  .optionrow{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--panel);
+    border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+  .optionrow.disabled{opacity:.45}
+  .optionrow .lbl{font-size:12.5px;color:var(--text);font-weight:600}
+  .optionrow .desc{font-size:11px;color:var(--text2);margin-top:2px}
+  .warnbox{background:rgba(245,166,35,.1);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;
+    font-size:11.5px;color:var(--amber);margin:10px 0;line-height:1.5}
+  .primaryrow{margin-top:16px;display:flex;align-items:center;gap:10px}
+  .primarybtn{background:var(--accent);border:none;color:#0b1210;border-radius:6px;padding:8px 16px;
+    font-size:12.5px;font-weight:600;cursor:pointer}
+  .addform{display:flex;gap:10px;align-items:center;background:var(--panel2);padding:10px 12px;border-radius:8px;font-size:12.5px;margin-top:10px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--grey)}
+  .dot.busy{background:var(--amber)} .dot.ok{background:var(--green)} .dot.err{background:var(--red)}
+  hr.sectiescheiding{border:none;border-top:1px solid var(--border);margin:28px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Event <span>Stroomdashboard</span></h1>
+  <div class="modeswitch">
+    <button>Beheer</button><button>Kalibreren</button><button>Schema</button><button>Live</button><button class="active">Rapportages</button>
+  </div>
+</header>
+<div class="subnav">
+  <button>Overzicht</button>
+  <button>PDF-rapport</button>
+  <button class="active">Back-up</button>
+</div>
+<main>
+  <h2>Back-up maken</h2>
+  <div class="subtitle">(bestaande sectie, ongewijzigd — hierboven in dezelfde subtab)</div>
+
+  <hr class="sectiescheiding">
+
+  <h2>Back-up herstellen</h2>
+  <div class="subtitle">Zet een eerder gemaakte back-up (zip) terug, óf voeg 'm toe als editie aan een archief.</div>
+
+  <div class="uploadrow">
+    <label class="uploadbtn">Back-up-bestand kiezen<input type="file" accept=".zip" style="display:none"></label>
+    <span class="filename">backup-2026-editie.zip geselecteerd</span>
+  </div>
+
+  <div class="modechoice">
+    <div class="modecard active">
+      <div class="lbl">Volledige restore</div>
+      <div class="desc">Voor een verse/lege instance — bijv. na een hardwarewissel op een locatie.
+      Zet topologie, media en meetdata terug, met dezelfde editie. Geen nieuwe editie, een voortzetting.</div>
+    </div>
+    <div class="modecard">
+      <div class="lbl">Editie toevoegen aan archief</div>
+      <div class="desc">Voor het vergelijken van meerdere jaargangen — voegt alléén de meetdata van
+      deze back-up toe als nieuwe editie naast wat er al staat. Topologie/media blijven ongemoeid.</div>
+    </div>
+  </div>
+
+  <div class="optionrow"><input type="checkbox" checked><div><div class="lbl">Topologie</div><div class="desc">Generators, kasten, koppelingen, ratings.</div></div></div>
+  <div class="optionrow"><input type="checkbox" checked><div><div class="lbl">Plattegrond &amp; logo</div><div class="desc">Geüploade plattegrond en evenementlogo.</div></div></div>
+  <div class="optionrow"><input type="checkbox" checked><div><div class="lbl">Meetdata</div><div class="desc">Historische stroom-/spanningsdata, editie: 2026.</div></div></div>
+
+  <div class="primaryrow">
+    <button class="primarybtn">Start herstel</button>
+  </div>
+
+  <div class="addform"><div class="dot ok"></div><span>Herstel voltooid · topologie, media en meetdata (editie 2026) teruggezet.</span></div>
+
+  <hr class="sectiescheiding" style="margin-top:22px">
+  <div class="subtitle" style="margin-top:14px">Zelfde scherm, andere modus gekozen:</div>
+
+  <div class="modechoice">
+    <div class="modecard">
+      <div class="lbl">Volledige restore</div>
+      <div class="desc">Voor een verse/lege instance — bijv. na een hardwarewissel op een locatie.
+      Zet topologie, media en meetdata terug, met dezelfde editie. Geen nieuwe editie, een voortzetting.</div>
+    </div>
+    <div class="modecard active">
+      <div class="lbl">Editie toevoegen aan archief</div>
+      <div class="desc">Voor het vergelijken van meerdere jaargangen — voegt alléén de meetdata van
+      deze back-up toe als nieuwe editie naast wat er al staat. Topologie/media blijven ongemoeid.</div>
+    </div>
+  </div>
+
+  <div class="optionrow disabled"><input type="checkbox" disabled><div><div class="lbl">Topologie</div><div class="desc">Niet van toepassing bij het toevoegen van een editie.</div></div></div>
+  <div class="optionrow disabled"><input type="checkbox" disabled><div><div class="lbl">Plattegrond &amp; logo</div><div class="desc">Niet van toepassing bij het toevoegen van een editie.</div></div></div>
+  <div class="optionrow"><input type="checkbox" checked disabled><div><div class="lbl">Meetdata <span style="color:var(--text3);font-weight:400">(altijd, dit is het hele punt)</span></div><div class="desc">Editie: 2025.</div></div></div>
+
+  <div class="warnbox">Let op: editie "2025" bestaat al in deze instance. Toevoegen wordt geblokkeerd
+  om bestaande data niet te vermengen — hernoem de editie bij het opnieuw exporteren, of verwijder
+  eerst de bestaande "2025"-data.</div>
+
+  <div class="primaryrow">
+    <button class="primarybtn" disabled style="opacity:.5;cursor:not-allowed">Start herstel</button>
+  </div>
+</main>
+</body>
+</html>

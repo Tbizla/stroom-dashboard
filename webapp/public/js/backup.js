@@ -4,6 +4,7 @@
 import { state } from './state.js';
 import { apiCall } from './api.js';
 import { t } from './i18n.js';
+import { loadTopology } from './topology.js';
 
 document.querySelectorAll('#backupPanel [data-backupperiode]').forEach(chip=>{
   chip.onclick = ()=>{
@@ -74,6 +75,95 @@ document.getElementById('backupGenereerBtn').onclick = startBackupGeneratie;
 document.getElementById('backupOpnieuwBtn').onclick = startBackupGeneratie;
 document.getElementById('backupDownloadBtn').onclick = ()=>{ window.location.href = '/api/backup/download'; };
 
+// ---------- Back-up herstellen (restore, tegenhanger van hierboven) — zie
+// specs/single-use-vs-edities-diagnose.md §A6 en specs/mockups/backup-herstellen-mockup.html.
+// De drie optionrows hieronder zijn puur informatief (server bepaalt op basis van `herstelModus`
+// zelf wat 'm daadwerkelijk terugzet, negeert topologie/media altijd bij "editie_toevoegen") —
+// geen los aan-/uitvinkgedrag nodig, alleen tekst/dimming die met de gekozen modus meeverandert.
+let herstelBestand = null;
+let herstelModus = 'volledig';
+const ONDERDEEL_LABEL = { topologie: 'backup.topologieLbl', media: 'backup.plattegrondLogoLbl', meetdata: 'backup.meetdataLbl' };
+
+document.getElementById('herstelBestand').onchange = (ev)=>{
+  herstelBestand = ev.target.files[0] || null;
+  document.getElementById('herstelBestandsnaam').textContent = herstelBestand ? herstelBestand.name : '';
+};
+
+function updateHerstelModusUI(){
+  const volledig = herstelModus === 'volledig';
+  document.querySelectorAll('[data-herstelmodus]').forEach(el=>{
+    el.classList.toggle('active', el.dataset.herstelmodus === herstelModus);
+  });
+  document.getElementById('herstelTopologieRow').classList.toggle('locked', !volledig);
+  document.getElementById('herstelMediaRow').classList.toggle('locked', !volledig);
+  document.querySelector('#herstelTopologieRow input').checked = volledig;
+  document.querySelector('#herstelMediaRow input').checked = volledig;
+  document.getElementById('herstelTopologieDesc').textContent = volledig ? t('backup.topologieDesc') : t('backup.herstelNvt');
+  document.getElementById('herstelMediaDesc').textContent = volledig ? t('backup.plattegrondLogoDesc') : t('backup.herstelNvt');
+  document.getElementById('herstelMeetdataDesc').textContent = volledig ? t('backup.meetdataDesc') : t('backup.herstelMeetdataAltijd');
+  document.getElementById('herstelWaarschuwing').style.display = 'none';
+}
+document.querySelectorAll('[data-herstelmodus]').forEach(card=>{
+  card.onclick = ()=>{ herstelModus = card.dataset.herstelmodus; updateHerstelModusUI(); };
+});
+updateHerstelModusUI();
+
+function toonHerstelCard(naam){
+  ['herstelStatusCard','herstelResultCard','herstelErrorCard'].forEach(id=>{
+    document.getElementById(id).style.display = (id===naam) ? 'flex' : 'none';
+  });
+}
+
+async function pollHerstelStatus(){
+  let job;
+  try{ job = await apiCall('/api/backup/herstel/status', 'GET'); }
+  catch(e){ return; }
+  if(job.status==='bezig'){
+    toonHerstelCard('herstelStatusCard');
+    if(!state.herstelPollHandle) state.herstelPollHandle = setInterval(pollHerstelStatus, 2000);
+    return;
+  }
+  if(state.herstelPollHandle){ clearInterval(state.herstelPollHandle); state.herstelPollHandle = null; }
+  if(job.status==='klaar'){
+    const labels = job.resultaat.onderdelen.map(o=>ONDERDEEL_LABEL[o] ? t(ONDERDEEL_LABEL[o]) : o).join(', ');
+    document.getElementById('herstelResultInfo').textContent = t('backup.herstelKlaar', {onderdelen: labels, editie: job.resultaat.editie});
+    toonHerstelCard('herstelResultCard');
+    loadTopology(); // topologie kan net teruggezet zijn
+  } else if(job.status==='fout'){
+    document.getElementById('herstelErrorInfo').textContent = t('backup.mislukt', {fout: job.foutmelding || t('rapport.onbekendeFout')});
+    toonHerstelCard('herstelErrorCard');
+  } else {
+    toonHerstelCard(null);
+  }
+}
+
+async function startHerstel(){
+  if(!herstelBestand) return alert(t('backup.herstelAlertGeenBestand'));
+  const fd = new FormData();
+  fd.append('backup', herstelBestand);
+  fd.append('modus', herstelModus);
+  document.getElementById('herstelWaarschuwing').style.display = 'none';
+  try{
+    const res = await fetch('/api/backup/herstel', { method:'POST', body: fd });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok){
+      if(res.status === 409 && data.error && herstelModus === 'editie_toevoegen'){
+        const waarschuwing = document.getElementById('herstelWaarschuwing');
+        waarschuwing.textContent = data.error;
+        waarschuwing.style.display = 'block';
+        return;
+      }
+      throw new Error(data.error || ('fout '+res.status));
+    }
+    toonHerstelCard('herstelStatusCard');
+    if(state.herstelPollHandle) clearInterval(state.herstelPollHandle);
+    state.herstelPollHandle = setInterval(pollHerstelStatus, 2000);
+  }catch(e){ alert(e.message); }
+}
+document.getElementById('herstelStartBtn').onclick = startHerstel;
+document.getElementById('herstelOpnieuwBtn').onclick = startHerstel;
+
 export function initBackup(){
   pollBackupStatus(); // pikt een back-up die al liep vóór een page-refresh weer op
+  pollHerstelStatus();
 }
