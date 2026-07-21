@@ -75,8 +75,7 @@ document.getElementById('backupGenereerBtn').onclick = startBackupGeneratie;
 document.getElementById('backupOpnieuwBtn').onclick = startBackupGeneratie;
 document.getElementById('backupDownloadBtn').onclick = ()=>{ window.location.href = '/api/backup/download'; };
 
-// ---------- Back-up herstellen (restore, tegenhanger van hierboven) — zie
-// specs/single-use-vs-edities-diagnose.md §A6 en specs/mockups/backup-herstellen-mockup.html.
+// ---------- Back-up herstellen (restore, tegenhanger van hierboven) ----------
 // De drie optionrows hieronder zijn puur informatief (server bepaalt op basis van `herstelModus`
 // zelf wat 'm daadwerkelijk terugzet, negeert topologie/media altijd bij "editie_toevoegen") —
 // geen los aan-/uitvinkgedrag nodig, alleen tekst/dimming die met de gekozen modus meeverandert.

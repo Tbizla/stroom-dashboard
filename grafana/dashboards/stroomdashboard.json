@@ -26,7 +26,7 @@
       {
         "name": "evenement",
         "label": "Evenement",
-        "description": "Naast editie: disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. \"2026\" bij zowel Zomerfestival als Kermis) — zie specs/single-use-vs-edities-diagnose.md.",
+        "description": "Naast editie: disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. \"2026\" bij zowel Zomerfestival als Kermis).",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
         "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"stroomdata\", tag: \"evenement\")",

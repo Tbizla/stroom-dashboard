@@ -1,4 +1,4 @@
-// ---------- kast-databallon op de plattegrond (Live-modus), zie specs/kast-popup-mqtt-spec.md ----------
+// ---------- kast-databallon op de plattegrond (Live-modus) ----------
 import { state, liveData, liveEnergyData, mapwrap, mapinner } from './state.js';
 import { nodeById, genNaam, statusClass, maxFaseStroom, isGen, typeIcon } from './topology.js';
 import { t } from './i18n.js';
@@ -16,8 +16,8 @@ export function renderKastPopup(){
     if(el) el.remove();
     return;
   }
-  // via nodeById() i.p.v. alleen state.TOPO.kasten: sinds de generator-EM-rework (zie
-  // specs/generator-em-rework-plan.md §3) opent deze ballon ook voor generator/groep-pins
+  // via nodeById() i.p.v. alleen state.TOPO.kasten: sinds de generator-EM-rework opent deze
+  // ballon ook voor generator/groep-pins
   const k = nodeById(state.openPopupKastId);
   if(!k || !k.positie || k.positie.x_pct==null){
     state.openPopupKastId = null;

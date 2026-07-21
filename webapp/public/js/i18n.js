@@ -1,5 +1,5 @@
 // meertalige UI (NL/EN): platte dot-key vertaalbestanden, zie webapp/i18n/nl.json en en.json
-// (gedeeld met server.js, zie specs/rebuild-plan-v2.md §11.2). Taalkeuze wordt onthouden in
+// (gedeeld met server.js). Taalkeuze wordt onthouden in
 // localStorage, zelfde patroon als de bestaande zoom-/sidebar-state.
 const STORAGE_KEY = 'stroomdash_taal_v1';
 
@@ -45,8 +45,7 @@ export function applyStaticI18n(root){
 }
 
 // taalkeuze-toggle in de header, zelfde visuele familie als .modeswitch (zie css/style.css
-// .langswitch en specs/mockups/i18n-beheer-poc.html) — bewust twee altijd-zichtbare knoppen,
-// geen dropdown/popup (zie de S10-precedent in specs/rebuild-plan-v2.md).
+// .langswitch) — bewust twee altijd-zichtbare knoppen, geen dropdown/popup.
 document.querySelectorAll('.langswitch [data-lang]').forEach(btn=>{
   btn.classList.toggle('active', btn.dataset.lang === huidigeTaal);
   btn.onclick = () => {

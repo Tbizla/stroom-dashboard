@@ -4,7 +4,7 @@
 // Bestaat omdat kant-en-klare socket-proxy's (tecnativa/docker-socket-proxy, en de
 // linuxserver.io-fork) bewust nooit DELETE-requests doorlaten, wat een echte container-recreate
 // (nodig omdat Telegraf zijn env vars alleen bij het *aanmaken* van het container inleest, niet bij
-// een kale restart) onmogelijk maakt via die route. Zie specs/single-use-vs-edities-diagnose.md §B1.
+// een kale restart) onmogelijk maakt via die route.
 //
 // Bewust: geen generieke Docker-API-doorgifte naar de webapp (die blijft dus zonder Docker-toegang) —
 // alleen dit ene servicetje heeft de socket, en het doet altijd exact dezelfde vaste

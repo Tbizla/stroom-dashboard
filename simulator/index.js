@@ -54,7 +54,7 @@ function maakPayload(stroom) {
 
 // nominale spanning gebruikt om de cumulatieve energie (Wh) te integreren uit de gemeten stroom —
 // een simpele vaste waarde is hier prima, de energieteller hoeft niet millivolt-precies te zijn
-// om er in de popup (specs/kast-popup-mqtt-spec.md) realistisch uit te zien
+// om er in de popup realistisch uit te zien
 const NOMINAL_VOLTAGE = 230;
 
 // Shelly Pro 3EM-veldnamen voor status/emdata:0 (EMData.GetStatus): *_total_act_energy per fase
@@ -101,7 +101,7 @@ async function main() {
   // per kast een startbelasting als fractie van de eigen rating_a, die random-walkt over tijd
   const state = {};
   topo.kasten.forEach(k => { state[k.id] = rand(0.2, 0.5); });
-  // leden van een groep (generator-EM-rework, specs/generator-em-rework-plan.md §1) zijn voor de
+  // leden van een groep (generator-EM-rework) zijn voor de
   // simulator gewoon losse meetpunten met hun eigen rating_a, zelfde random-walk als een kast
   (topo.generators || []).forEach(g => (g.leden || []).forEach(l => { if (l.id) state[l.id] = rand(0.2, 0.5); }));
 

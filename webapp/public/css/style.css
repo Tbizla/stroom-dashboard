@@ -30,7 +30,7 @@ header h1 span{color:var(--accent)}
 .connbar{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:var(--text2);flex-wrap:wrap}
 .connbar input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-family:var(--mono);font-size:12px;width:130px}
 
-/* taalkeuze-toggle, zelfde visuele familie als .modeswitch (zie specs/mockups/i18n-beheer-poc.html) —
+/* taalkeuze-toggle, zelfde visuele familie als .modeswitch —
    twee altijd-zichtbare knoppen, geen dropdown/popup. .connbar claimt margin-left:auto al, dus deze
    pill volgt er gewoon achteraan mee naar de rechterkant van de header. */
 .langswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
@@ -96,7 +96,7 @@ header h1 span{color:var(--accent)}
 .kastpopup .laatste{font-size:10px;color:var(--text3);margin-top:7px;text-align:right}
 .kastpopup .geendata{padding:6px 0;color:var(--text3);font-style:italic}
 /* fasekleuren-swatch: klein rond vlakje vóór een fase-label (kastpopup-tabelkop A/B/C, aside-detail
-   Fase A/B/C-rijen) — zie specs/mockups/fasekleuren-mockup.html */
+   Fase A/B/C-rijen) */
 .faseswatch{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
 
 aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
@@ -109,8 +109,7 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .genrow .val{font-family:var(--mono);font-weight:400;color:var(--text2);font-size:12px}
 .genrow.selected{box-shadow:inset 0 0 0 2px var(--accent)}
 /* onderste regel van een generatorrij: maakt expliciet dat de badges hier over de onderliggende
-   kasten gaan, niet over de generator/groep zelf (die heeft de stip bovenin) — zie
-   specs/generator-em-rework-plan.md §4 */
+   kasten gaan, niet over de generator/groep zelf (die heeft de stip bovenin) */
 .genrow-sub{display:flex;align-items:center;gap:6px;padding-left:22px}
 .taglabel{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .row{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px}
@@ -152,7 +151,7 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .barwrap{height:6px;background:var(--panel2);border-radius:3px;margin-top:10px;overflow:hidden}
 .barwrap .bar{height:100%;background:var(--green);width:0%;transition:width .3s}
 
-/* per-lid live rijen onder een groep in de aside-detail — zie specs/generator-em-rework-plan.md §2 */
+/* per-lid live rijen onder een groep in de aside-detail */
 .ledenblok{margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ledenblok-head{padding:6px 10px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;background:var(--panel2)}
 .lidrow{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12px;border-top:1px solid var(--border)}
@@ -236,7 +235,7 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .optionrow .always{font-size:9.5px;color:var(--text3);font-family:var(--mono);margin-left:8px;font-weight:400}
 .periodchips{display:flex;gap:6px;margin-top:10px;padding-left:26px}
 
-/* back-up herstellen (restore), zie specs/mockups/backup-herstellen-mockup.html */
+/* back-up herstellen (restore) */
 .sectiescheiding{border:none;border-top:1px solid var(--border);margin:28px 0 0}
 .modechoice{display:flex;gap:10px;margin-bottom:16px}
 .modecard{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer}

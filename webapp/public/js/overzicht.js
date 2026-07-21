@@ -2,7 +2,7 @@
 // Hergebruikt drie bestaande subsystemen i.p.v. een nieuwe architectuur: dezelfde client-side
 // liveData/liveEnergyData (Live/Schema), dezelfde topology.js-boomhelpers als het Schema-tabblad,
 // en een nieuw server-endpoint (/api/overzicht/energie) dat dezelfde influxQuery()-helper
-// hergebruikt als het PDF-rapport. Zie specs/rebuild-plan-v2-implementatie.md Fase D4b.
+// hergebruikt als het PDF-rapport.
 import { state, liveData } from './state.js';
 import { listChildrenOf, collectDescendantKasten, statusOf, statusCounts, maxFaseStroom } from './topology.js';
 import { apiCall } from './api.js';
@@ -23,7 +23,7 @@ function belastingPct(node){
 
 function badgesHtml(node){
   // zelfde "eigen vs. onderliggend"-onderscheid als de sidebar-generatorrij (render-list.js),
-  // hier ook toegepast op de Overzicht-kaart — zie specs/generator-em-rework-plan.md §4. Label
+  // hier ook toegepast op de Overzicht-kaart. Label
   // staat er zodra er kasten onder hangen, ook als er nog geen live status is (zelfde als sidebar)
   if(!collectDescendantKasten(node).length) return '';
   const counts = statusCounts(node);

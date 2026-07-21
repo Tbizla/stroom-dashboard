@@ -22,7 +22,7 @@ const INFLUX_ORG = process.env.INFLUX_ORG || 'site';
 const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
 // klein, apart servicetje (telegraf-herstarter/) dat de échte /var/run/docker.sock heeft en
 // precies één actie aanbiedt: telegraf herstarten met nieuwe EVENT_NAME/EVENT_EDITION-waarden —
-// zie specs/single-use-vs-edities-diagnose.md §B1. De webapp zelf heeft nooit Docker-toegang.
+// de webapp zelf heeft nooit Docker-toegang.
 const TELEGRAF_HERSTARTER_URL = process.env.TELEGRAF_HERSTARTER_URL;
 
 // staat testtopologie/simulator/meetdata-wissen toe. Geen aparte env-var om aan te zetten: de
@@ -50,7 +50,7 @@ async function alleenInTestmodus(req, res, next) {
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(TOPO_FILE)) fs.copyFileSync(DEFAULT_TOPO, TOPO_FILE);
 // eerste-opstart-default komt uit de .env-variabelen (zelfde als Telegraf nu al gebruikt); wordt
-// hierna uitsluitend via Beheer/`/api/instellingen` beheerd, zie specs/single-use-vs-edities-diagnose.md
+// hierna uitsluitend via Beheer/`/api/instellingen` beheerd
 if (!fs.existsSync(INSTELLINGEN_FILE)) {
   fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify({
     event_name: veiligeTagWaarde(process.env.EVENT_NAME),
@@ -70,7 +70,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res) => res.set('Cache-Control', 'no-store') }));
 
 // migreert oudere topologieën waarin generators/leden nog geen `mqtt_topic_prefix` (generators) of
-// `id`/`mqtt_topic_prefix` (leden van een groep) hebben — zie specs/generator-em-rework-plan.md §1.
+// `id`/`mqtt_topic_prefix` (leden van een groep) hebben.
 // Draait bij elke read, is een no-op zodra alles al gemigreerd is (geen aparte migratiestap nodig).
 function migreerGeneratorsEnLeden(data) {
   let gewijzigd = false;
@@ -164,8 +164,7 @@ app.get('/api/topology', (req, res) => res.json(readTopo()));
 
 // ---------- instellingen: event_name/event_edition, bewerkbaar vanuit Beheer i.p.v. alleen via
 // .env — enige bron van waarheid aan de webapp-kant voor de editie/evenement-tags die
-// syncTopologyToInflux() (topology_edges) en het restore-endpoint (collision-check) gebruiken.
-// Zie specs/single-use-vs-edities-diagnose.md §A4. ----------
+// syncTopologyToInflux() (topology_edges) en het restore-endpoint (collision-check) gebruiken. ----------
 function readInstellingen() { return JSON.parse(fs.readFileSync(INSTELLINGEN_FILE, 'utf8')); }
 function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
 
@@ -219,7 +218,7 @@ app.get('/api/instellingen/telegraf-herstart/status', (req, res) => res.json(tel
 app.get('/api/test-mode', async (req, res) => res.json({ testMode: await isTestMode() }));
 
 // ---------- i18n: platte dot-key vertaalbestanden, gedeeld client (fetch) + server (require voor
-// het PDF-rapport) — één bron van waarheid, zie specs/rebuild-plan-v2.md §11.2 ----------
+// het PDF-rapport) — één bron van waarheid ----------
 const I18N_TALEN = { nl: require('./i18n/nl.json'), en: require('./i18n/en.json') };
 app.get('/api/i18n/:taal', (req, res) => {
   const dict = I18N_TALEN[req.params.taal];
@@ -245,7 +244,7 @@ app.post('/api/topology/positie', (req, res) => {
 // centrale met 6 aggregaten + een CAT-batterijcontainer die onderling load-sharen of elkaar back-uppen met
 // automatische start). Kasten koppelen dan aan de groep zelf, niet aan een los lid — precies zoals het er
 // in het veld ook uitziet (één aansluitpunt, intern beheerd). Een lid heeft naam/kVA/type, en sinds de
-// generator-EM-rework (specs/generator-em-rework-plan.md §1) ook een eigen stabiele `id` +
+// generator-EM-rework ook een eigen stabiele `id` +
 // `mqtt_topic_prefix` (site/<generator_id>/<lid_id>) en optionele `rating_a` — net als bij een generator
 // alleen relevant als dat lid ook echt via een eigen Shelly+CT-klem wordt uitgelezen. Leden zijn nog
 // steeds geen losse topologie-nodes: ze worden niet los geplaatst op de plattegrond.
@@ -272,7 +271,7 @@ function normaliseerLeden(leden) {
       vermogen_kva: l.vermogen_kva != null ? Number(l.vermogen_kva) : null,
       type: l.type === 'batterij' ? 'batterij' : 'generator',
       // net als bij een generator: optioneel, alleen gezet als dit lid ook echt een eigen
-      // Shelly+CT-klem heeft (zie specs/generator-em-rework-plan.md §2)
+      // Shelly+CT-klem heeft
       rating_a: (l.rating_a != null && l.rating_a !== '') ? Number(l.rating_a) : null,
     };
     if (l.id) lid.id = l.id;
@@ -688,8 +687,7 @@ async function influxQuery(flux) {
 // zelfde als influxQuery(), maar zonder de Flux-annotatieregels (#datatype/#group/#default) —
 // alleen bruikbaar als de query zelf al is opgezet (pivot(), group()) om precies één tabel met
 // een stabiel kolomschema terug te geven, zodat csvNaarLineProtocol() een simpele header + rijen
-// kan aannemen i.p.v. een volwaardige multi-tabel-Flux-CSV-parser nodig te hebben. Zie §A3,
-// specs/single-use-vs-edities-diagnose.md.
+// kan aannemen i.p.v. een volwaardige multi-tabel-Flux-CSV-parser nodig te hebben.
 async function influxQueryPlatteCsv(flux) {
   const res = await fetch(INFLUX_URL + '/api/v2/query?org=' + encodeURIComponent(INFLUX_ORG), {
     method: 'POST',
@@ -764,7 +762,7 @@ function csvKolomWaarden(csv, kolom) {
 // InfluxDB line-protocol-tag terechtkomt (voorkomt Flux-/line-protocol-injectie) — matcht hoe
 // edities/evenementnamen er in de praktijk uitzien (jaartallen/korte namen zonder spaties/komma's,
 // zie EVENT_EDITION/EVENT_NAME in .env.example). Gebruikt voor editie, evenement, en de
-// instellingen-velden (§A4, specs/single-use-vs-edities-diagnose.md) — allemaal dezelfde soort waarde.
+// instellingen-velden — allemaal dezelfde soort waarde.
 function veiligeTagWaarde(waarde) {
   if (!waarde || !/^[a-zA-Z0-9_-]+$/.test(waarde)) return null;
   return waarde;
@@ -842,7 +840,7 @@ app.get('/api/overzicht/energie', async (req, res) => {
 
 // haalt één paneel als PDF op bij Grafana's eigen /render-endpoint (via grafana-image-renderer) —
 // ondanks een misleidende "image/png"-Content-Type-header staat er een echte PDF in de body
-// (geverifieerd op byte-niveau tijdens implementatie, zie specs/rapport-pdf-export-spec.md)
+// (geverifieerd op byte-niveau tijdens implementatie)
 async function haalPaneelPdfOp(panelId, { van, tot, editie, breedte, hoogte }) {
   const params = new URLSearchParams({
     panelId: String(panelId),
@@ -871,8 +869,7 @@ async function haalPaneelPdfOp(panelId, { van, tot, editie, breedte, hoogte }) {
 }
 
 // ---------- PDF-rapport opmaak (Fase E): coverpagina, voettekststrook, herstylede alarmenpagina,
-// licht/print-vriendelijk thema i.p.v. het donkere webapp-thema — bewuste afwijking, zie
-// specs/mockups/pdf-rapport-mockup.html en de toelichting in pdf-rapport-formatting-review.md.
+// licht/print-vriendelijk thema i.p.v. het donkere webapp-thema — bewuste afwijking.
 // De Grafana-paneelpagina's zelf blijven ongewijzigd; alleen een dunne voettekststrook erover via
 // pdf-lib na copyPages(). i18n: dezelfde nl.json/en.json als de webapp-UI, taal meegegeven vanuit
 // de client (huidige UI-taal op het moment van genereren), niet als aparte instelling.
@@ -1096,7 +1093,7 @@ app.get('/api/rapport/download', (req, res) => {
 });
 
 // ---------- Back-up (roadmap-item 8, Back-up-subtab in de Rapportages-tab): topologie + media
-// altijd, meetdata optioneel met periode — zie specs/rebuild-plan-v2.md §11.4 ----------
+// altijd, meetdata optioneel met periode ----------
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
@@ -1109,8 +1106,8 @@ let backupJob = {
 
 // levert de twee vormen van "meetdata" voor een back-up: `meetdata.csv` (leesbaar, ongewijzigd
 // gedrag: alleen shelly_em/shelly_emdata over de gekozen periode) en `meetdata.lp` (line-protocol,
-// inclusief topology_edges, bedoeld om via het restore-endpoint terug te schrijven — zie §A3,
-// specs/single-use-vs-edities-diagnose.md). topology_edges wordt niet over de gekozen periode
+// inclusief topology_edges, bedoeld om via het restore-endpoint terug te schrijven. topology_edges
+// wordt niet over de gekozen periode
 // bevraagd (het is een structuur-snapshot, geen tijdreeks) maar als laatste-bekende-stand per
 // kast, zelfde patroon als de `edges`-subquery in het Grafana-Sankey-paneel.
 async function genereerMeetdataBestanden(meetdataPeriode) {
@@ -1223,8 +1220,7 @@ app.get('/api/backup/download', (req, res) => {
   res.download(path.join(BACKUP_DIR, backupJob.bestandsnaam), backupJob.bestandsnaam);
 });
 
-// ---------- Back-up herstellen (restore, tegenhanger van hierboven) — zie
-// specs/single-use-vs-edities-diagnose.md §A5. Twee modi: "volledig" (verse/lege instance, alle
+// ---------- Back-up herstellen (restore, tegenhanger van hierboven). Twee modi: "volledig" (verse/lege instance, alle
 // onderdelen) of "editie_toevoegen" (alleen meetdata, geblokkeerd bij een editie/evenement-
 // naamsbotsing met wat er al in deze instance staat). ----------
 function isZipBestand(buffer) {

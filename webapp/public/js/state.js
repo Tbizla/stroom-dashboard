@@ -7,7 +7,7 @@ export const state = {
   armedId: null,
   selectedId: null,
   mqttClient: null,
-  openPopupKastId: null, // id van de kast waarvan de MQTT-databallon open staat op de plattegrond (Live-modus), zie specs/kast-popup-mqtt-spec.md — null = geen ballon open
+  openPopupKastId: null, // id van de kast waarvan de MQTT-databallon open staat op de plattegrond (Live-modus) — null = geen ballon open
   listSearchQuery: '',
   listStatusFilter: 'alles',
   kastZoekQuery: '',

@@ -37,7 +37,7 @@ document.getElementById('connectBtn').onclick = ()=>{
         return;
       }
       // alle velden bewaren (niet alleen de subset die de aside-detail gebruikt) — de MQTT-
-      // databallon (specs/kast-popup-mqtt-spec.md) toont ook act_power/aprt_power/pf per fase
+      // databallon toont ook act_power/aprt_power/pf per fase
       liveData[kastId] = { ...data, ts: Date.now() };
       renderList(); renderPins(); if(state.mode==='schema') renderSchema(); if(state.selectedId===kastId) renderDetail();
       ververOverzichtLiveWeergave();

@@ -1,5 +1,5 @@
 // ---------- Systeeminstellingen (evenementnaam/editie) — Beheer-tab ----------
-// Bewerkbaar vanuit de UI i.p.v. alleen via .env (zie specs/single-use-vs-edities-diagnose.md §B2).
+// Bewerkbaar vanuit de UI i.p.v. alleen via .env.
 // Opslaan gebeurt in twee stappen: PUT /api/instellingen (direct, schrijft instellingen.json) en
 // daarna POST /api/instellingen/telegraf-herstart (asynchrone job, herstart Telegraf zodat nieuwe
 // metingen ook echt de nieuwe editie/evenement-tags krijgen — Telegraf leest die alleen bij het

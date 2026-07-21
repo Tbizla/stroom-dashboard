@@ -4,7 +4,7 @@ import { t, huidigeLocale } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
 
 // per-lid live rijen onder de bestaande ledenlijst van een groep (naam/kVA/soort blijft
-// ongewijzigd) — zie specs/generator-em-rework-plan.md §2. Een lid zonder eigen rating_a heeft
+// ongewijzigd). Een lid zonder eigen rating_a heeft
 // geen self-meter en toont dus bewust geen stip/waarde (zelfde graceful fallback als generators
 // zonder rating_a elders in de app), geen verplichte migratie-actie voor bestaande leden.
 function ledenblokHtml(gen){

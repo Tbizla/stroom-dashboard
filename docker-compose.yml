@@ -39,8 +39,8 @@ services:
       - EVENT_NAME=${EVENT_NAME}
 
   # klein, doelbewust beperkt servicetje voor het herstarten van telegraf na een
-  # EVENT_NAME/EVENT_EDITION-wijziging vanuit Beheer (zie specs/single-use-vs-edities-diagnose.md
-  # §B1). Krijgt de échte /var/run/docker.sock, maar biedt naar buiten toe maar precies één actie
+  # EVENT_NAME/EVENT_EDITION-wijziging vanuit Beheer. Krijgt de échte /var/run/docker.sock,
+  # maar biedt naar buiten toe maar precies één actie
   # (POST /herstart) — geen generieke Docker-API-doorgifte. Kant-en-klare socket-proxy's
   # (tecnativa/docker-socket-proxy en de linuxserver.io-fork) bleken geen DELETE-requests door te
   # laten (bewuste designkeuze in die projecten), wat een echte container-recreate onmogelijk

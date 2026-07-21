@@ -1,5 +1,5 @@
 // entrypoint: importeert alle modules (hun top-level code wiret de DOM-event-listeners aan) en
-// start tot slot de eerste databelading. Zie specs/rebuild-plan-v2-implementatie.md Fase A.
+// start tot slot de eerste databelading.
 import './i18n.js';
 import { state } from './state.js';
 import { loadTopology, loadMap, loadLogo } from './topology.js';

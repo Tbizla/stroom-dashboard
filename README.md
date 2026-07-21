@@ -251,8 +251,7 @@ Zodra je een kanaal kiest, voeg je die toe onder Alerting > Contact points, en k
 
 De MQTT-topic-prefix (was `fest/<generator>/<kast>/...`) en de InfluxDB-organisatienaam (was
 `festival`) heten nu allebei `site` — een bewuste harde knip, geen automatische compatibiliteit met
-de oude naamgeving (zie [specs/mqtt-prefix-migratie-plan.md](specs/mqtt-prefix-migratie-plan.md)
-voor de volledige afweging). Draai je al een instance van vóór deze wijziging, dan moet je drie
+de oude naamgeving. Draai je al een instance van vóór deze wijziging, dan moet je drie
 dingen doen — in deze volgorde, tussen twee evenementen door (niet vlak voor of tijdens een
 evenement, want tussen stap 2 en 3 zijn alle Shelly's die nog niet zijn omgezet even onzichtbaar
 voor de app):

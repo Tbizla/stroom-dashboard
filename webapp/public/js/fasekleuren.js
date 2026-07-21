@@ -1,6 +1,6 @@
 // ---------- fasekleuren NL-conventie (bruin/zwart/grijs i.p.v. de Shelly-afgeleide labels A/B/C) ----------
 // klein rond kleurvlakje vóór het fase-label, losstaand naast de bestaande groen/amber/rood-
-// statusindicator (zie specs/mockups/fasekleuren-mockup.html) — geen wijziging aan statusOf()/
+// statusindicator — geen wijziging aan statusOf()/
 // statusClass() in topology.js, puur presentatielaag.
 const FASE_VARS = ['--fase1', '--fase2', '--fase3'];
 

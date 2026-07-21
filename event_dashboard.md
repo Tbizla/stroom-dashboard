@@ -114,8 +114,7 @@ zetten zonder code aan te passen.
   onderscheid ook op de Overzicht-kaarten (Rapportages-tabblad)
 - Frequentie per fase (`a_freq`/`b_freq`/`c_freq`, Hz): eigen rij in de kastpopup-tabel (1 decimaal,
   zelfde patroon als Stroom/Spanning/Act. vermogen) en toegevoegd aan de per-fase metric-regel in de
-  aside-detail ("Fase A: X A · Y V · Z Hz") — zie
-  [specs/fase-frequenties-plan.md](specs/fase-frequenties-plan.md). Geen nieuwe databron (komt al
+  aside-detail ("Fase A: X A · Y V · Z Hz"). Geen nieuwe databron (komt al
   ongewijzigd door Telegraf heen) en geen eigen statuskleur/alert-drempel
 - Klikken op een kast-, generator- of groep-pin op de plattegrond opent een databallon ter plekke:
   voor een kast of los aggregaat/generator de volledige MQTT-payload (stroom/spanning/act. en
@@ -189,7 +188,7 @@ zetten zonder code aan te passen.
   batterij-/piekscheerderkasten
 - `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket), en
   een `$evenement`-variabele ernaast om ook tussen verschillende evenementen te kunnen filteren die
-  toevallig dezelfde editie-waarde gebruiken (zie `specs/single-use-vs-edities-diagnose.md`)
+  toevallig dezelfde editie-waarde gebruiken
 - Alerting-condities (90%-drempel van `rating_a` per fase, niet van `total_current`) zijn per paneel handmatig toe te voegen
 - Sankey-paneel ("Terugblik - energieverdeling", Netsage Sankey-plugin, automatisch geïnstalleerd
   via `GF_INSTALL_PLUGINS`) toont na afloop het geschatte energieverbruik per kast als
@@ -249,7 +248,7 @@ Grafana:
   editie/evenement-naamsbotsing in de doelinstance, nooit stil overschreven/vermengd. Zip wordt
   serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
   (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
-  `topology_edges` en de naamsbotsing-check) — zie `specs/single-use-vs-edities-diagnose.md`
+  `topology_edges` en de naamsbotsing-check)
 
 ## Roadmap
 
@@ -259,17 +258,14 @@ Grafana:
 > starten, ook niet de kleine.
 
 - [x] **MQTT-topic-prefix van `fest` naar `site`, plus InfluxDB-org `festival` → `site`.** Afgerond
-      — zie [specs/mqtt-prefix-migratie-plan.md](specs/mqtt-prefix-migratie-plan.md) en README.md
-      §13 voor de migratiestappen op een bestaande instance (InfluxDB-org hernoemen, topologie-data
-      bijwerken, fysieke Shelly's herconfigureren). **Laatste openstaande punt voor v2 — v2-roadmap
-      is hiermee compleet.**
-- [x] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Afgerond — zie
-      [specs/shelly-data-audit.md](specs/shelly-data-audit.md). Conclusie: er mist data. Eén
-      bevinding (fasefrequenties) wordt nu opgepakt, zie hieronder; de rest is doorgeschoven naar
-      v3 (zie Roadmap v3).
-- [x] **Fasefrequenties tonen (`a_freq`/`b_freq`/`c_freq`).** Afgerond — zie
-      [specs/fase-frequenties-plan.md](specs/fase-frequenties-plan.md) en de Live-monitoring-feature
-      hierboven.
+      — zie README.md §14 voor de migratiestappen op een bestaande instance (InfluxDB-org hernoemen,
+      topologie-data bijwerken, fysieke Shelly's herconfigureren). **Laatste openstaande punt voor
+      v2 — v2-roadmap is hiermee compleet.**
+- [x] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Afgerond. Conclusie: er mist
+      data. Eén bevinding (fasefrequenties) wordt nu opgepakt, zie hieronder; de rest is
+      doorgeschoven naar v3 (zie Roadmap v3).
+- [x] **Fasefrequenties tonen (`a_freq`/`b_freq`/`c_freq`).** Afgerond — zie de
+      Live-monitoring-feature hierboven.
 - [ ] *(meer volgt)*
 
 ## Roadmap v3 (nog niet gestart)
@@ -290,8 +286,8 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
       een fundamenteel andere ophaalmethode (HTTP-polling of een Shelly Script). Alleen oppakken bij
       concrete behoefte, bijv. vanuit een rijker PDF-rapport.
 - [ ] **Generator-EM-rework-vervolg: native telemetrie-protocolintegratie.** Bewust uitgesteld
-      tijdens de Generator-EM-rework (zie [specs/generator-em-rework-plan.md](specs/generator-em-rework-plan.md))
-      — generators die niet via Shelly+CT-klem maar via een eigen protocol uit te lezen zijn.
+      tijdens de Generator-EM-rework — generators die niet via Shelly+CT-klem maar via een eigen
+      protocol uit te lezen zijn.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-

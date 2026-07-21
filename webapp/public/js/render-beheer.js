@@ -308,7 +308,7 @@ export function renderBeheer(){
   // (simpelste manier om vanuit deze tabel te muteren), maar huidigeLeden() kopieert ook het
   // bestaande `id`/`mqtt_topic_prefix`/`rating_a` van elk lid mee, dus die blijven behouden — de
   // server genereert alleen een nieuw id voor een lid dat er nog geen heeft (zie
-  // voorzieLedenVanIdEnPrefix() in server.js, specs/generator-em-rework-plan.md §1)
+  // voorzieLedenVanIdEnPrefix() in server.js)
   async function saveLeden(genId, leden){
     try{ await apiCall('/api/generators/'+genId, 'PUT', {leden}); await loadTopology(); }
     catch(e){ alert(e.message); }
