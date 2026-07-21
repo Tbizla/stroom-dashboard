@@ -43,7 +43,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000) én het stroomdashboard zelf (poort 8080). Niets hoeft meer los gekopieerd of ingesteld te worden.
+Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000), het stroomdashboard zelf (poort 8080), en een klein `telegraf-herstarter`-servicetje (herstart Telegraf op de achtergrond zodra je de evenementnaam/editie in Beheer wijzigt, zie sectie 11 — heeft de Docker-socket nodig, maar biedt zelf maar één vaste actie aan). Niets hoeft meer los gekopieerd of ingesteld te worden.
 
 Open `http://<ip-van-de-nhq-machine>:8080` — dat werkt vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 
@@ -177,7 +177,16 @@ ingesteld") in plaats van stil te falen.
 
 ## 11. Meerdere edities/jaren vergelijken
 
-Elke keer dat je de stack opnieuw start, vul je in `.env` de `EVENT_EDITION` in (bijv. "2027"), en `EVENT_NAME` (bijv. "Zomerfestival"). Telegraf plakt die als tags `editie`/`evenement` op elke meting, dus alle jaren (en evenementen) blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie/evenement, of meerdere edities naast elkaar in één grafiek zetten (via de `$editie`/`$evenement`-variabelen bovenaan het dashboard). `EVENT_NAME` disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. "2026" bij zowel een zomerfestival als een kermis) — belangrijk zodra je back-ups van meerdere evenementen in één archief-instance combineert (zie sectie 9).
+`.env` vult bij de allereerste opstart de startwaarde van `EVENT_EDITION` (bijv. "2027") en `EVENT_NAME` (bijv. "Zomerfestival") in. Telegraf plakt die als tags `editie`/`evenement` op elke meting, dus alle jaren (en evenementen) blijven in dezelfde InfluxDB-bucket staan en kun je in Grafana filteren op editie/evenement, of meerdere edities naast elkaar in één grafiek zetten (via de `$editie`/`$evenement`-variabelen bovenaan het dashboard). `EVENT_NAME` disambigueert tussen verschillende evenementen die toevallig dezelfde editie-waarde gebruiken (bijv. "2026" bij zowel een zomerfestival als een kermis) — belangrijk zodra je back-ups van meerdere evenementen in één archief-instance combineert (zie sectie 9).
+
+**Beide waarden zijn daarna gewoon aan te passen vanuit de webapp** (Beheer > Systeeminstellingen),
+niet alleen via `.env` bij het opstarten — bijv. bij een jaarwisseling, of halverwege een editie na
+een hardwarewissel. Op "Wijzigingen doorvoeren" klikken schrijft de nieuwe waarden weg en herstart
+Telegraf kort op de achtergrond (een paar seconden aan metingen rond dat moment kunnen gemist
+worden) zodat nieuwe metingen ook echt de nieuwe tags krijgen — Telegraf leest deze waarden namelijk
+alleen in bij het *aanmaken* van zijn container, niet bij een gewone restart. Dat herstarten gebeurt
+via het kleine `telegraf-herstarter`-servicetje (zie sectie 3): dat heeft de Docker-socket, de
+webapp zelf niet.
 
 ## 12. Alarmering (Grafana Alerting)
 

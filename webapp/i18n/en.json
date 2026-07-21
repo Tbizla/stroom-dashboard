@@ -133,6 +133,17 @@
   "beheer.logoUploaden": "Upload logo",
   "beheer.logoUploading": "uploading...",
   "beheer.logoGeupload": "logo uploaded",
+
+  "beheer.systeeminstellingen": "System settings",
+  "beheer.systeeminstellingenSubtitel": "Event name and edition — used for the editie/evenement tags on measurement data, and to tell different events/editions apart when restoring a backup.",
+  "beheer.evenementnaamPlaceholder": "Event name, e.g. Summer Festival",
+  "beheer.editiePlaceholder": "Edition, e.g. 2027",
+  "beheer.instellingenOpslaan": "Apply changes",
+  "beheer.instellingenHint": "This briefly restarts Telegraf — a few seconds of measurements around this moment may be missed.",
+  "beheer.instellingenBezig": "Applying (restarting Telegraf)...",
+  "beheer.instellingenKlaar": "Saved and Telegraf restarted.",
+  "beheer.alertVulInstellingen": "Enter an event name and edition",
+
   "beheer.generators": "Generators",
   "beheer.thNaam": "Name",
   "beheer.thType": "Type",

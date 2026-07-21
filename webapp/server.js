@@ -20,6 +20,10 @@ const INFLUX_URL = process.env.INFLUX_URL || 'http://influxdb:8086';
 const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
 const INFLUX_ORG = process.env.INFLUX_ORG || 'festival';
 const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
+// klein, apart servicetje (telegraf-herstarter/) dat de échte /var/run/docker.sock heeft en
+// precies één actie aanbiedt: telegraf herstarten met nieuwe EVENT_NAME/EVENT_EDITION-waarden —
+// zie specs/single-use-vs-edities-diagnose.md §B1. De webapp zelf heeft nooit Docker-toegang.
+const TELEGRAF_HERSTARTER_URL = process.env.TELEGRAF_HERSTARTER_URL;
 
 // staat testtopologie/simulator/meetdata-wissen toe. Geen aparte env-var om aan te zetten: de
 // `simulator`-service bestaat alleen op het docker-netwerk als de stack met `--profile test`
@@ -174,6 +178,42 @@ app.put('/api/instellingen', (req, res) => {
   writeInstellingen({ event_name, event_edition });
   res.json({ ok: true });
 });
+
+// ---------- Telegraf herstarten na een instellingen-wijziging (Deel B, §B1/§B2) ----------
+// Telegraf leest EVENT_NAME/EVENT_EDITION als env var, alleen ingelezen bij het *aanmaken* van het
+// container (niet bij een kale restart) — dus na een wijziging is een recreate nodig. Die recreate
+// (inspect/stop/remove/create/start) gebeurt niet hier maar in het losse telegraf-herstarter-
+// servicetje, dat wél de echte Docker-socket heeft; de webapp roept alleen diens ene endpoint aan.
+async function herstartTelegrafMetNieuweInstellingen(event_name, event_edition) {
+  if (!TELEGRAF_HERSTARTER_URL) throw new Error('TELEGRAF_HERSTARTER_URL is niet ingesteld');
+  const res = await fetch(TELEGRAF_HERSTARTER_URL + '/herstart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_name, event_edition }),
+  });
+  if (!res.ok) throw new Error('telegraf-herstarter gaf ' + res.status + ': ' + (await res.text()));
+}
+
+// zelfde conventie als rapportJob/backupJob/herstelJob hierboven/hieronder
+let telegrafHerstartJob = { status: 'idle', gestartOp: null, klaarOp: null, foutmelding: null };
+
+app.post('/api/instellingen/telegraf-herstart', (req, res) => {
+  if (telegrafHerstartJob.status === 'bezig') return res.status(409).json({ error: 'er loopt al een herstart' });
+  const { event_name, event_edition } = readInstellingen();
+  if (!event_name || !event_edition) return res.status(400).json({ error: 'sla eerst geldige instellingen op via PUT /api/instellingen' });
+
+  telegrafHerstartJob = { status: 'bezig', gestartOp: new Date().toISOString(), klaarOp: null, foutmelding: null };
+  res.json({ ok: true });
+
+  herstartTelegrafMetNieuweInstellingen(event_name, event_edition).then(() => {
+    telegrafHerstartJob = { ...telegrafHerstartJob, status: 'klaar', klaarOp: new Date().toISOString() };
+  }).catch((e) => {
+    telegrafHerstartJob = { ...telegrafHerstartJob, status: 'fout', foutmelding: e.message };
+    console.error('telegraf-herstart mislukt:', e.message);
+  });
+});
+
+app.get('/api/instellingen/telegraf-herstart/status', (req, res) => res.json(telegrafHerstartJob));
 
 // zodat de webapp-UI het Testdata-tabblad alleen toont als de bijbehorende endpoints ook echt werken
 app.get('/api/test-mode', async (req, res) => res.json({ testMode: await isTestMode() }));

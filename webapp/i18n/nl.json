@@ -133,6 +133,17 @@
   "beheer.logoUploaden": "Logo uploaden",
   "beheer.logoUploading": "uploaden...",
   "beheer.logoGeupload": "logo geupload",
+
+  "beheer.systeeminstellingen": "Systeeminstellingen",
+  "beheer.systeeminstellingenSubtitel": "Evenementnaam en editie — gebruikt voor de editie/evenement-tags op meetdata en om verschillende evenementen/edities uit elkaar te houden bij een back-up-herstel.",
+  "beheer.evenementnaamPlaceholder": "Evenementnaam, bijv. Zomerfestival",
+  "beheer.editiePlaceholder": "Editie, bijv. 2027",
+  "beheer.instellingenOpslaan": "Wijzigingen doorvoeren",
+  "beheer.instellingenHint": "Dit herstart Telegraf kort — een paar seconden aan metingen rond dit moment kunnen daarbij gemist worden.",
+  "beheer.instellingenBezig": "Wordt doorgevoerd (Telegraf herstart)...",
+  "beheer.instellingenKlaar": "Opgeslagen en Telegraf opnieuw gestart.",
+  "beheer.alertVulInstellingen": "Vul evenementnaam en editie in",
+
   "beheer.generators": "Generators",
   "beheer.thNaam": "Naam",
   "beheer.thType": "Type",

@@ -12,6 +12,7 @@ import './render-schema.js';
 import './render-beheer.js';
 import { initRapport } from './rapport.js';
 import { initBackup } from './backup.js';
+import { initInstellingen } from './instellingen.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
 import './mqtt.js';
 import { refreshSimStatusIfTest } from './modes.js';
@@ -75,6 +76,7 @@ document.getElementById('importFile').onchange = (ev)=>{
 
 initRapport();
 initBackup();
+initInstellingen();
 
 // ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
 // niet op het Beheer-tabblad: daar ben je zelf de enige die bewerkt, en een tussentijdse herbouw van de

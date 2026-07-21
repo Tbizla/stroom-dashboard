@@ -203,15 +203,25 @@ hertagging, tenzij Code daar apart voor kiest).
 Dit is klein genoeg voor één spec, geen aparte fasering. Zodra Code het technische fundament
 hierboven (inclusief de topology_edges-uitbreiding) heeft bevestigd, kan dit gebouwd worden.
 
-## Status: Deel A gebouwd en geverifieerd, Deel B nog open
+## Status: Deel A én Deel B gebouwd en geverifieerd
 
 Code heeft het plan (`C:\Users\m_kuy\.claude\plans\fizzy-yawning-tome.md`) in twee delen gesplitst
 en met Mike afgestemd: Deel A (de kern van deze diagnose — restore, tagging, Grafana) zonder nieuwe
 rechten, en Deel B (`EVENT_NAME`/`EVENT_EDITION` bewerkbaar vanuit Beheer, incl. een
 Telegraf-herstart-mechanisme) apart omdat dat wél nieuwe Docker-toegang vergt. Mike koos voor "een
-herstart vanuit de UI" i.p.v. Telegraf vervangen of een handmatige `.env`-bewerking — Deel B's
-concrete aanpak (docker-socket-proxy, scoped tot alleen container-acties) staat in het plan-bestand
-en wordt in een vervolgsessie gebouwd.
+herstart vanuit de UI" i.p.v. Telegraf vervangen of een handmatige `.env`-bewerking.
+
+**Koerswijziging tijdens het bouwen van Deel B**: het geplande `tecnativa/docker-socket-proxy`
+(en de identieke linuxserver.io-fork) bleek bij verificatie *nooit* DELETE-requests door te laten,
+ongeacht de env-var-configuratie — een bewuste designkeuze in die projecten, niet een instelling om
+aan te zetten. Een echte container-recreate (nodig omdat Telegraf zijn env vars alleen bij het
+*aanmaken* van het container inleest) vergt altijd een DELETE-stap (het oude container verwijderen
+vóór het aanmaken van het nieuwe onder dezelfde naam), dus deze kant-en-klare proxy's konden het
+gevraagde mechanisme niet dragen. Aan Mike voorgelegd met drie opties (mini-sidecar met één vaste
+actie / volledige docker.sock in de webapp / terug naar de handmatige stap) — gekozen: een eigen
+klein `telegraf-herstarter`-servicetje (`telegraf-herstarter/index.js`, geen dependencies, alleen
+Node's ingebouwde `http`-module) dat de échte Docker-socket krijgt maar naar buiten toe maar precies
+één ding aanbiedt (`POST /herstart`) — de webapp zelf blijft zonder Docker-toegang.
 
 **Deel A — gebouwd, geverifieerd via `docker compose --profile test` + Playwright + directe
 InfluxDB-queries:**
@@ -241,4 +251,23 @@ InfluxDB-queries:**
 - Frontend: nieuwe "Back-up herstellen"-sectie in de Back-up-subtab, exact volgens
   `mockups/backup-herstellen-mockup.html`.
 
-Nog niet gecommit op moment van schrijven — volgt na Mikes review.
+**Deel B — gebouwd, geverifieerd:**
+- Nieuwe `telegraf-herstarter/`-service (eigen `Dockerfile` + `index.js`, geen dependencies):
+  krijgt `/var/run/docker.sock` gemount, biedt alleen `POST /herstart` aan (body:
+  `event_name`/`event_edition`, gevalideerd met dezelfde tekenwhitelist als `veiligeTagWaarde()`).
+  Kloont de huidige telegraf-container-config (image/env/netwerken/restart-policy) via een
+  inspect, past alleen de `EVENT_NAME`/`EVENT_EDITION`-regels in `Env` aan, en doet dan
+  stop → remove → create → start onder dezelfde containernaam.
+- `server.js`: `herstartTelegrafMetNieuweInstellingen()` is nu een simpele fetch naar dat ene
+  endpoint; nieuwe `POST /api/instellingen/telegraf-herstart` (+ `GET .../status`) met hetzelfde
+  bezig/klaar/fout-jobpatroon als de rapport-/back-upflows.
+- Nieuwe "Systeeminstellingen"-sectie in Beheer (`instellingen.js`): evenementnaam/editie-velden,
+  "Wijzigingen doorvoeren" doet `PUT /api/instellingen` gevolgd door de herstart-trigger.
+- End-to-end geverifieerd via `docker compose --profile test`: instellingen wijzigen → Telegraf
+  herstart (bevestigd via `docker compose logs telegraf`: nieuwe `Tags enabled: editie=... 
+  evenement=...`-regel, nieuwe `CreatedAt`) → verse metingen dragen meteen de nieuwe tags, geen
+  orphaned containers achteraf (`docker ps -a` toont precies één "telegraf"-container). UI-flow
+  (waarden opslaan, status-kaart, waarden blijven staan na page-refresh) geverifieerd met
+  Playwright.
+
+Gecommit en gepusht na Mikes review.

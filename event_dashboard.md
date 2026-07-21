@@ -69,6 +69,14 @@ zetten zonder code aan te passen.
 - Evenementlogo uploaden, zichtbaar in de header. Logo- en plattegronduploads zijn beperkt tot
   .png/.bmp/.svg, gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen de
   bestandsnaam), zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
+- **Systeeminstellingen**: evenementnaam en editie zijn nu bewerkbaar vanuit Beheer i.p.v. alleen
+  via `.env` bij het opstarten (`GET`/`PUT /api/instellingen`, opgeslagen in `instellingen.json`) —
+  gebruikt voor de `editie`/`evenement`-tags op meetdata en de naamsbotsing-check bij een
+  back-up-herstel (zie Back-up-subtab). Omdat Telegraf zijn tags alleen bij het *aanmaken* van
+  z'n container inleest (niet bij een kale restart), herstart "Wijzigingen doorvoeren" Telegraf op
+  de achtergrond via een klein, doelbewust beperkt `telegraf-herstarter`-servicetje dat de
+  Docker-socket heeft maar naar buiten toe maar precies één actie aanbiedt — de webapp zelf krijgt
+  geen Docker-toegang
 - Export/import van de volledige topologie als JSON (back-up, of hergebruik voor een nieuwe editie)
 - Elke wijziging in Beheer wordt automatisch als `topology_edges`-reeks naar InfluxDB gesynct
   (kast → parent/generator), zodat Grafana de actuele parent/child-structuur kan gebruiken
@@ -176,7 +184,7 @@ zetten zonder code aan te passen.
   batterij-/piekscheerderkasten
 - `$editie`-variabele om meerdere jaren/edities te vergelijken (data blijft in dezelfde bucket), en
   een `$evenement`-variabele ernaast om ook tussen verschillende evenementen te kunnen filteren die
-  toevallig dezelfde editie-waarde gebruiken (zie "Spanningsveld: single-use vs. edities" hieronder)
+  toevallig dezelfde editie-waarde gebruiken (zie `specs/single-use-vs-edities-diagnose.md`)
 - Alerting-condities (90%-drempel van `rating_a` per fase, niet van `total_current`) zijn per paneel handmatig toe te voegen
 - Sankey-paneel ("Terugblik - energieverdeling", Netsage Sankey-plugin, automatisch geïnstalleerd
   via `GF_INSTALL_PLUGINS`) toont na afloop het geschatte energieverbruik per kast als
@@ -236,7 +244,7 @@ Grafana:
   editie/evenement-naamsbotsing in de doelinstance, nooit stil overschreven/vermengd. Zip wordt
   serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
   (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
-  `topology_edges` en de naamsbotsing-check) — zie roadmap "Spanningsveld: single-use vs. edities"
+  `topology_edges` en de naamsbotsing-check) — zie `specs/single-use-vs-edities-diagnose.md`
 
 ## Roadmap
 
@@ -254,15 +262,6 @@ Grafana:
       ("events"). Raakt `mqttPrefix()` in `server.js`, de topic-parsing in `telegraf.conf`, de
       Shelly-configuratie-instructies in README.md, en (impliciet) elke Shelly die al met de oude
       prefix is ingesteld. Vraagt een bewuste migratie, geen kale zoek-en-vervang.
-- [x] ~~Spanningsveld: single-use container per evenement vs. edities vergelijken~~ **Deel A
-      gebouwd, Deel B nog open.** Zie `specs/single-use-vs-edities-diagnose.md`. Deel A (gedaan):
-      restore-functie (Back-up herstellen, twee modi), `editie`+`evenement`-tags op
-      `topology_edges` met scoped delete i.p.v. volledige wipe, `$evenement`-Grafana-variabele,
-      nieuwe `EVENT_NAME`-omgevingsvariabele. **Deel B (nog te bouwen):** `EVENT_NAME`/
-      `EVENT_EDITION` bewerkbaar maken vanuit Beheer i.p.v. alleen via `.env`, inclusief het
-      mechanisme om Telegraf daarna een nieuwe tag te laten gebruiken (vereist een
-      Telegraf-herstart vanuit de UI — bewust apart gehouden van Deel A vanwege de nieuwe
-      Docker-toegang die dat mechanisme vergt, zie de diagnose voor de afweging).
 - [ ] **Audit: stuurt de Shelly alle data die 'm publiceren kan?** Controleren of de Shelly Pro 3EM
       daadwerkelijk alles doorstuurt wat 'm aan data zou kunnen leveren (vergelijk met de volledige
       Shelly EM-API/documentatie). **Als blijkt dat dit niet het geval is: eerst een analyse-

@@ -38,6 +38,20 @@ services:
       - EVENT_EDITION=${EVENT_EDITION}
       - EVENT_NAME=${EVENT_NAME}
 
+  # klein, doelbewust beperkt servicetje voor het herstarten van telegraf na een
+  # EVENT_NAME/EVENT_EDITION-wijziging vanuit Beheer (zie specs/single-use-vs-edities-diagnose.md
+  # §B1). Krijgt de échte /var/run/docker.sock, maar biedt naar buiten toe maar precies één actie
+  # (POST /herstart) — geen generieke Docker-API-doorgifte. Kant-en-klare socket-proxy's
+  # (tecnativa/docker-socket-proxy en de linuxserver.io-fork) bleken geen DELETE-requests door te
+  # laten (bewuste designkeuze in die projecten), wat een echte container-recreate onmogelijk
+  # maakt — vandaar dit eigen servicetje i.p.v. zo'n kant-en-klare proxy.
+  telegraf-herstarter:
+    build: ./telegraf-herstarter
+    container_name: telegraf-herstarter
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
   # los renderer-service voor Grafana panel-screenshots, gebruikt door Grafana's eigen /render-
   # HTTP-endpoint (zie /api/rapport/* in webapp/server.js voor de PDF-rapportfunctie) — geen eigen
   # poort naar buiten nodig
@@ -75,6 +89,7 @@ services:
     restart: unless-stopped
     depends_on:
       - influxdb
+      - telegraf-herstarter
     ports:
       - "8080:8080"
     environment:
@@ -87,6 +102,7 @@ services:
       - GRAFANA_REPORT_TOKEN=${GRAFANA_REPORT_TOKEN}
       - EVENT_NAME=${EVENT_NAME}
       - EVENT_EDITION=${EVENT_EDITION}
+      - TELEGRAF_HERSTARTER_URL=http://telegraf-herstarter:8090
     volumes:
       - webapp-data:/data
 
