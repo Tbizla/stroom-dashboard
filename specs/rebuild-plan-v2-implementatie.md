@@ -2,10 +2,114 @@
 
 # Implementatieplan v2 (technische kant, Claude Code)
 
-**Status:** startklaar — nog niet gebouwd. Bij [rebuild-plan-v2.md](rebuild-plan-v2.md), dat volledig
-is afgestemd (§11 fundamentvragen + alle mockups §8 fase 2 t/m 5). Dit document vertaalt dat
-designplan naar een concrete bouwvolgorde: welke bestanden/endpoints per fase wijzigen, in welke
-volgorde, en wat "klaar" betekent per fase.
+**Status:** Fase A (§1) is gebouwd en handmatig geverifieerd — `webapp/public/index.html` is
+gesplitst in shell + `css/style.css` + 14 ES-modules onder `webapp/public/js/` (`state.js`, `api.js`,
+`topology.js`, `zoom.js`, `render-list.js`, `render-detail.js`, `render-pins.js`, `kastpopup.js`,
+`render-schema.js`, `render-beheer.js`, `rapport.js`, `mqtt.js`, `modes.js`, `main.js`), zonder
+build-stap (`<script type="module" src="js/main.js">`). Gedeelde mutable state (TOPO, mode,
+selectedId, ...) zit in één `state`-object in `state.js` i.p.v. losse module-`let`s, zodat elke
+module dezelfde live waarden ziet zonder aparte setter-functies. Geverifieerd door de stack lokaal
+te draaien (`docker compose --profile test up -d --build`) en met een headless-browserscript alle
+vier weergavemodi + Testdata-tabblad te doorlopen: topologie-CRUD (Beheer), pins/kalibratie,
+schema-boom, live MQTT-data + kastpopup-databallon — geen consolefouten, gedrag identiek aan vóór
+de split. `server.js` is ongewijzigd (serveert de nieuwe bestanden al via de bestaande
+`express.static`).
+
+Fase B (§2, i18n) is ook gebouwd en geverifieerd: `webapp/i18n/nl.json`/`en.json` (172 platte
+dot-keys, bijv. `beheer.thNaam`, `kastpopup.ratingSub`), `server.js` heeft één nieuwe route
+(`GET /api/i18n/:taal`, `require()`'t dezelfde JSON-bestanden — klaar voor hergebruik door het
+PDF-rapport in Fase E) en `webapp/public/js/i18n.js` (`t(key, vars)` met `{var}`-interpolatie,
+`applyStaticI18n()` voor statische markup via `data-i18n`/`data-i18n-html`/`data-i18n-placeholder`/
+`data-i18n-title`, taalkeuze onthouden in `localStorage`). Taalkeuze-toggle in de header
+(`.langswitch`, zelfde visuele familie als `.modeswitch`, conform de i18n-PoC-mockup). Alle acht
+concrete PoC-bevindingen zijn verwerkt: vaste `width:Npx` op tabelkoppen/-cellen in
+`render-beheer.js` is `min-width:Npx` geworden, en domeintermen zijn bewust vertaald (niet
+automatisch) — "kast" → "distribution box"/"box" (kort in dropdowns/tabelkoppen), "Beheer" →
+"Manage", "Kalibreren" → "Calibrate", "Schema" → "Diagram", conform de reeds afgestemde
+i18n-PoC-vertalingen.
+
+**Implementatiekeuze (niet in het designplan vastgelegd, tijdens de bouw gekozen):** taalwissel
+herlaadt de pagina (na het wegschrijven van de keuze in `localStorage`) i.p.v. elk render*()-pad
+los opnieuw te vertalen zonder herlaad. Bij een build-loze vanilla-JS-opzet met zoveel
+losse render-functies is dat aanzienlijk minder foutgevoelig dan overal handmatig een
+retranslate-in-place-pad bouwen, en de server draait lokaal dus een herlaad is vrijwel instant.
+Enige zichtbare gevolg: de huidige tabselectie/kastselectie gaat verloren bij het wisselen van
+taal (zoom-/inklap-/taalstate zelf blijven via localStorage gewoon staan) — geen regressie op een
+bestaand patroon, want dat gedrag bestond niet eerder.
+
+Geverifieerd met hetzelfde soort headless-browserscript als Fase A: testtopologie geladen, NL→EN→NL
+gewisseld, alle vier weergavemodi + Testdata-tabblad + het (nog in Beheer zittende) rapport-blok +
+de MQTT-kastpopup gecontroleerd in beide talen, taalkeuze blijft staan na een paginaherlaad — geen
+consolefouten.
+
+Fase C (fasekleuren) is gebouwd en geverifieerd: nieuwe CSS-variabelen `--fase1`/`--fase2`/`--fase3`
+(bruin/antraciet/grijs) en een `.faseswatch`-klasje (8×8px rond vlakje) in `css/style.css`, een
+kleine gedeelde helper `js/fasekleuren.js` (`faseSwatch(index)`) gebruikt door zowel
+`kastpopup.js` (tabelkop A/B/C) als `render-detail.js` (aside-detail Fase A/B/C-rijen) — geen
+wijziging aan `statusOf()`/`statusClass()` in `topology.js`, puur presentatielaag zoals gepland.
+Geverifieerd via browserscreenshot met live MQTT-data: kleurvlakjes verschijnen los naast de
+bestaande groen/amber/rood-statuskleur, geen samensmelting van de twee conventies.
+
+Fase D (hub-tab "Rapportages") is gebouwd en geverifieerd: vijfde knop in `.modeswitch`
+(`#modeRapportages`) met een altijd-zichtbare subnav (Overzicht/PDF-rapport/Back-up,
+`.subnav`-klasse). Het "Rapport exporteren"-blok is 1-op-1 verplaatst van Beheer naar de
+PDF-rapport-subtab (zelfde ids, geen functionele wijziging aan `rapport.js`). Overzicht-subtab
+(`js/overzicht.js`) hergebruikt drie bestaande subsystemen zoals in §11.3 bevestigd: live
+metric-cards + staafdiagram per kast op basis van de bestaande `liveData`/`statusOf()` (geen nieuwe
+databron), periode-kWh-totalen per generator via een nieuw endpoint `GET /api/overzicht/energie`
+(hergebruikt `influxQuery()`, alleen `parent:null`-kasten meetellen — zelfde conventie als het
+Grafana-generatorpaneel), en een compacte Sankey-achtige boomweergave op basis van
+`listChildrenOf()`/`collectDescendantKasten()` uit `topology.js` (eerste kind + "+N kasten"-rij
+i.p.v. een volledige boomkopie). Nieuwbouw: tijdrange-keuze (periode-chips, zelfde patroon als
+PDF-rapport) en drill-down (klik op een generator-kaart filtert de staven/boom; klik op een staaf/
+boomknoop springt naar de Live-tab met die kast geselecteerd + databallon open — hergebruikt
+bestaande Live-machinery, geen nieuw detailscherm). Back-up-subtab (`js/backup.js` +
+`/api/backup/genereer`/`/status`/`/download` in `server.js`) genereert een zip via de nieuwe
+`archiver`-dependency: `topologie.json` (via `readTopo()`) en plattegrond/logo altijd, meetdata als
+CSV-dump (via `influxQuery()`, Flux CSV-output rechtstreeks in de zip) optioneel met periode-keuze
+— zelfde status/resultaat/foutkaart-patroon (`addform`/`dot busy/ok/err`) als de PDF-rapportflow,
+eigen jobstatus (`backupJob`). Geverifieerd end-to-end in beide talen: cards/staven/boom met live
+data, drill-down (kaart-filter én staaf-klik-naar-Live), PDF-rapport-flow op de nieuwe locatie, en
+een echte back-up-zip gedownload en met `unzip -l`/inhoud gecontroleerd (topologie.json + een
+meerdere-MB's-grote meetdata.csv met echte InfluxDB-Flux-CSV-inhoud).
+
+Fase E (PDF-rapport herontwerp) is gebouwd en geverifieerd: nieuwe coverpagina
+(`voegCoverPaginaToe`, logo indien PNG + titel + editie/periode/gegenereerd-op + inhoudsopgave die
+aangevinkte onderdelen genummerd toont en niet-aangevinkte grijs met "(niet aangevinkt voor dit
+rapport)"), een voettekststrook op elke niet-cover-pagina (`voegVoettekstToe`, wit blok + lijn +
+logo + "Stroomdashboard · editie X" + paginanummer "N / totaal" — leest de eigen paginagrootte per
+pagina uit omdat Grafana-paneelpagina's geen vast A4-formaat hebben) en een herstylede
+alarmen-pagina (`voegAlarmenPaginaToe`, kop + amber icoonvlak + uitleg, vervangt de kale
+`voegPlaceholderPaginaToe`-tekstregel voor dit specifieke onderdeel — die generieke functie blijft
+alleen nog over voor de randgeval "geen onderdelen geselecteerd"). Licht/print-vriendelijk thema
+(wit/lichtgrijs met het bestaande accent-teal), bevestigd door Mike. Taal: de client stuurt de
+actieve UI-taal (`huidigeTaal` uit `i18n.js`) mee bij het genereren (`POST /api/rapport/genereer`
+body-veld `taal`, default `nl` als afwezig/ongeldig) — dezelfde `nl.json`/`en.json`-bronnen als de
+webapp-UI, geen apart vertaalbestand voor het rapport. Logo-embedding is beperkt tot PNG (pdf-lib
+kan geen BMP/SVG direct embedden; bij een ander formaat wordt het logo overgeslagen, geen
+conversie-dependency erbij voor dit randgeval). Geverifieerd door een editie/InfluxDB-token-vrij
+pad te testen (alleen "Overschrijdingen & alarmen" aangevinkt, dus geen Grafana-aanroep nodig) en de
+resulterende PDF met PyMuPDF naar PNG te renderen voor visuele controle, in beide talen en met/
+zonder geüpload logo — cover + alarmenpagina + voettekst kloppen exact met de mockup. De
+Grafana-paneelpagina's zelf (bestaande `haalPaneelPdfOp`/`copyPages`-code, ongewijzigd) konden niet
+end-to-end getest worden omdat het `GRAFANA_REPORT_TOKEN` in dit verse test-Grafana-exemplaar niet
+geldig was (service-account-token hoort na eerste Grafana-opstart handmatig aangemaakt te worden) —
+de voettekst-overlay-code zelf is identiek voor elke pagina ongeacht herkomst en dus al gedekt door
+de alarmenpagina-verificatie.
+
+**Aanvulling op Fase E (na oplevering, op verzoek van Mike):** de rapporttaal volgt standaard de
+UI-taal, maar is nu per generatie apart om te zetten via een schuifknop (`.toggleswitch`, nieuwe
+CSS-component — bewust een schuifknop i.p.v. de pill-stijl van `.langswitch`, op expliciet verzoek)
+in de PDF-rapport-subtab, naast de editie-select. `rapport.js` houdt een lokale `rapportTaal`-
+variabele bij die start op `huidigeTaal` en bij het omzetten van de schuifknop bijwerkt; die waarde
+gaat mee in het `taal`-veld van `POST /api/rapport/genereer` i.p.v. rechtstreeks `huidigeTaal`.
+Geen serverwijziging nodig — `server.js` accepteerde dat veld al los van de sessie-taal. Geverifieerd:
+UI in het Nederlands gehouden, schuifknop naar EN gezet, rapport gegenereerd en met PyMuPDF
+gecontroleerd — de PDF-tekst is volledig Engels ("Recap report — power supply", "Overruns & alarms",
+...) terwijl de rest van de interface (header, tabs) Nederlands bleef.
+
+**Alle vijf fasen (A t/m E) uit dit implementatieplan zijn hiermee gebouwd en geverifieerd.** Nog
+niet gecommit — ligt klaar voor review.
 
 **Auteur:** Claude Code. **Basis:** `webapp/public/index.html` (1995 regels), `webapp/server.js`
 (709 regels), alle mockups in `specs/mockups/`.

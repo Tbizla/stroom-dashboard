@@ -33,6 +33,15 @@ zetten zonder code aan te passen.
 
 ## Features
 
+**Meertalige UI (NL/EN)**
+- Taalkeuze-toggle in de header (naast de mode-switch-pill, zelfde visuele stijl), onthouden in
+  `localStorage`. Dekt alle tabbladen (Beheer/Kalibreren/Schema/Live/Testdata/Rapportages) en het
+  PDF-rapport (het rapport volgt de UI-taal die actief was op het moment van genereren)
+- Domeintermen zijn bewust vertaald, niet automatisch: "kast" → "distribution box" (of "box" kort
+  in tabelkoppen/dropdowns), "Beheer" → "Manage", "Kalibreren" → "Calibrate", "Schema" → "Diagram"
+- Vertalingen zitten in platte dot-key JSON-bestanden (`webapp/i18n/nl.json`/`en.json`), gedeeld
+  tussen de webapp-UI (client-fetch) en het PDF-rapport (server-`require`) — één bron van waarheid
+
 **Topologiebeheer (Beheer-tabblad)**
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
   **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
@@ -95,6 +104,10 @@ zetten zonder code aan te passen.
   vervanging. Volgt de pin mee bij pannen/zoomen, maar houdt zelf een vast schermformaat (schrompelt
   niet mee ineen bij uitzoomen); sluit bij nogmaals klikken op dezelfde pin, klik elders op de kaart,
   het kruisje, of een tabwissel
+- Fasekleuren NL-conventie: een klein rond kleurvlakje (bruin/antraciet/grijs, `--fase1`/`--fase2`/
+  `--fase3`) vóór het fase-label in de kastpopup-tabelkop (A/B/C) en de aside-detail (Fase A/B/C-
+  rijen) — losstaand naast de bestaande groen/amber/rood-statuskleur, geen samensmelting van de
+  twee conventies
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (3 generators, 11 kasten, 3 niveaus) voor een
@@ -152,16 +165,45 @@ zetten zonder code aan te passen.
   kast, hoe diep ook) — via een Flux-`join()` tussen de vermogensdata en de `topology_edges`-reeks
   hierboven, dus automatisch actueel zodra de topologie in de webapp wijzigt
 
-**Rapport exporteren (Beheer-tabblad)**
+**Rapportages-tabblad** (vijfde tab in de mode-switch, met een altijd-zichtbare subnav:
+Overzicht/PDF-rapport/Back-up)
+
+*Overzicht-subtab* — eigen hoofddashboard binnen de webapp zelf, i.p.v. te moeten wisselen naar
+Grafana:
+- Metric-cards per generator/groep: periode-kWh-totaal (alleen de rechtstreeks aangesloten kasten,
+  downstream-verbruik zit al in die meting) + een live status-stip; plus een "Kasten totaal"-kaartje
+  (aantal + hoeveel daarvan boven de 90%-belastingsdrempel zitten)
+- Staafdiagram: zwaarst belaste fase per kast, groen/amber/rood zoals overal in de app, live
+  bijgewerkt via dezelfde MQTT-data als het Live-tabblad
+- Compacte Sankey-achtige boomweergave (generator → eerste kast, "+ N kasten" voor de rest van de
+  keten) i.p.v. een volledige schemakopie
+- Periode-keuze (hele evenement/laatste 24u/aangepast) voor de kWh-cijfers; klik op een
+  generator-kaart filtert de staven/boom tot die generator, klik op een staaf/boomknoop springt naar
+  het Live-tabblad met die kast geselecteerd en de databallon open (drill-down)
+
+*PDF-rapport-subtab* (was: "Rapport exporteren" onderaan Beheer, nu hier verplaatst — zelfde flow):
 - PDF-terugblikrapport van een editie samenstellen en downloaden: editie + periode (hele
   evenement/laatste 24u/aangepast) kiezen, en een checklist van onderdelen (generator-totalen,
-  stroom per kast, Sankey-energieverdeling, overschrijdingen & alarmen — dat laatste toont een
-  duidelijke "nog niet beschikbaar"-pagina, want er is nog geen alert-geschiedenis)
+  stroom per kast, Sankey-energieverdeling, overschrijdingen & alarmen)
 - Genereren gebeurt op de achtergrond (statuskaart tijdens het wachten, resultaat-/foutkaart erna
   met "Opnieuw proberen"; geen stille failure) — maar één generatie tegelijk
 - Onder de motorkap: Grafana's eigen `/render`-endpoint (via de `grafana-image-renderer`-service,
   geen extra plugin nodig) geeft per aangevinkt paneel een PDF terug, die de webapp met `pdf-lib`
   samenvoegt tot één bestand — geen Grafana Enterprise en geen losse rapportagetool nodig
+- Rapport heeft nu een lichte/print-vriendelijke opmaak (bewust anders dan het donkere webapp-thema):
+  een coverpagina (logo, titel, editie/periode/gegenereerd-op, en een inhoudsopgave die precies
+  toont welke onderdelen wel/niet zijn aangevinkt), een voettekststrook met logo/editie/paginanummer
+  op elke paneelpagina, en een herstylede "Overschrijdingen & alarmen"-pagina (nette kop + duidelijk
+  vlak met icoon i.p.v. de vorige kale tekstregel). Rapport volgt standaard de UI-taal, met een
+  eigen schuifknop (los van de header-taalkeuze) om de rapporttaal per generatie op NL of EN te
+  zetten. Logo-embedding werkt alleen met een PNG-logo (BMP/SVG worden overgeslagen)
+
+*Back-up-subtab* — één zip-bestand voor een volledige restore op een andere instance:
+- Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te zetten); meetdata
+  (InfluxDB-dump als CSV) is een losse optie met dezelfde periode-keuze als het PDF-rapport, i.v.m.
+  bestandsgrootte
+- Zelfde status/resultaat/foutkaart-patroon als de PDF-rapportflow ("Opnieuw proberen" bij een
+  mislukte poging), gebouwd met de `archiver`-library
 
 ## Roadmap
 
@@ -178,41 +220,11 @@ zetten zonder code aan te passen.
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
       sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina.
-- [ ] **Meertalige UI (NL/EN).** De hele UI is nu hardcoded Nederlands, verspreid door
-      `webapp/public/index.html`. Er is ook een Engelse versie nodig. Voorstel: alle UI-teksten
-      naar een los taalbestand (bijv. een JSON met NL/EN-sleutels) verplaatsen voor onderhoud, met
-      een taalkeuze (dropdown in de header, onthouden in `localStorage`, zelfde patroon als de
-      bestaande zoom-/sidebar-state). Aandachtspunt: domeintermen (kast, generator, groep,
-      batterij, plattegrond) hebben geen vanzelfsprekende 1-op-1 Engelse vertaling — vraagt een
-      bewuste woordkeuze, niet alleen een automatische vertaalslag.
-- [ ] **Fasekleuren NL-conventie (bruin/zwart/grijs) i.p.v. A/B/C.** In Nederland duiden we de drie
-      fasen van een driefasesysteem aan met bruin (fase 1), zwart (fase 2) en grijs (fase 3), niet
-      met de huidige Shelly-afgeleide labels A/B/C. Dit moet in de UI reflecteren (kastpopup,
-      aside-detail, evt. de lijst). Let op: dit is een andere kleurcodering dan de bestaande
-      groen/amber/rood-statuskleuren (belasting t.o.v. rating) — moet er visueel duidelijk naast
-      kunnen bestaan zonder die twee te laten samensmelten (bijv. een klein kleurvlakje/label naast
-      de fase-naam, niet de hele rij inkleuren).
 - [ ] **MQTT-topic-prefix van `fest` naar iets generieks (`event`).** `fest/<generator>/<kast>/...`
       is een restant van toen de scope nog specifiek festivals was; de scope is inmiddels breder
       ("events"). Raakt `mqttPrefix()` in `server.js`, de topic-parsing in `telegraf.conf`, de
       Shelly-configuratie-instructies in README.md, en (impliciet) elke Shelly die al met de oude
       prefix is ingesteld. Vraagt een bewuste migratie, geen kale zoek-en-vervang.
-- [ ] **Alles bereikbaar vanuit één (hoofd)dashboard.** Nu moet je voor Grafana en de webapp losse
-      tabbladen/poorten open hebben. Met steeds meer functionaliteit (rapport, straks mogelijk
-      backup) wordt dat onhandig. Doel: relevante Grafana-functionaliteit (of een eigen equivalent)
-      ook vanuit de webapp zelf bereikbaar maken, i.p.v. te moeten wisselen tussen pagina's. Nog
-      geen concrete aanpak (embed/iframe vs. herbouwen) — expliciet een van de items die eerst een
-      volwaardig plan nodig heeft.
-- [ ] **Evenementlogo in elke PDF-export + formatting-review vooraf.** Het geüploade logo moet in
-      alle PDF-rapporten terugkomen. **Voordat dit gebouwd wordt: eerst de PDF-formatting
-      doornemen met Cowork aan de hand van visuele voorbeelden/mockups** — dit is bewust als aparte
-      stap genoemd, niet iets om er terloops bij te doen.
-- [ ] **Backup-functie vanuit de UI, één bestand voor volledige restore.** Eén knop/scherm in de
-      webapp die alles (topologie, plattegrond, logo, en idealiter ook de InfluxDB-meetdata) in één
-      bestand bundelt, zodat een restore op een andere instance in één keer alles terugzet. Met een
-      keuzescherm: volledige backup, of een selectie van datasets (bijv. alleen topologie, alleen
-      meetdata, alleen media). De huidige `/api/export` dekt alleen de topologie-JSON, dus dit is
-      een uitbreiding, geen vervanging.
 - [ ] **Spanningsveld: single-use container per evenement vs. edities vergelijken.** Het wordt
       waarschijnlijker dat de Docker-stack per evenement single-use is (opzetten, gebruiken,
       afbreken). Tegelijk moet het mogelijk blijven om data van andere evenementen/edities te

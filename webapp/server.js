@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const dns = require('dns');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const archiver = require('archiver');
 
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
@@ -126,6 +127,15 @@ app.get('/api/topology', (req, res) => res.json(readTopo()));
 
 // zodat de webapp-UI het Testdata-tabblad alleen toont als de bijbehorende endpoints ook echt werken
 app.get('/api/test-mode', async (req, res) => res.json({ testMode: await isTestMode() }));
+
+// ---------- i18n: platte dot-key vertaalbestanden, gedeeld client (fetch) + server (require voor
+// het PDF-rapport) — één bron van waarheid, zie specs/rebuild-plan-v2.md §11.2 ----------
+const I18N_TALEN = { nl: require('./i18n/nl.json'), en: require('./i18n/en.json') };
+app.get('/api/i18n/:taal', (req, res) => {
+  const dict = I18N_TALEN[req.params.taal];
+  if (!dict) return res.status(404).json({ error: 'onbekende taal' });
+  res.json(dict);
+});
 
 // ---------- positie bijwerken (kalibratiemodus) ----------
 app.post('/api/topology/positie', (req, res) => {
@@ -603,6 +613,46 @@ app.get('/api/rapport/periode', async (req, res) => {
   }
 });
 
+// ---------- Overzicht-subtab (Rapportages-tab, roadmap-item 6 / §11.3 optie B): periode-kWh-totalen
+// per generator/groep, hergebruikt influxQuery() net als het PDF-rapport hierboven. Zelfde principe
+// als het "Totaal energieverbruik $generator"-paneel in Grafana (zie event_dashboard.md sectie
+// Grafana-dashboards / README.md sectie 5): alleen de kasten met parent:null bij een generator
+// optellen, downstream-kasten NIET meetellen (hun verbruik zit al in de bovenliggende meting) ----------
+app.get('/api/overzicht/energie', async (req, res) => {
+  const { van, tot } = req.query;
+  if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
+    return res.status(400).json({ error: 'van en tot zijn verplicht en moeten geldige datums zijn' });
+  }
+  // genormaliseerd naar toISOString(): alleen cijfers/-/:/T/Z, dus veilig om direct in de
+  // Flux-querystring te zetten (geen Flux-injectie mogelijk via deze query-params)
+  const range = 'range(start: ' + new Date(van).toISOString() + ', stop: ' + new Date(tot).toISOString() + ')';
+  const data = readTopo();
+  try {
+    const resultaten = await Promise.all(data.generators.map(async (g) => {
+      const directeKasten = data.kasten.filter((k) => !k.parent && k.generator === g.id);
+      if (!directeKasten.length) return [g.id, 0];
+      const kastFilter = directeKasten.map((k) => 'r.kast == "' + k.id + '"').join(' or ');
+      const flux =
+        'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+        '  |> ' + range + '\n' +
+        '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+        '  |> filter(fn: (r) => r._field == "total_act_power")\n' +
+        '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+        '  |> group(columns: ["kast"])\n' +
+        '  |> integral(unit: 1h)\n' +
+        '  |> group()\n' +
+        '  |> sum()\n' +
+        '  |> keep(columns: ["_value"])';
+      const csv = await influxQuery(flux);
+      const waarde = parseFloat(csvKolomWaarden(csv, '_value')[0]);
+      return [g.id, isNaN(waarde) ? 0 : waarde / 1000];
+    }));
+    res.json(Object.fromEntries(resultaten));
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 // haalt één paneel als PDF op bij Grafana's eigen /render-endpoint (via grafana-image-renderer) —
 // ondanks een misleidende "image/png"-Content-Type-header staat er een echte PDF in de body
 // (geverifieerd op byte-niveau tijdens implementatie, zie specs/rapport-pdf-export-spec.md)
@@ -633,16 +683,171 @@ async function haalPaneelPdfOp(panelId, { van, tot, editie, breedte, hoogte }) {
   return buf;
 }
 
+// ---------- PDF-rapport opmaak (Fase E): coverpagina, voettekststrook, herstylede alarmenpagina,
+// licht/print-vriendelijk thema i.p.v. het donkere webapp-thema — bewuste afwijking, zie
+// specs/mockups/pdf-rapport-mockup.html en de toelichting in pdf-rapport-formatting-review.md.
+// De Grafana-paneelpagina's zelf blijven ongewijzigd; alleen een dunne voettekststrook erover via
+// pdf-lib na copyPages(). i18n: dezelfde nl.json/en.json als de webapp-UI, taal meegegeven vanuit
+// de client (huidige UI-taal op het moment van genereren), niet als aparte instelling.
+const RAPPORT_KLEUR = {
+  inkt: rgb(0.11, 0.13, 0.15),
+  inkt2: rgb(0.36, 0.39, 0.44),
+  inkt3: rgb(0.55, 0.58, 0.63),
+  lijn: rgb(0.87, 0.89, 0.91),
+  papier2: rgb(0.96, 0.96, 0.97),
+  accent: rgb(0.055, 0.56, 0.49),
+  amberBg: rgb(0.99, 0.91, 0.78),
+  amberFg: rgb(0.66, 0.38, 0.04),
+};
+
+function rapportTaal(taal) { return I18N_TALEN[taal] || I18N_TALEN.nl; }
+function formatteerRapportDatum(iso, taal) {
+  return new Date(iso).toLocaleString(taal === 'nl' ? 'nl-NL' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+async function voegCoverPaginaToe(pdf, { editie, van, tot, onderdelen, taal }) {
+  const d = rapportTaal(taal);
+  const pagina = pdf.addPage([842, 595]);
+  const fontRegular = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+  // logo alleen embedden als het een PNG is — pdf-lib kan geen BMP/SVG direct embedden en een
+  // conversie-dependency erbij trekken voor dit relatief zeldzame geval is de moeite niet waard
+  const logoBestand = bestaandAfbeeldingsbestand(LOGO_BASENAME);
+  let logoHoogteOffset = 0;
+  if (logoBestand && logoBestand.toLowerCase().endsWith('.png')) {
+    try {
+      const logoImg = await pdf.embedPng(fs.readFileSync(logoBestand));
+      const logoH = 44, logoW = logoImg.width * (logoH / logoImg.height);
+      pagina.drawImage(logoImg, { x: 64, y: 595 - 56 - logoH + 8, width: logoW, height: logoH });
+      logoHoogteOffset = logoH + 10;
+    } catch (e) { /* corrupt of onleesbaar logobestand: rapport gaat door zonder logo op de cover */ }
+  }
+
+  let y = 595 - 56 - logoHoogteOffset - 30;
+  pagina.drawText(d['rapport.pdfTitel'], { x: 64, y, size: 26, font: fontBold, color: RAPPORT_KLEUR.inkt });
+
+  y -= 28;
+  const editieLabel = editie === '__alle__' ? d['rapport.alleEdities'] : editie;
+  const metaTekst =
+    d['rapport.pdfEditieLabel'] + ' ' + editieLabel + '   ·   ' +
+    d['rapport.pdfPeriodeLabel'] + ' ' + formatteerRapportDatum(van, taal) + ' – ' + formatteerRapportDatum(tot, taal) + '   ·   ' +
+    d['rapport.pdfGegenereerdLabel'] + ' ' + formatteerRapportDatum(new Date().toISOString(), taal);
+  pagina.drawText(metaTekst, { x: 64, y, size: 12, font: fontRegular, color: RAPPORT_KLEUR.inkt2 });
+
+  y -= 30;
+  pagina.drawLine({ start: { x: 64, y }, end: { x: 842 - 64, y }, thickness: 1, color: RAPPORT_KLEUR.lijn });
+  y -= 28;
+
+  const onderdeelItems = [
+    { key: 'generatorTotalen', label: d['rapport.chkGeneratorTotalen'] },
+    { key: 'kastPerFase', label: d['rapport.chkKastPerFase'] },
+    { key: 'sankey', label: d['rapport.chkSankey'] },
+    { key: 'alarmen', label: d['rapport.chkAlarmen'] },
+  ];
+  let nummer = 1;
+  onderdeelItems.forEach((item) => {
+    const aangevinkt = !!onderdelen[item.key];
+    const nummerTekst = aangevinkt ? String(nummer).padStart(2, '0') : '—';
+    pagina.drawText(nummerTekst, { x: 64, y, size: 12, font: fontBold, color: aangevinkt ? RAPPORT_KLEUR.accent : RAPPORT_KLEUR.inkt3 });
+    const label = item.label + (aangevinkt ? '' : ' (' + d['rapport.pdfNietAangevinkt'] + ')');
+    pagina.drawText(label, { x: 64 + 30, y, size: 12, font: fontRegular, color: aangevinkt ? RAPPORT_KLEUR.inkt : RAPPORT_KLEUR.inkt3 });
+    if (aangevinkt) nummer++;
+    y -= 24;
+  });
+
+  pagina.drawLine({ start: { x: 64, y: 56 }, end: { x: 842 - 64, y: 56 }, thickness: 1, color: RAPPORT_KLEUR.lijn });
+  pagina.drawText(d['rapport.pdfFooter'], { x: 64, y: 40, size: 10, font: fontRegular, color: RAPPORT_KLEUR.inkt3 });
+}
+
+async function voegAlarmenPaginaToe(pdf, taal) {
+  const d = rapportTaal(taal);
+  const pagina = pdf.addPage([842, 595]);
+  const fontRegular = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+  pagina.drawText(d['rapport.pdfAlarmenTitel'], { x: 64, y: 595 - 56 - 18, size: 18, font: fontBold, color: RAPPORT_KLEUR.inkt });
+
+  const boxX = 64, boxY = 595 - 56 - 18 - 26 - 100, boxW = 842 - 128, boxH = 100;
+  pagina.drawRectangle({ x: boxX, y: boxY, width: boxW, height: boxH, color: RAPPORT_KLEUR.papier2, borderColor: RAPPORT_KLEUR.lijn, borderWidth: 1 });
+  pagina.drawRectangle({ x: boxX + 20, y: boxY + boxH - 20 - 28, width: 28, height: 28, color: RAPPORT_KLEUR.amberBg });
+  pagina.drawText('!', { x: boxX + 20 + 11, y: boxY + boxH - 20 - 20, size: 14, font: fontBold, color: RAPPORT_KLEUR.amberFg });
+
+  const tekstX = boxX + 20 + 28 + 16;
+  const regels = splitsTekstInRegels(d['rapport.pdfAlarmenTekst'], fontRegular, 13, boxW - (tekstX - boxX) - 20);
+  let tekstY = boxY + boxH - 24;
+  regels.forEach((regel) => {
+    pagina.drawText(regel, { x: tekstX, y: tekstY, size: 13, font: fontRegular, color: RAPPORT_KLEUR.inkt2 });
+    tekstY -= 19;
+  });
+}
+
+// eenvoudige woord-voor-woord regelafbreking, precies genoeg voor de vaste alarmen-tekst hierboven —
+// geen algemene tekst-layout-engine nodig voor dit ene stuk statische copy
+function splitsTekstInRegels(tekst, font, size, maxWidth) {
+  const woorden = tekst.split(' ');
+  const regels = [];
+  let huidige = '';
+  woorden.forEach((woord) => {
+    const kandidaat = huidige ? huidige + ' ' + woord : woord;
+    if (font.widthOfTextAtSize(kandidaat, size) > maxWidth && huidige) {
+      regels.push(huidige);
+      huidige = woord;
+    } else {
+      huidige = kandidaat;
+    }
+  });
+  if (huidige) regels.push(huidige);
+  return regels;
+}
+
+async function voegVoettekstToe(pdf, taal, editie) {
+  const d = rapportTaal(taal);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const logoBestand = bestaandAfbeeldingsbestand(LOGO_BASENAME);
+  let logoImg = null;
+  if (logoBestand && logoBestand.toLowerCase().endsWith('.png')) {
+    try { logoImg = await pdf.embedPng(fs.readFileSync(logoBestand)); } catch (e) { /* zie voegCoverPaginaToe */ }
+  }
+  const editieLabel = editie === '__alle__' ? d['rapport.alleEdities'] : editie;
+  const eventTekst = 'Stroomdashboard · ' + d['rapport.pdfEditieLabel'].toLowerCase() + ' ' + editieLabel;
+
+  const paginas = pdf.getPages();
+  const totaal = paginas.length;
+  // pagina 0 is de cover, die heeft al zijn eigen (ongenummerde) footer — pas de genummerde
+  // voettekststrook toe op alle overige pagina's, ongeacht hun eigen afmeting (Grafana-paneel-
+  // pagina's hebben geen vast A4-formaat, dus per pagina de eigen width/height opvragen)
+  for (let i = 1; i < paginas.length; i++) {
+    const pagina = paginas[i];
+    const { width } = pagina.getSize();
+    pagina.drawRectangle({ x: 0, y: 0, width, height: 44, color: rgb(1, 1, 1) });
+    pagina.drawLine({ start: { x: 0, y: 44 }, end: { x: width, y: 44 }, thickness: 1, color: RAPPORT_KLEUR.lijn });
+    let tekstX = 24;
+    if (logoImg) {
+      const logoH = 18, logoW = logoImg.width * (logoH / logoImg.height);
+      pagina.drawImage(logoImg, { x: 24, y: 13, width: logoW, height: logoH });
+      tekstX = 24 + logoW + 10;
+    }
+    pagina.drawText(eventTekst, { x: tekstX, y: 20, size: 10, font, color: RAPPORT_KLEUR.inkt2 });
+    const pnumTekst = (i + 1) + ' / ' + totaal;
+    const pnumWidth = font.widthOfTextAtSize(pnumTekst, 10);
+    pagina.drawText(pnumTekst, { x: width - 24 - pnumWidth, y: 20, size: 10, font, color: RAPPORT_KLEUR.inkt2 });
+  }
+}
+
 async function voegPlaceholderPaginaToe(pdf, tekst) {
   const pagina = pdf.addPage([842, 595]); // A4 liggend, past bij de rest van het rapport
   const font = await pdf.embedFont(StandardFonts.Helvetica);
-  pagina.drawText(tekst, { x: 50, y: 545, size: 14, font, color: rgb(0.2, 0.2, 0.2), maxWidth: 740 });
+  pagina.drawText(tekst, { x: 64, y: 545, size: 14, font, color: RAPPORT_KLEUR.inkt2, maxWidth: 842 - 128 });
 }
 
 async function voerRapportGeneratieUit(job) {
-  const { editie, van, tot, onderdelen } = job;
+  const { editie, van, tot, onderdelen, taal } = job;
   const editieVar = editie === '__alle__' ? null : editie;
   const dest = await PDFDocument.create();
+
+  await voegCoverPaginaToe(dest, { editie, van, tot, onderdelen, taal });
+  const inhoudStartIndex = dest.getPageCount();
 
   for (const key of ['generatorTotalen', 'kastPerFase', 'sankey']) {
     if (!onderdelen[key]) continue;
@@ -654,16 +859,14 @@ async function voerRapportGeneratieUit(job) {
   }
 
   if (onderdelen.alarmen) {
-    await voegPlaceholderPaginaToe(
-      dest,
-      'Overschrijdingen & alarmen: nog geen alert-geschiedenis beschikbaar voor deze periode ' +
-        '(notificatiekanaal staat nog op de roadmap, zie event_dashboard.md).'
-    );
+    await voegAlarmenPaginaToe(dest, taal);
   }
 
-  if (dest.getPageCount() === 0) {
-    await voegPlaceholderPaginaToe(dest, 'Geen rapportonderdelen geselecteerd.');
+  if (dest.getPageCount() === inhoudStartIndex) {
+    await voegPlaceholderPaginaToe(dest, rapportTaal(taal)['rapport.pdfGeenOnderdelen']);
   }
+
+  await voegVoettekstToe(dest, taal, editie);
 
   const bytes = await dest.save();
   const bestandsnaam = 'rapport_stroomdashboard_' + editie + '.pdf';
@@ -681,12 +884,12 @@ async function voerRapportGeneratieUit(job) {
 app.post('/api/rapport/genereer', (req, res) => {
   if (!GRAFANA_REPORT_TOKEN) return res.status(400).json({ error: 'GRAFANA_REPORT_TOKEN is niet ingesteld (zie .env.example)' });
   if (rapportJob.status === 'bezig') return res.status(409).json({ error: 'er loopt al een rapportgeneratie' });
-  const { editie, van, tot, onderdelen } = req.body || {};
+  const { editie, van, tot, onderdelen, taal } = req.body || {};
   if (!editie || !van || !tot || !onderdelen) return res.status(400).json({ error: 'editie, van, tot en onderdelen zijn verplicht' });
   if (editie !== '__alle__' && !veiligeEditie(editie)) return res.status(400).json({ error: 'ongeldige editie' });
 
   rapportJob = {
-    status: 'bezig', editie, van, tot, onderdelen,
+    status: 'bezig', editie, van, tot, onderdelen, taal: I18N_TALEN[taal] ? taal : 'nl',
     gestartOp: new Date().toISOString(), klaarOp: null,
     bestandsnaam: null, bestandsgrootte: null, foutmelding: null,
   };
@@ -703,6 +906,86 @@ app.get('/api/rapport/status', (req, res) => res.json(rapportJob));
 app.get('/api/rapport/download', (req, res) => {
   if (rapportJob.status !== 'klaar' || !rapportJob.bestandsnaam) return res.status(404).json({ error: 'geen rapport beschikbaar' });
   res.download(path.join(RAPPORT_DIR, rapportJob.bestandsnaam), rapportJob.bestandsnaam);
+});
+
+// ---------- Back-up (roadmap-item 8, Back-up-subtab in de Rapportages-tab): topologie + media
+// altijd, meetdata optioneel met periode — zie specs/rebuild-plan-v2.md §11.4 ----------
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+
+// zelfde conventie als rapportJob hierboven: module-scoped, niet-persistent, één back-up tegelijk
+let backupJob = {
+  status: 'idle', // 'idle' | 'bezig' | 'klaar' | 'fout'
+  gestartOp: null, klaarOp: null,
+  bestandsnaam: null, bestandsgrootte: null, foutmelding: null,
+};
+
+async function voerBackupGeneratieUit(meetdataPeriode) {
+  const bestandsnaam = 'backup_stroomdashboard_' + Date.now() + '.zip';
+  const bestandspad = path.join(BACKUP_DIR, bestandsnaam);
+
+  await new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(bestandspad);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    output.on('close', resolve);
+    archive.on('error', reject);
+    archive.pipe(output);
+
+    archive.append(JSON.stringify(readTopo(), null, 2), { name: 'topologie.json' });
+    const kaartBestand = bestaandAfbeeldingsbestand(MAP_BASENAME);
+    if (kaartBestand) archive.file(kaartBestand, { name: 'plattegrond' + path.extname(kaartBestand) });
+    const logoBestand = bestaandAfbeeldingsbestand(LOGO_BASENAME);
+    if (logoBestand) archive.file(logoBestand, { name: 'logo' + path.extname(logoBestand) });
+
+    if (!meetdataPeriode) { archive.finalize(); return; }
+    // meetdata pas ná de synchrone entries toevoegen: archiver serialiseert intern, en de
+    // async influxQuery() mag de finalize() niet vóór zijn (anders mist de zip dit onderdeel)
+    influxQuery(
+      'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+      '  |> range(start: ' + new Date(meetdataPeriode.van).toISOString() + ', stop: ' + new Date(meetdataPeriode.tot).toISOString() + ')\n' +
+      '  |> filter(fn: (r) => r._measurement == "shelly_em" or r._measurement == "shelly_emdata")'
+    ).then((csv) => {
+      archive.append(csv, { name: 'meetdata.csv' });
+      archive.finalize();
+    }).catch((e) => {
+      archive.append('kon meetdata niet ophalen: ' + e.message, { name: 'meetdata_FOUT.txt' });
+      archive.finalize();
+    });
+  });
+
+  const stat = fs.statSync(bestandspad);
+  backupJob = { ...backupJob, status: 'klaar', klaarOp: new Date().toISOString(), bestandsnaam, bestandsgrootte: stat.size };
+}
+
+app.post('/api/backup/genereer', (req, res) => {
+  if (backupJob.status === 'bezig') return res.status(409).json({ error: 'er loopt al een back-up' });
+  const { meetdata } = req.body || {};
+  let meetdataPeriode = null;
+  if (meetdata) {
+    const { van, tot } = meetdata;
+    if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
+      return res.status(400).json({ error: 'meetdata.van en meetdata.tot zijn verplicht en moeten geldige datums zijn' });
+    }
+    meetdataPeriode = { van, tot };
+  }
+
+  backupJob = {
+    status: 'bezig', gestartOp: new Date().toISOString(), klaarOp: null,
+    bestandsnaam: null, bestandsgrootte: null, foutmelding: null,
+  };
+  res.json({ ok: true });
+
+  voerBackupGeneratieUit(meetdataPeriode).catch((e) => {
+    backupJob = { ...backupJob, status: 'fout', foutmelding: e.message };
+    console.error('back-up mislukt:', e.message);
+  });
+});
+
+app.get('/api/backup/status', (req, res) => res.json(backupJob));
+
+app.get('/api/backup/download', (req, res) => {
+  if (backupJob.status !== 'klaar' || !backupJob.bestandsnaam) return res.status(404).json({ error: 'geen back-up beschikbaar' });
+  res.download(path.join(BACKUP_DIR, backupJob.bestandsnaam), backupJob.bestandsnaam);
 });
 
 const PORT = process.env.PORT || 8080;

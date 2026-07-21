@@ -4,1992 +4,314 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stroomdashboard</title>
-<style>
-  :root{
-    --bg:#12151a; --panel:#1a1e26; --panel2:#20242e; --border:#2a2f3a;
-    --text:#e8eaed; --text2:#8b93a1; --text3:#5a6272;
-    --accent:#4fd1c5; --accent-dim:#4fd1c530;
-    --green:#3ecf6a; --amber:#f5a623; --red:#e5484d; --grey:#4a5160;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-  *{box-sizing:border-box}
-  /* basisstijl voor alle knoppen (en upload-"knoppen", die een <label> zijn) — zorgt dat een
-     kale <button> zonder eigen container-klasse er niet als onbehandelde browser-knop of kale
-     tekst uitziet. Specifiekere regels hieronder (modeswitch, zoomctl, chip, addform, btable)
-     overschrijven dit bewust voor knoppen met een andere rol (tab, icoon, filter, primaire actie). */
-  button, .uploadbtn{background:var(--panel2);border:1px solid var(--border);color:var(--text);
-    border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
-  button:hover, .uploadbtn:hover{border-color:var(--accent)}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden}
-  .app{display:flex;flex-direction:column;height:100vh}
-
-  header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
-  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;color:var(--text)}
-  header h1 span{color:var(--accent)}
-  .modeswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
-  .modeswitch button{border:none;background:transparent;color:var(--text2);padding:6px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans)}
-  .modeswitch button.active{background:var(--accent);color:#0b1210}
-
-  .connbar{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:var(--text2);flex-wrap:wrap}
-  .connbar input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-family:var(--mono);font-size:12px;width:130px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--grey);flex-shrink:0}
-  .dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
-  .dot.err{background:var(--red)}
-  .dot.busy{background:var(--amber)}
-
-  .body{display:flex;flex:1;min-height:0;position:relative}
-  .mapwrap{flex:1;position:relative;overflow:auto;background:#0b0d10}
-  .mapinner{position:relative;display:inline-block;transform-origin:top left;flex-shrink:0}
-  .zoomctl{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:4px;align-items:center;
-    background:rgba(18,21,26,.9);border:1px solid var(--border);border-radius:8px;padding:4px 6px}
-  .zoomctl button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
-    border-radius:5px;width:24px;height:24px;font-size:15px;cursor:pointer;line-height:1;padding:0}
-  .zoomctl button:hover{border-color:var(--accent)}
-  .zoomctl .zoomlabel{font-size:11px;color:var(--text2);font-family:var(--mono);min-width:40px;
-    text-align:center;cursor:pointer;user-select:none}
-  .mapinner img{display:block;max-width:none}
-  .noMap{color:var(--text3);padding:60px;text-align:center;font-size:13px}
-  .blankcanvas{position:relative;width:4800px;height:3000px;background-color:#0b0d10;cursor:crosshair;
-    background-image:radial-gradient(circle, var(--border) 1px, transparent 1px);background-size:32px 32px}
-  .blankcanvas-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;
-    color:var(--text3);font-size:13px;text-align:center;pointer-events:none}
-  #svgoverlay{position:absolute;top:0;left:0;pointer-events:none}
-  #schemaSvg{display:block;transform-origin:top left;flex-shrink:0}
-  .schemawrap{padding:30px}
-  .pin{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
-       border:2px solid #0b0d10;cursor:pointer;background:var(--grey);z-index:5;
-       box-shadow:0 0 0 2px rgba(255,255,255,.15)}
-  .pin.gen{width:22px;height:22px;background:var(--accent);border-radius:6px}
-  .pin.status-green{background:var(--green)}
-  .pin.status-amber{background:var(--amber)}
-  .pin.status-red{background:var(--red);animation:pulse 1.1s infinite}
-  .pin.selected{box-shadow:0 0 0 3px #fff}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(229,72,77,.6)}70%{box-shadow:0 0 0 10px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
-  .pinlabel{position:absolute;transform:translate(-50%,4px);top:100%;font-size:10px;color:var(--text2);
-            background:rgba(18,21,26,.85);padding:1px 5px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:4}
-
-  .kastpopup{position:absolute;z-index:30;width:270px;background:var(--panel);border:1px solid var(--border);
-    border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.45);padding:12px 14px;font-size:12px;
-    transform:translate(-50%,calc(-100% - 14px))}
-  .kastpopup-arrow{position:absolute;left:50%;width:11px;height:11px;background:var(--panel);
-    border-right:1px solid var(--border);border-bottom:1px solid var(--border);
-    transform:translateX(-50%) rotate(45deg);bottom:-6px}
-  .kastpopup.onder .kastpopup-arrow{bottom:auto;top:-6px;border-right:none;border-bottom:none;
-    border-left:1px solid var(--border);border-top:1px solid var(--border)}
-  .kastpopup-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text3);font-size:13px;line-height:1}
-  .kastpopup-close:hover{color:var(--text)}
-  .kastpopup-head{display:flex;align-items:center;gap:7px;padding-right:16px}
-  .kastpopup-head .naam{font-weight:700;color:var(--text);font-size:13px}
-  .kastpopup-sub{color:var(--text3);font-size:10.5px;line-height:1.5;margin:3px 0 9px}
-  .kastpopup table{width:100%;border-collapse:collapse;margin-bottom:8px}
-  .kastpopup table th{text-align:right;font-size:9px;color:var(--text3);font-weight:600;padding:2px 3px;text-transform:uppercase}
-  .kastpopup table th:first-child{text-align:left}
-  .kastpopup table td{text-align:right;font-family:var(--mono);font-size:11px;padding:2px 3px;color:var(--text2)}
-  .kastpopup table td:first-child{text-align:left;color:var(--text3);font-family:var(--sans)}
-  .kastpopup .kprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
-    padding:4px 0;border-top:1px dashed var(--border);color:var(--text2)}
-  .kastpopup .kprow .k{font-family:var(--sans);color:var(--text3)}
-  .kastpopup .laatste{font-size:10px;color:var(--text3);margin-top:7px;text-align:right}
-  .kastpopup .geendata{padding:6px 0;color:var(--text3);font-style:italic}
-
-  aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-  .listhead{padding:12px 14px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}
-  .list{overflow-y:auto;flex:1}
-  .genrow{padding:10px 14px;background:var(--panel2);font-size:12.5px;font-weight:700;color:var(--accent);
-          display:flex;gap:8px;align-items:center;position:sticky;top:0;cursor:pointer}
-  .genrow .name{flex:1}
-  .genrow .val{font-family:var(--mono);font-weight:400;color:var(--text2);font-size:12px}
-  .genrow.selected{box-shadow:inset 0 0 0 2px var(--accent)}
-  .row{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px}
-  .row:hover{background:var(--panel2)}
-  .row.selected{background:var(--accent-dim)}
-  .dot2{width:9px;height:9px;border-radius:50%;background:var(--grey);flex-shrink:0}
-  .dot2.status-green{background:var(--green)}
-  .dot2.status-amber{background:var(--amber)}
-  .dot2.status-red{background:var(--red)}
-  .row .name{flex:1}
-  .row .val{font-family:var(--mono);color:var(--text2);font-size:12px}
-  .row .sub2{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
-
-  .chev{width:14px;flex-shrink:0;text-align:center;color:var(--text3);font-size:10px;cursor:pointer;user-select:none}
-  .genrow .chev{color:var(--accent)}
-
-  .listtools{padding:0 14px 10px;display:flex;flex-direction:column;gap:8px}
-  .listtools input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:var(--sans);width:100%}
-  .listtools input:focus{outline:none;border-color:var(--accent)}
-  .listfilters{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .chip{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:12px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--sans)}
-  .chip:hover{border-color:var(--accent)}
-  .chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-  .collapseall{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:var(--sans)}
-  .collapseall:hover{border-color:var(--accent);color:var(--text)}
-  .listfilters .collapseall{margin-left:auto}
-
-  .badges{display:flex;gap:4px}
-  .badge{font-family:var(--mono);font-size:10px;border-radius:8px;padding:1px 6px;font-weight:600}
-  .badge-green{background:rgba(62,207,106,.16);color:var(--green)}
-  .badge-amber{background:rgba(245,166,35,.16);color:var(--amber)}
-  .badge-red{background:rgba(229,72,77,.16);color:var(--red)}
-
-  .detail{border-top:1px solid var(--border);padding:16px;max-height:46%;overflow-y:auto;flex-shrink:0}
-  .detail h2{font-size:15px;margin:0 0 3px}
-  .detail .sub{font-size:12px;color:var(--text2);margin-bottom:12px}
-  .metric{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--border)}
-  .metric .k{color:var(--text2)}
-  .barwrap{height:6px;background:var(--panel2);border-radius:3px;margin-top:10px;overflow:hidden}
-  .barwrap .bar{height:100%;background:var(--green);width:0%;transition:width .3s}
-  .empty{color:var(--text3);font-size:12.5px;padding:20px 14px}
-
-  .calbar{padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .calbar b{color:var(--text)}
-  .calbar .hint{color:var(--accent)}
-
-  ::-webkit-scrollbar{width:8px;height:8px}
-  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-
-  .beheer{flex:1;overflow-y:auto;padding:22px 26px;display:none}
-  .beheercol{max-width:940px}
-  .ledenrow>td{padding:0 8px 10px 24px !important;border-bottom:1px solid var(--border)}
-  .ledentable{background:var(--panel2);border-radius:8px;padding:4px 8px}
-  .ledentable th, .ledentable td{border-bottom:1px solid var(--bg)}
-  .beheer h2{font-size:14px;color:var(--accent);margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em}
-  .btable{width:100%;border-collapse:collapse;margin-bottom:10px}
-  .btable th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border)}
-  .btable td{padding:6px 8px;border-bottom:1px solid var(--border);font-size:13px}
-  .btable input, .btable select{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 6px;font-size:12.5px;font-family:var(--sans);width:100%}
-  .btable button{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer}
-  .btable button:hover{border-color:var(--accent);color:var(--text)}
-  .btable button.danger:hover{border-color:var(--red);color:var(--red)}
-  .addform{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--panel2);padding:10px;border-radius:8px}
-  .addform input, .addform select{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:var(--sans)}
-  .addform button{background:var(--accent);border:none;color:#0b1210;border-radius:6px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
-  .err{color:var(--red);font-size:12px;margin-top:6px}
-
-  .ksectie{margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
-  .ksectie-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel2);cursor:pointer}
-  .ksectie-head .chev{color:var(--accent)}
-  .ksectie-head .naam{flex:1;font-weight:700;color:var(--accent);font-size:13px}
-  .ksectie-head .kva{font-family:var(--mono);color:var(--text2);font-size:12px}
-  .ksectie-head .aantal{font-family:var(--mono);color:var(--text3);font-size:11px;min-width:76px;text-align:right}
-  .ksectie .btable{margin:0}
-  .ksectie-hidden-note{padding:6px 12px;color:var(--text3);font-size:11.5px;font-style:italic;background:var(--panel)}
-  .ksectie-addbtn-wrap{padding:8px 12px;background:var(--panel)}
-  .ksectie-addbtn-wrap button{background:transparent;border:1px dashed var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;width:100%}
-  .ksectie-addbtn-wrap button:hover{border-color:var(--accent);color:var(--text)}
-  .ktbl-naam{display:flex;align-items:center;gap:6px}
-</style>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="app">
   <header>
     <h1><img id="headerLogo" alt="logo" style="display:none;height:26px;vertical-align:middle;margin-right:10px;border-radius:4px"><span>Stroomdashboard</span></h1>
     <div class="modeswitch">
-      <button id="modeBeheer" class="active">Beheer</button>
-      <button id="modeCal">Kalibreren</button>
-      <button id="modeSchema">Schema</button>
-      <button id="modeLive">Live</button>
-      <button id="modeTest">Testdata</button>
+      <button id="modeBeheer" class="active" data-i18n="mode.beheer">Beheer</button>
+      <button id="modeCal" data-i18n="mode.kalibreren">Kalibreren</button>
+      <button id="modeSchema" data-i18n="mode.schema">Schema</button>
+      <button id="modeLive" data-i18n="mode.live">Live</button>
+      <button id="modeTest" data-i18n="mode.testdata">Testdata</button>
+      <button id="modeRapportages" data-i18n="mode.rapportages">Rapportages</button>
     </div>
     <div class="connbar" id="liveControls" style="display:none">
-      <input id="brokerHost" placeholder="broker host" value="">
-      <input id="brokerPort" placeholder="poort" value="9001" style="width:56px">
-      <button id="connectBtn">Verbind</button>
+      <input id="brokerHost" data-i18n-placeholder="header.brokerHostPlaceholder" placeholder="broker host" value="">
+      <input id="brokerPort" data-i18n-placeholder="header.brokerPortPlaceholder" placeholder="poort" value="9001" style="width:56px">
+      <button id="connectBtn" data-i18n="header.verbind">Verbind</button>
       <div class="dot" id="connDot"></div>
-      <span id="connLabel">niet verbonden</span>
+      <span id="connLabel" data-i18n="header.connNietVerbonden">niet verbonden</span>
     </div>
     <div class="connbar" id="calControls">
-      <button id="exportBtn">Exporteer data</button>
-      <label class="uploadbtn">Importeer data<input type="file" id="importFile" style="display:none" accept="application/json"></label>
+      <button id="exportBtn" data-i18n="header.exporteerData">Exporteer data</button>
+      <label class="uploadbtn"><span data-i18n="header.importeerData">Importeer data</span><input type="file" id="importFile" style="display:none" accept="application/json"></label>
+    </div>
+    <div class="langswitch">
+      <button data-lang="nl">NL</button>
+      <button data-lang="en">EN</button>
     </div>
   </header>
 
   <div class="calbar" id="calbar" style="display:none">
-    <label class="uploadbtn">Plattegrond uploaden<input type="file" id="mapFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
+    <label class="uploadbtn"><span data-i18n="calbar.plattegrondUploaden">Plattegrond uploaden</span><input type="file" id="mapFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
     <span id="mapUploadErr" class="err" style="display:none"></span>
-    <span>Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
+    <span data-i18n="calbar.hint">Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
     <span class="hint" id="armedLabel"></span>
   </div>
 
   <div class="beheer" id="beheerPanel" style="display:flex">
     <div class="beheercol">
-      <h2>Evenementlogo</h2>
+      <h2 data-i18n="beheer.evenementlogo">Evenementlogo</h2>
       <div class="addform">
-        <label class="uploadbtn">Logo uploaden<input type="file" id="logoFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
+        <label class="uploadbtn"><span data-i18n="beheer.logoUploaden">Logo uploaden</span><input type="file" id="logoFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
         <span id="logoStatus" style="font-size:12px;color:var(--text2)"></span>
       </div>
 
-      <h2 style="margin-top:22px">Generators</h2>
+      <h2 style="margin-top:22px" data-i18n="beheer.generators">Generators</h2>
       <table class="btable" id="genTable"></table>
       <div class="addform">
-        <input id="newGenNaam" placeholder="Naam, bijv. Generator zuid">
-        <input id="newGenKva" type="number" placeholder="kVA" style="width:80px">
-        <input id="newGenRating" type="number" placeholder="Rating (A), optioneel" style="width:130px">
-        <button id="addGenBtn">+ Generator</button>
+        <input id="newGenNaam" data-i18n-placeholder="beheer.newGenNaamPlaceholder" placeholder="Naam, bijv. Generator zuid">
+        <input id="newGenKva" type="number" data-i18n-placeholder="beheer.kvaPlaceholder" placeholder="kVA" style="width:80px">
+        <input id="newGenRating" type="number" data-i18n-placeholder="beheer.ratingOptioneelPlaceholder" placeholder="Rating (A), optioneel" style="width:130px">
+        <button id="addGenBtn" data-i18n="beheer.addGenerator">+ Generator</button>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
-        <h2 style="margin:0">Kasten</h2>
-        <button class="collapseall" id="kastToggleAllBtn">Alles inklappen</button>
+        <h2 style="margin:0" data-i18n="beheer.kasten">Kasten</h2>
+        <button class="collapseall" id="kastToggleAllBtn" data-i18n="common.allesInklappen">Alles inklappen</button>
       </div>
       <div class="listtools" style="padding:8px 0">
-        <input type="text" id="kastZoek" placeholder="Zoek op naam, afkorting of stroombron...">
+        <input type="text" id="kastZoek" data-i18n-placeholder="beheer.zoekPlaceholder" placeholder="Zoek op naam, afkorting of stroombron...">
         <div class="listfilters" style="margin-left:0">
-          <button class="chip active" data-kfilter="alles">Alles</button>
-          <button class="chip" data-kfilter="kast">Kasten</button>
-          <button class="chip" data-kfilter="batterij">Batterijen</button>
-          <button class="chip" data-kfilter="bypass">Bypass actief</button>
+          <button class="chip active" data-kfilter="alles" data-i18n="beheer.filterAlles">Alles</button>
+          <button class="chip" data-kfilter="kast" data-i18n="beheer.filterKasten">Kasten</button>
+          <button class="chip" data-kfilter="batterij" data-i18n="beheer.filterBatterijen">Batterijen</button>
+          <button class="chip" data-kfilter="bypass" data-i18n="beheer.filterBypass">Bypass actief</button>
         </div>
       </div>
       <div id="kastSections"></div>
       <div class="addform">
-        <input id="newKastNaam" placeholder="Naam">
-        <input id="newKastAfk" placeholder="Afkorting" style="width:80px">
-        <input id="newKastRating" type="number" placeholder="A" style="width:60px">
+        <input id="newKastNaam" data-i18n-placeholder="beheer.nieuweKastNaamPlaceholder" placeholder="Naam">
+        <input id="newKastAfk" data-i18n-placeholder="beheer.nieuweKastAfkPlaceholder" placeholder="Afkorting" style="width:80px">
+        <input id="newKastRating" type="number" data-i18n-placeholder="beheer.nieuweKastRatingPlaceholder" placeholder="A" style="width:60px">
         <select id="newKastGen"></select>
-        <select id="newKastParent"><option value="">Rechtstreeks op generator</option></select>
-        <button id="addKastBtn">+ Kast</button>
+        <select id="newKastParent"><option value="" data-i18n="beheer.rechtstreeksOpGenerator">Rechtstreeks op generator</option></select>
+        <button id="addKastBtn" data-i18n="beheer.addKast">+ Kast</button>
       </div>
 
       <div style="margin-top:24px">
-        <button id="resetAllBtn" style="border-color:var(--red);color:var(--red)">Alles wissen</button>
-      </div>
-
-      <h2 style="margin-top:26px">Rapport exporteren</h2>
-      <div class="addform">
-        <select id="rapportEditieSelect"></select>
-      </div>
-      <div class="listfilters" style="margin:10px 0 0">
-        <button class="chip active" data-periodechip="alles">Hele evenement</button>
-        <button class="chip" data-periodechip="24u">Laatste 24u</button>
-        <button class="chip" data-periodechip="aangepast">Aangepast</button>
-      </div>
-      <div class="addform" id="rapportAangepastPeriode" style="display:none;margin-top:8px">
-        <input type="datetime-local" id="rapportVanInput">
-        <span style="color:var(--text3)">tot</span>
-        <input type="datetime-local" id="rapportTotInput">
-      </div>
-      <div class="addform" style="flex-direction:column;align-items:flex-start;gap:8px;margin-top:8px">
-        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportGeneratorTotalen" checked> Overzicht generator-totalen per generator/groep</label>
-        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportKastPerFase" checked> Stroom per kast, per fase</label>
-        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportSankey" checked> Energieverdeling (Sankey)</label>
-        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportAlarmen"> Overschrijdingen &amp; alarmen</label>
-      </div>
-      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <button id="rapportGenereerBtn">Genereer PDF-rapport</button>
-        <span style="font-size:12px;color:var(--text3)">Kan tot een minuut duren bij een grote periode/topologie.</span>
-      </div>
-      <div id="rapportStatusCard" class="addform" style="display:none;margin-top:10px">
-        <div class="dot busy"></div>
-        <span>Rapport wordt gegenereerd...</span>
-      </div>
-      <div id="rapportResultCard" class="addform" style="display:none;margin-top:10px">
-        <span id="rapportResultInfo"></span>
-        <button id="rapportDownloadBtn">Download</button>
-      </div>
-      <div id="rapportErrorCard" class="addform" style="display:none;margin-top:10px">
-        <span id="rapportErrorInfo" style="color:var(--red)"></span>
-        <button id="rapportOpnieuwBtn">Opnieuw proberen</button>
+        <button id="resetAllBtn" style="border-color:var(--red);color:var(--red)" data-i18n="beheer.allesWissen">Alles wissen</button>
       </div>
     </div>
   </div>
 
   <div class="beheer" id="testPanel" style="display:none">
     <div class="beheercol">
-      <h2>Testdata</h2>
-      <p style="font-size:12px;color:var(--text3);max-width:520px">
+      <h2 data-i18n="testdata.titel">Testdata</h2>
+      <p style="font-size:12px;color:var(--text3);max-width:520px" data-i18n-html="testdata.waarschuwing">
         Let op: dit tabblad hoort, net als de simulator, alleen tijdens de testfase beschikbaar te zijn en
         wordt daarna achter dezelfde <code>--profile test</code>-vlag gezet.
       </p>
 
-      <p style="font-size:13px;color:var(--text2);max-width:520px">
+      <p style="font-size:13px;color:var(--text2);max-width:520px" data-i18n-html="testdata.eenvoudigPara">
         <b>Eenvoudig</b> — 3 generators, 11 kasten, 3 niveaus diep. Snelle demo van de werking.
         Dit overschrijft de huidige generators en kasten.
       </p>
-      <button id="loadTestSimpelBtn">Laad eenvoudige testtopologie</button>
+      <button id="loadTestSimpelBtn" data-i18n="testdata.laadEenvoudig">Laad eenvoudige testtopologie</button>
 
-      <p style="font-size:13px;color:var(--text2);max-width:520px;margin-top:14px">
+      <p style="font-size:13px;color:var(--text2);max-width:520px;margin-top:14px" data-i18n-html="testdata.uitgebreidPara">
         <b>Uitgebreid</b> — 5 generators, 120 kasten, tot 10 niveaus diep per generator (een lange
         verdeler-keten met zijtakken van onderverdelers/eindkasten). Voor een stresstest van de
         lijst, het schema, de plattegrond, de Sankey-koppeling en de doorvoer van
         Telegraf/InfluxDB/de simulator onder realistische belasting. Dit overschrijft de huidige
         generators en kasten.
       </p>
-      <button id="loadTestUitgebreidBtn">Laad uitgebreide testtopologie (stresstest)</button>
+      <button id="loadTestUitgebreidBtn" data-i18n="testdata.laadUitgebreid">Laad uitgebreide testtopologie (stresstest)</button>
 
-      <h2 style="margin-top:26px">Simulator</h2>
-      <p style="font-size:13px;color:var(--text2);max-width:520px">
+      <h2 style="margin-top:26px" data-i18n="testdata.simulatorTitel">Simulator</h2>
+      <p style="font-size:13px;color:var(--text2);max-width:520px" data-i18n="testdata.simulatorPara">
         De simulator-container draait altijd mee, maar publiceert pas fake meetdata zodra je 'm hier
         expliciet start. Staat na elke herstart van de webapp weer standaard uit.
       </p>
       <div class="addform">
-        <button id="simStartBtn">Start simulator</button>
-        <button id="simStopBtn">Stop simulator</button>
+        <button id="simStartBtn" data-i18n="testdata.startSimulator">Start simulator</button>
+        <button id="simStopBtn" data-i18n="testdata.stopSimulator">Stop simulator</button>
         <div class="dot" id="simDot"></div>
-        <span id="simStatusLabel">status onbekend</span>
+        <span id="simStatusLabel" data-i18n="testdata.simStatusOnbekend">status onbekend</span>
       </div>
 
-      <h2 style="margin-top:26px">Meetdata wissen</h2>
-      <p style="font-size:13px;color:var(--text2);max-width:520px">
+      <h2 style="margin-top:26px" data-i18n="testdata.meetdataWissenTitel">Meetdata wissen</h2>
+      <p style="font-size:13px;color:var(--text2);max-width:520px" data-i18n="testdata.meetdataWissenPara">
         Wist alle meetdata (stroom/spanning/vermogen) uit InfluxDB — de topologie (generators/kasten) blijft
         staan. Handig om na een korte test met een schone grafiek te beginnen.
       </p>
-      <button id="resetMetingenBtn" style="border-color:var(--red);color:var(--red)">Wis meetdata</button>
+      <button id="resetMetingenBtn" style="border-color:var(--red);color:var(--red)" data-i18n="testdata.wisMeetdata">Wis meetdata</button>
       <span id="resetMetingenStatus" style="font-size:12px;color:var(--text2);margin-left:8px"></span>
+    </div>
+  </div>
+
+  <div id="rapportagesPanel" style="display:none;flex-direction:column;overflow:hidden;flex:1;min-height:0">
+    <div class="subnav" id="rapportSubnav">
+      <button class="active" id="subnavOverzicht" data-i18n="subnav.overzicht">Overzicht</button>
+      <button id="subnavPdf" data-i18n="subnav.pdfRapport">PDF-rapport</button>
+      <button id="subnavBackup" data-i18n="subnav.backup">Back-up</button>
+    </div>
+
+    <div class="beheer" id="overzichtPanel" style="display:flex">
+      <div class="beheercol" style="max-width:1100px;width:100%">
+        <div class="listfilters" style="margin-bottom:16px">
+          <button class="chip" data-overzichtperiode="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
+          <button class="chip active" data-overzichtperiode="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
+          <button class="chip" data-overzichtperiode="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
+        </div>
+        <div class="addform" id="overzichtAangepastPeriode" style="display:none;margin-bottom:16px">
+          <input type="datetime-local" id="overzichtVanInput">
+          <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
+          <input type="datetime-local" id="overzichtTotInput">
+          <button id="overzichtToepassenBtn" data-i18n="common.toepassen">Toepassen</button>
+        </div>
+        <div class="cards" id="overzichtCards"></div>
+        <div class="overzicht-grid">
+          <div class="panel">
+            <div class="ptitle" data-i18n="overzicht.staafTitel">Stroom per kast — zwaarst belaste fase</div>
+            <div class="bars" id="overzichtBars"></div>
+          </div>
+          <div class="panel">
+            <div class="ptitle" data-i18n="overzicht.boomTitel">Energieverdeling (Sankey-stijl)</div>
+            <div class="boomcol" id="overzichtBoom"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="beheer" id="pdfRapportPanel" style="display:none">
+      <div class="beheercol">
+        <h2 data-i18n="rapport.titel">Rapport exporteren</h2>
+        <div class="addform">
+          <select id="rapportEditieSelect"></select>
+        </div>
+        <div class="addform" style="margin-top:8px">
+          <span data-i18n="rapport.taalLabel">Taal van het rapport</span>
+          <span style="color:var(--text3);font-size:11px">NL</span>
+          <label class="toggleswitch">
+            <input type="checkbox" id="rapportTaalToggle">
+            <span class="toggleslider"></span>
+          </label>
+          <span style="color:var(--text3);font-size:11px">EN</span>
+        </div>
+        <div class="listfilters" style="margin:10px 0 0">
+          <button class="chip active" data-periodechip="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
+          <button class="chip" data-periodechip="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
+          <button class="chip" data-periodechip="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
+        </div>
+        <div class="addform" id="rapportAangepastPeriode" style="display:none;margin-top:8px">
+          <input type="datetime-local" id="rapportVanInput">
+          <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
+          <input type="datetime-local" id="rapportTotInput">
+        </div>
+        <div class="addform" style="flex-direction:column;align-items:flex-start;gap:8px;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportGeneratorTotalen" checked> <span data-i18n="rapport.chkGeneratorTotalen">Overzicht generator-totalen per generator/groep</span></label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportKastPerFase" checked> <span data-i18n="rapport.chkKastPerFase">Stroom per kast, per fase</span></label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportSankey" checked> <span data-i18n="rapport.chkSankey">Energieverdeling (Sankey)</span></label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rapportAlarmen"> <span data-i18n="rapport.chkAlarmen">Overschrijdingen &amp; alarmen</span></label>
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button id="rapportGenereerBtn" data-i18n="rapport.genereerBtn">Genereer PDF-rapport</button>
+          <span style="font-size:12px;color:var(--text3)" data-i18n="rapport.duurHint">Kan tot een minuut duren bij een grote periode/topologie.</span>
+        </div>
+        <div id="rapportStatusCard" class="addform" style="display:none;margin-top:10px">
+          <div class="dot busy"></div>
+          <span data-i18n="rapport.bezig">Rapport wordt gegenereerd...</span>
+        </div>
+        <div id="rapportResultCard" class="addform" style="display:none;margin-top:10px">
+          <span id="rapportResultInfo"></span>
+          <button id="rapportDownloadBtn" data-i18n="common.download">Download</button>
+        </div>
+        <div id="rapportErrorCard" class="addform" style="display:none;margin-top:10px">
+          <span id="rapportErrorInfo" style="color:var(--red)"></span>
+          <button id="rapportOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="beheer" id="backupPanel" style="display:none">
+      <div class="beheercol">
+        <h2 data-i18n="backup.titel">Back-up</h2>
+        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.subtitel">Eén bestand voor een volledige restore op een andere instance.</div>
+
+        <div class="optionrow locked">
+          <input type="checkbox" checked disabled>
+          <div>
+            <div class="lbl"><span data-i18n="backup.topologieLbl">Topologie</span> <span class="always" data-i18n="backup.altijdInbegrepen">altijd inbegrepen</span></div>
+            <div class="desc" data-i18n="backup.topologieDesc">Generators, groepen, kasten, koppelingen, ratings — de bestaande export-JSON.</div>
+          </div>
+        </div>
+        <div class="optionrow locked">
+          <input type="checkbox" checked disabled>
+          <div>
+            <div class="lbl"><span data-i18n="backup.plattegrondLogoLbl">Plattegrond &amp; logo</span> <span class="always" data-i18n="backup.altijdInbegrepen">altijd inbegrepen</span></div>
+            <div class="desc" data-i18n="backup.plattegrondLogoDesc">Geüploade plattegrondafbeelding en evenementlogo.</div>
+          </div>
+        </div>
+        <div class="optionrow">
+          <input type="checkbox" id="backupMeetdataCb">
+          <div style="flex:1">
+            <div class="lbl" data-i18n="backup.meetdataLbl">Meetdata (InfluxDB-dump)</div>
+            <div class="desc" data-i18n="backup.meetdataDesc">Historische stroom-/spanningsdata als CSV. Kan groot worden — kies een periode.</div>
+            <div class="periodchips">
+              <button class="chip active" data-backupperiode="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
+              <button class="chip" data-backupperiode="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
+              <button class="chip" data-backupperiode="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
+            </div>
+            <div class="addform" id="backupAangepastPeriode" style="display:none;margin-top:8px">
+              <input type="datetime-local" id="backupVanInput">
+              <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
+              <input type="datetime-local" id="backupTotInput">
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button id="backupGenereerBtn" data-i18n="backup.maakBackup">Volledige back-up maken</button>
+          <span style="font-size:12px;color:var(--text3)" data-i18n="backup.duurHint">Kan even duren bij meetdata over een lange periode.</span>
+        </div>
+        <div id="backupStatusCard" class="addform" style="display:none;margin-top:10px">
+          <div class="dot busy"></div>
+          <span data-i18n="backup.bezig">Back-up wordt samengesteld...</span>
+        </div>
+        <div id="backupResultCard" class="addform" style="display:none;margin-top:10px">
+          <span id="backupResultInfo"></span>
+          <button id="backupDownloadBtn" data-i18n="common.download">Download</button>
+        </div>
+        <div id="backupErrorCard" class="addform" style="display:none;margin-top:10px">
+          <span id="backupErrorInfo" style="color:var(--red)"></span>
+          <button id="backupOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="body" id="mainBody" style="display:none">
     <div class="zoomctl" id="zoomCtl">
-      <button id="zoomOutBtn" title="Uitzoomen">−</button>
-      <span class="zoomlabel" id="zoomLabel" title="Klik om te resetten naar 100%">100%</span>
-      <button id="zoomInBtn" title="Inzoomen">+</button>
-      <button id="zoomFitBtn" title="Alles in beeld (fit to screen)">⛶</button>
+      <button id="zoomOutBtn" data-i18n-title="zoom.uitzoomen" title="Uitzoomen">−</button>
+      <span class="zoomlabel" id="zoomLabel" data-i18n-title="zoom.resetTitle" title="Klik om te resetten naar 100%">100%</span>
+      <button id="zoomInBtn" data-i18n-title="zoom.inzoomen" title="Inzoomen">+</button>
+      <button id="zoomFitBtn" data-i18n-title="zoom.fitToScreen" title="Alles in beeld (fit to screen)">⛶</button>
     </div>
     <div class="mapwrap" id="mapwrap">
       <div class="mapinner" id="mapinner">
         <img id="mapimg" alt="Plattegrond" style="display:none">
         <div class="blankcanvas" id="blankCanvas">
-          <div class="blankcanvas-hint">Nog geen plattegrond geüpload. Je kunt kasten hier alvast vrij plaatsen — upload later een plattegrond via de knop hierboven, de posities blijven staan.</div>
+          <div class="blankcanvas-hint" data-i18n="blankcanvas.hint">Nog geen plattegrond geüpload. Je kunt kasten hier alvast vrij plaatsen — upload later een plattegrond via de knop hierboven, de posities blijven staan.</div>
         </div>
         <svg id="svgoverlay"></svg>
       </div>
     </div>
     <div class="mapwrap schemawrap" id="schemaWrap" style="display:none">
-      <div class="blankcanvas-hint" id="schemaEmptyHint" style="position:static;display:none">Nog geen generators/kasten. Voeg ze toe via "Beheer" — het schema wordt automatisch getekend.</div>
+      <div class="blankcanvas-hint" id="schemaEmptyHint" style="position:static;display:none" data-i18n="schema.emptyHint">Nog geen generators/kasten. Voeg ze toe via "Beheer" — het schema wordt automatisch getekend.</div>
       <svg id="schemaSvg"></svg>
     </div>
     <aside>
-      <div class="listhead">Generators &amp; kasten</div>
+      <div class="listhead" data-i18n="aside.listhead">Generators &amp; kasten</div>
       <div class="listtools" id="listtools">
-        <input type="text" id="listSearch" placeholder="Zoek op naam of afkorting...">
+        <input type="text" id="listSearch" data-i18n-placeholder="aside.zoekPlaceholder" placeholder="Zoek op naam of afkorting...">
         <div class="listfilters">
-          <button class="chip active" data-filter="alles">Alles</button>
-          <button class="chip" data-filter="amber">Amber+</button>
-          <button class="chip" data-filter="rood">Alleen rood</button>
-          <button class="collapseall" id="listToggleAllBtn">Alles inklappen</button>
+          <button class="chip active" data-filter="alles" data-i18n="common.alles">Alles</button>
+          <button class="chip" data-filter="amber" data-i18n="aside.filterAmber">Amber+</button>
+          <button class="chip" data-filter="rood" data-i18n="aside.filterRood">Alleen rood</button>
+          <button class="collapseall" id="listToggleAllBtn" data-i18n="common.allesInklappen">Alles inklappen</button>
         </div>
       </div>
       <div class="list" id="list"></div>
-      <div class="detail" id="detail"><div class="empty">Selecteer een kast om details te zien.</div></div>
+      <div class="detail" id="detail"><div class="empty" data-i18n="aside.detailLeeg">Selecteer een kast om details te zien.</div></div>
     </aside>
   </div>
 </div>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-<script>
-let TOPO = { generators: [], kasten: [] };
-let mode = 'beheer';
-let armedId = null;
-let selectedId = null;
-let mqttClient = null;
-const liveData = {};
-const liveEnergyData = {};
-// id van de kast waarvan de MQTT-databallon open staat op de plattegrond (Live-modus), zie
-// specs/kast-popup-mqtt-spec.md — null = geen ballon open
-let openPopupKastId = null;
-
-const listEl = document.getElementById('list');
-const detailEl = document.getElementById('detail');
-const svg = document.getElementById('svgoverlay');
-const mapimg = document.getElementById('mapimg');
-const mapinner = document.getElementById('mapinner');
-const mapwrap = document.getElementById('mapwrap');
-const blankCanvas = document.getElementById('blankCanvas');
-
-// ---------- sidebar: in-/uitklapstatus per generator/kast, onthouden in localStorage ----------
-const SIDEBAR_STORAGE_KEY = 'stroomdash_sidebar_v1';
-const MANY_GENERATORS_THRESHOLD = 3;
-let sidebarState = {};
-try { sidebarState = JSON.parse(localStorage.getItem(SIDEBAR_STORAGE_KEY) || '{}'); } catch(e) {}
-function saveSidebarState(){
-  try { localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(sidebarState)); } catch(e) {}
-}
-// levert de open/dicht-status voor een id op; als er nog geen onthouden waarde is (nieuw
-// item), wordt de default toegepast en in het geheugen (niet meteen in localStorage) gezet —
-// zo overschrijft een topologiewijziging de eerder onthouden keuzes van de gebruiker niet.
-function isNodeOpen(id, defaultOpen){
-  if(!Object.prototype.hasOwnProperty.call(sidebarState, id)) sidebarState[id] = defaultOpen;
-  return sidebarState[id];
-}
-let listSearchQuery = '';
-let listStatusFilter = 'alles';
-
-// eigen, aparte opslag voor de Beheer-kastensecties (zelfde aanpak als hierboven, maar een eigen
-// key): Beheer en de Kalibreren/Live-aside delen generator/kast-id's, en de aside's default-dicht-
-// bij-veel-generators-regel zou anders de Beheer-secties (die standaard open moeten staan, zie
-// renderKastSecties) al hebben "vastgezet" op dicht vóórdat Beheer ooit gerenderd is.
-const BEHEER_STORAGE_KEY = 'stroomdash_beheer_kasten_v1';
-let beheerState = {};
-try { beheerState = JSON.parse(localStorage.getItem(BEHEER_STORAGE_KEY) || '{}'); } catch(e) {}
-function saveBeheerState(){
-  try { localStorage.setItem(BEHEER_STORAGE_KEY, JSON.stringify(beheerState)); } catch(e) {}
-}
-function isBeheerNodeOpen(id, defaultOpen){
-  if(!Object.prototype.hasOwnProperty.call(beheerState, id)) beheerState[id] = defaultOpen;
-  return beheerState[id];
-}
-
-// ---------- zoom: eigen, onthouden niveau per tabblad (cal/schema/live), ook na herladen van de pagina ----------
-const ZOOM_MIN = 0.05, ZOOM_MAX = 3, ZOOM_STEP = 0.15;
-const ZOOM_STORAGE_KEY = 'stroomdash_zoom_v1';
-let zoomLevels = { cal: null, schema: null, live: null, schemaSize: null };
-try { Object.assign(zoomLevels, JSON.parse(localStorage.getItem(ZOOM_STORAGE_KEY) || '{}')); } catch(e) {}
-
-function currentZoom(){ return zoomLevels[mode] ?? 1; }
-function applyZoom(){
-  const z = currentZoom();
-  if(mode==='schema'){
-    document.getElementById('schemaSvg').style.transform = 'scale(' + z + ')';
-  } else {
-    mapinner.style.transform = 'scale(' + z + ')';
-  }
-  document.getElementById('zoomLabel').textContent = Math.round(z * 100) + '%';
-  centerContentInViewport();
-  renderKastPopup();
-}
-function setZoom(z){
-  z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
-  zoomLevels[mode] = z;
-  // elke zoomwijziging (ook handmatig via +/-/scrollwiel, niet alleen de fit-knop) legt vast voor welke
-  // schemagrootte dit percentage gold, zodat een latere topologiewijziging dit als verouderd herkent
-  if(mode==='schema'){
-    const svg = document.getElementById('schemaSvg');
-    zoomLevels.schemaSize = { w: +svg.getAttribute('width') || 0, h: +svg.getAttribute('height') || 0 };
-  }
-  try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(zoomLevels)); } catch(e) {}
-  applyZoom();
-}
-
-// transform:scale() krimpt alleen de visuele weergave, niet de layout-/scrollbox van de wrap (die blijft
-// op ongeschaalde grootte staan omdat de wrap gecentreerd is met flexbox). Zonder correctie blijft de
-// viewport na uitzoomen op scrollpositie (0,0) staan, ver van waar de gekrompen inhoud zichtbaar is —
-// dat toont dan alleen de lege achtergrond ("het scherm wordt zwart"). Daarom recentreren we na elke
-// zoomwijziging de scrollpositie op het midden van de (geschaalde) inhoud.
-// Alleen voor het schema: de SVG is altijd precies zo groot als de boom die 'm bevat, dus het midden
-// van het element IS het midden van de inhoud. Het kaart/live-canvas is een vast groot werkvlak
-// (4800x3000) los van hoeveel er daadwerkelijk op geplaatst is — daarop centreren trekt de viewport
-// naar het midden van dat lege werkvlak i.p.v. naar waar de pins staan, dus daar juist NIET doen.
-function centerContentInViewport(){
-  if(mode!=='schema') return;
-  const wrap = document.getElementById('schemaWrap');
-  const contentEl = document.getElementById('schemaSvg');
-  const wrapRect = wrap.getBoundingClientRect();
-  const contentRect = contentEl.getBoundingClientRect();
-  if(!contentRect.width || !contentRect.height) return;
-  const deltaX = (contentRect.left + contentRect.width / 2) - (wrapRect.left + wrapRect.width / 2);
-  const deltaY = (contentRect.top + contentRect.height / 2) - (wrapRect.top + wrapRect.height / 2);
-  wrap.scrollLeft += deltaX;
-  wrap.scrollTop += deltaY;
-}
-
-document.getElementById('zoomInBtn').onclick = () => setZoom(currentZoom() + ZOOM_STEP);
-document.getElementById('zoomOutBtn').onclick = () => setZoom(currentZoom() - ZOOM_STEP);
-document.getElementById('zoomLabel').onclick = () => setZoom(1);
-
-// zoomt zo ver uit (of in) dat de volledige inhoud past
-function fitToScreen(){
-  if(mode==='schema') return fitToScreenSchema();
-  return fitToScreenKaart();
-}
-
-// schema: de SVG is altijd al precies zo groot als de boom die 'm bevat (computeSchemaLayout
-// berekent width/height op basis van het aantal knopen), dus "de hele SVG" IS hier al "wat er
-// daadwerkelijk gebruikt wordt" — geen aparte bounding-box-berekening nodig.
-function fitToScreenSchema(){
-  const wrap = document.getElementById('schemaWrap');
-  const contentEl = document.getElementById('schemaSvg');
-  // de ongeschaalde inhoudsgrootte NIET afleiden door de huidige (mogelijk inmiddels afwijkende)
-  // zoomwaarde uit de zichtbare rect te delen — dat gaf een verkeerde fit zodra die aanname niet meer
-  // klopte met de daadwerkelijk toegepaste transform. In plaats daarvan de transform even uitzetten en
-  // de ware afmeting rechtstreeks meten; getBoundingClientRect() werkt betrouwbaar op zowel <svg> als
-  // gewone elementen (offsetWidth/Height niet altijd op SVG-rootelementen).
-  const prevTransform = contentEl.style.transform;
-  contentEl.style.transform = 'none';
-  const rect = contentEl.getBoundingClientRect();
-  const cw = rect.width, ch = rect.height;
-  contentEl.style.transform = prevTransform;
-  if(!cw || !ch) return;
-  const availW = wrap.clientWidth - 24, availH = wrap.clientHeight - 24;
-  if(availW <= 0 || availH <= 0) return;
-  setZoom(Math.min(availW / cw, availH / ch));
-}
-
-// kalibreren/live: het canvas (plattegrond of het lege werkvlak) is vaak veel groter dan wat er
-// daadwerkelijk op geplaatst is — fitten op de HELE surface (bijv. het volledige 4800x3000 lege vlak)
-// zoomt dan veel verder uit dan nodig en laat vooral lege ruimte zien. Fit daarom op de bounding box
-// van de daadwerkelijk geplaatste generators/kasten, met wat marge, en scroll naar het midden daarvan.
-function fitToScreenKaart(){
-  const wrap = document.getElementById('mapwrap');
-  const surface = getSurfaceEl();
-  const surfaceW = surface.clientWidth, surfaceH = surface.clientHeight;
-  if(!surfaceW || !surfaceH) return;
-  const availW = wrap.clientWidth - 24, availH = wrap.clientHeight - 24;
-  if(availW <= 0 || availH <= 0) return;
-
-  const geplaatst = allNodes().filter(n => n.positie && n.positie.x_pct != null);
-  let minX = 0, maxX = 100, minY = 0, maxY = 100;
-  if(geplaatst.length){
-    minX = Math.min(...geplaatst.map(n => n.positie.x_pct));
-    maxX = Math.max(...geplaatst.map(n => n.positie.x_pct));
-    minY = Math.min(...geplaatst.map(n => n.positie.y_pct));
-    maxY = Math.max(...geplaatst.map(n => n.positie.y_pct));
-    const PAD = 4;
-    minX = Math.max(0, minX - PAD); maxX = Math.min(100, maxX + PAD);
-    minY = Math.max(0, minY - PAD); maxY = Math.min(100, maxY + PAD + 3); // iets extra onder voor het pin-label
-  } // niks geplaatst: val terug op de hele surface (0-100), zodat er alsnog iets zinnigs te zien is
-
-  const contentW = (maxX - minX) / 100 * surfaceW;
-  const contentH = (maxY - minY) / 100 * surfaceH;
-  if(!contentW || !contentH) return;
-  const scale = Math.min(availW / contentW, availH / contentH, ZOOM_MAX);
-  setZoom(scale);
-
-  const centerX = (minX + maxX) / 2 / 100 * surfaceW * scale;
-  const centerY = (minY + maxY) / 2 / 100 * surfaceH * scale;
-  wrap.scrollLeft = centerX - wrap.clientWidth / 2;
-  wrap.scrollTop = centerY - wrap.clientHeight / 2;
-}
-document.getElementById('zoomFitBtn').onclick = fitToScreen;
-
-document.getElementById('mainBody').addEventListener('wheel', (ev) => {
-  ev.preventDefault();
-  setZoom(currentZoom() + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
-}, { passive: false });
-
-// klik-en-sleep pannen op de achtergrond (nu het scrollwiel zoomt i.p.v. scrollt).
-// Pins hebben hun eigen mousedown met stopPropagation, dus die blijven gewoon versleepbaar;
-// een gewone klik (zonder beweging) blijft ook gewoon werken voor plaatsen/selecteren.
-function enablePanDrag(wrapEl){
-  let panning = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
-  wrapEl.addEventListener('mousedown', (ev) => {
-    panning = true;
-    startX = ev.clientX; startY = ev.clientY;
-    startLeft = wrapEl.scrollLeft; startTop = wrapEl.scrollTop;
-    wrapEl.style.cursor = 'grabbing';
-  });
-  window.addEventListener('mousemove', (ev) => {
-    if(!panning) return;
-    wrapEl.scrollLeft = startLeft - (ev.clientX - startX);
-    wrapEl.scrollTop = startTop - (ev.clientY - startY);
-  });
-  window.addEventListener('mouseup', () => {
-    if(!panning) return;
-    panning = false;
-    wrapEl.style.cursor = '';
-  });
-}
-enablePanDrag(document.getElementById('mapwrap'));
-enablePanDrag(document.getElementById('schemaWrap'));
-
-function allNodes(){ return [...TOPO.generators, ...TOPO.kasten]; }
-function isGen(n){ return n.vermogen_kva !== undefined; }
-function nodeById(id){ return allNodes().find(n=>n.id===id); }
-function genNaam(genId){ const g = TOPO.generators.find(g=>g.id===genId); return g ? g.naam : genId; }
-// visueel onderscheid tussen een los aggregaat, een accu en een groep (meerdere aggregaten/accu's die
-// samen als één krachtbron optreden, bijv. een centrale met 6 generators + een CAT-batterijcontainer)
-function typeIcon(n){ return n.type==='batterij' ? '🔋' : n.type==='groep' ? '🏭' : '⚡'; }
-// het "oppervlak" waarop kasten geplaatst worden: de plattegrond als die is geüpload,
-// anders een leeg vlak — zo kun je ook zonder plattegrond kasten vrij plaatsen
-function getSurfaceEl(){ return mapimg.style.display !== 'none' ? mapimg : blankCanvas; }
-
-async function loadTopology(){
-  const res = await fetch('/api/topology');
-  TOPO = await res.json();
-  renderList(); renderDetail(); renderBeheer();
-  if(mode==='schema') renderSchema();
-}
-
-async function savePositie(node){
-  await fetch('/api/topology/positie', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ id: node.id, x_pct: node.positie.x_pct, y_pct: node.positie.y_pct })
-  });
-}
-
-function loadMap(){
-  const img = new Image();
-  img.onload = ()=>{
-    mapimg.src = '/api/map?t=' + Date.now();
-    mapimg.style.display = 'block';
-    blankCanvas.style.display = 'none';
-    renderPins();
-  };
-  img.onerror = ()=>{
-    mapimg.style.display = 'none';
-    blankCanvas.style.display = 'block';
-    renderPins();
-  };
-  img.src = '/api/map?t=' + Date.now();
-}
-
-function loadLogo(){
-  const headerLogo = document.getElementById('headerLogo');
-  const img = new Image();
-  img.onload = ()=>{ headerLogo.src = '/api/logo?t=' + Date.now(); headerLogo.style.display = 'inline'; };
-  img.onerror = ()=>{ headerLogo.style.display = 'none'; };
-  img.src = '/api/logo?t=' + Date.now();
-}
-
-// rating_a is de stroom die de aansluiting PER FASE aankan (standaard bij CEE-koppelingen,
-// bijv. een "63A"-kast mag 63A op elke fase dragen) — dus vergelijken we de zwaarst belaste
-// fase met de rating, niet total_current (dat is de som van alle drie de fasen en zou bij
-// gebalanceerde belasting pas rond de 300% van rating_a een probleem lijken)
-function maxFaseStroom(d){
-  if(!d) return null;
-  const fasen = [d.a_current, d.b_current, d.c_current].filter(v=>v!=null);
-  return fasen.length ? Math.max(...fasen) : null;
-}
-
-// werkt voor zowel kasten (rating_a altijd verplicht ingevuld) als generators (rating_a optioneel
-// — alleen gezet als die generator ook echt uitgelezen wordt, native of via een Shelly+CT-klem)
-function statusOf(node){
-  if(node.rating_a==null) return null;
-  const cur = maxFaseStroom(liveData[node.id]);
-  if(cur==null) return null;
-  const pct = (cur / node.rating_a) * 100;
-  if(pct >= 90) return 'red';
-  if(pct >= 70) return 'amber';
-  return 'green';
-}
-function statusClass(node){
-  const s = statusOf(node);
-  return s ? 'status-'+s : '';
-}
-
-// kinderen van een generator (top-level, zonder parent-kast) of van een kast (via 'parent') —
-// zelfde boomdefinitie als het schema-tabblad, zie schemaChildrenOf hieronder
-function listChildrenOf(node){
-  return isGen(node)
-    ? TOPO.kasten.filter(k=>k.generator===node.id && !k.parent)
-    : TOPO.kasten.filter(k=>k.parent===node.id);
-}
-function collectDescendantKasten(node){
-  let result = [];
-  listChildrenOf(node).forEach(k=>{ result.push(k); result = result.concat(collectDescendantKasten(k)); });
-  return result;
-}
-function statusCounts(node){
-  const counts = { green:0, amber:0, red:0 };
-  collectDescendantKasten(node).forEach(k=>{ const s = statusOf(k); if(s) counts[s]++; });
-  return counts;
-}
-
-function makeBadge(kind, n){
-  const b = document.createElement('span');
-  b.className = 'badge badge-'+kind;
-  b.textContent = n;
-  return b;
-}
-
-// bepaalt, voor de hele boom, welke generatoren/kasten-met-kinderen open of dicht staan —
-// leest/vult sidebarState (met defaults uit punt 3 van de spec) zodat dit overal (rendering
-// én de "alles in-/uitklappen"-knop) dezelfde bron van waarheid gebruikt
-function computeOpenStates(){
-  const states = {};
-  const manyGenerators = TOPO.generators.length > MANY_GENERATORS_THRESHOLD;
-  function visit(node, isGenerator){
-    const kids = listChildrenOf(node);
-    if(kids.length){
-      const defaultOpen = isGenerator ? (!manyGenerators || statusCounts(node).amber>0 || statusCounts(node).red>0) : false;
-      states[node.id] = isNodeOpen(node.id, defaultOpen);
-    }
-    kids.forEach(k=>visit(k, false));
-  }
-  TOPO.generators.forEach(g=>visit(g, true));
-  return states;
-}
-
-function renderList(){
-  listEl.innerHTML = '';
-  const query = listSearchQuery.trim().toLowerCase();
-  const filter = listStatusFilter;
-  const searching = !!query || filter!=='alles';
-  const openStates = computeOpenStates();
-
-  function kastMatchesFilter(k){
-    const textOk = !query || k.naam.toLowerCase().includes(query) || (k.afkorting && k.afkorting.toLowerCase().includes(query));
-    if(!textOk) return false;
-    if(filter==='alles') return true;
-    const s = statusOf(k);
-    if(filter==='rood') return s==='red';
-    return s==='amber' || s==='red';
-  }
-  const subtreeMatchCache = new Map();
-  function subtreeMatches(node){
-    if(subtreeMatchCache.has(node.id)) return subtreeMatchCache.get(node.id);
-    let result = !isGen(node) && kastMatchesFilter(node);
-    if(!result) result = listChildrenOf(node).some(subtreeMatches);
-    subtreeMatchCache.set(node.id, result);
-    return result;
-  }
-
-  function renderChildren(container, node, depth){
-    listChildrenOf(node).forEach(k=>{
-      if(searching && !subtreeMatches(k)) return;
-      const heeftKinderen = listChildrenOf(k).length > 0;
-      const row = document.createElement('div');
-      row.className = 'row' + (k.id===selectedId?' selected':'') + (mode==='cal' && k.id===armedId?' selected':'') + (heeftKinderen?' parent':'');
-      row.style.paddingLeft = (14 + depth*14) + 'px';
-
-      const chev = document.createElement('span');
-      chev.className = 'chev';
-      let open = false;
-      if(heeftKinderen){
-        open = searching ? true : openStates[k.id];
-        chev.textContent = open ? '▾' : '▸';
-        chev.onclick = (e)=>{ e.stopPropagation(); sidebarState[k.id] = !openStates[k.id]; saveSidebarState(); renderList(); };
-      }
-      row.appendChild(chev);
-
-      const dot = document.createElement('div');
-      dot.className = 'dot2 ' + statusClass(k);
-      const name = document.createElement('div');
-      name.className = 'name';
-      name.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam + (k.afkorting ? ' (' + k.afkorting + ')' : '');
-      row.appendChild(dot); row.appendChild(name);
-
-      if(heeftKinderen){
-        const sub = document.createElement('div');
-        sub.className = 'sub2';
-        sub.textContent = collectDescendantKasten(k).length + ' onderliggend';
-        row.appendChild(sub);
-      } else {
-        const val = document.createElement('div');
-        val.className = 'val';
-        const maxFase = maxFaseStroom(liveData[k.id]);
-        val.textContent = maxFase!=null ? maxFase.toFixed(1)+'A' : (k.positie && k.positie.x_pct!=null?'—':'niet geplaatst');
-        row.appendChild(val);
-      }
-
-      row.onclick = ()=>{
-        if(mode==='cal'){ armedId = k.id; document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+k.naam+'" te plaatsen'; }
-        selectedId = k.id; renderList(); renderDetail(); renderPins();
-      };
-      container.appendChild(row);
-
-      if(heeftKinderen && open) renderChildren(container, k, depth+1);
-    });
-  }
-
-  TOPO.generators.forEach(gen=>{
-    if(searching && !subtreeMatches(gen)) return;
-    const heeftKinderen = listChildrenOf(gen).length > 0;
-    const gh = document.createElement('div');
-    gh.className = 'genrow' + (gen.id===selectedId?' selected':'') + (mode==='cal' && gen.id===armedId?' selected':'');
-
-    const chev = document.createElement('span');
-    chev.className = 'chev';
-    let open = false;
-    if(heeftKinderen){
-      open = searching ? true : openStates[gen.id];
-      chev.textContent = open ? '▾' : '▸';
-      chev.onclick = (e)=>{ e.stopPropagation(); sidebarState[gen.id] = !openStates[gen.id]; saveSidebarState(); renderList(); };
-    }
-    gh.appendChild(chev);
-
-    if(gen.rating_a!=null){
-      const dot = document.createElement('div');
-      dot.className = 'dot2 ' + statusClass(gen);
-      gh.appendChild(dot);
-    }
-
-    const genName = document.createElement('div');
-    genName.className = 'name';
-    genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' ('+gen.leden.length+' leden)' : '');
-    gh.appendChild(genName);
-
-    const counts = statusCounts(gen);
-    const badges = document.createElement('div');
-    badges.className = 'badges';
-    if(counts.green) badges.appendChild(makeBadge('green', counts.green));
-    if(counts.amber) badges.appendChild(makeBadge('amber', counts.amber));
-    if(counts.red) badges.appendChild(makeBadge('red', counts.red));
-    gh.appendChild(badges);
-
-    const genVal = document.createElement('div');
-    genVal.className = 'val';
-    const genMaxFase = maxFaseStroom(liveData[gen.id]);
-    genVal.textContent = genMaxFase!=null ? genMaxFase.toFixed(1)+'A' : (gen.positie && gen.positie.x_pct!=null ? '—' : 'niet geplaatst');
-    gh.appendChild(genVal);
-
-    gh.onclick = ()=>{
-      if(mode==='cal'){ armedId = gen.id; document.getElementById('armedLabel').textContent = 'Klik nu op de kaart om "'+gen.naam+'" te plaatsen'; }
-      selectedId = gen.id; renderList(); renderDetail(); renderPins();
-    };
-    listEl.appendChild(gh);
-
-    if(heeftKinderen && open) renderChildren(listEl, gen, 0);
-  });
-
-  const collapsibleIds = Object.keys(openStates);
-  const openCount = collapsibleIds.filter(id=>openStates[id]).length;
-  const toggleAllBtn = document.getElementById('listToggleAllBtn');
-  const expandAction = openCount===0 && collapsibleIds.length>0;
-  toggleAllBtn.textContent = expandAction ? 'Alles uitklappen' : 'Alles inklappen';
-  toggleAllBtn.onclick = ()=>{
-    collapsibleIds.forEach(id=>{ sidebarState[id] = expandAction; });
-    saveSidebarState();
-    renderList();
-  };
-}
-
-document.getElementById('listSearch').addEventListener('input', (e)=>{
-  listSearchQuery = e.target.value;
-  renderList();
-});
-document.querySelectorAll('.listfilters .chip').forEach(chip=>{
-  chip.onclick = ()=>{
-    listStatusFilter = chip.dataset.filter;
-    document.querySelectorAll('.listfilters .chip').forEach(c=>c.classList.toggle('active', c===chip));
-    renderList();
-  };
-});
-
-// meetdata-blok (fasen, vermogen, belastingsbalk) — gedeeld tussen kasten (rating_a altijd
-// verplicht) en generators (rating_a optioneel, alleen gezet als 'm ook echt uitgelezen wordt)
-function metingenHtml(node, d){
-  let html = '';
-  const maxFase = maxFaseStroom(d);
-  if(d && d.total_current!=null) html += '<div class="metric"><span class="k">Totale stroom (3 fasen)</span><span>'+d.total_current.toFixed(2)+' A</span></div>';
-  if(d){
-    ['a','b','c'].forEach(ph=>{
-      if(d[ph+'_current']!=null) html += '<div class="metric"><span class="k">Fase '+ph.toUpperCase()+'</span><span>'+d[ph+'_current'].toFixed(2)+' A · '+(d[ph+'_voltage']?d[ph+'_voltage'].toFixed(0)+'V':'')+'</span></div>';
-    });
-    if(d.total_act_power!=null) html += '<div class="metric"><span class="k">Vermogen</span><span>'+d.total_act_power.toFixed(0)+' W</span></div>';
-    html += '<div class="metric"><span class="k">Laatste update</span><span>'+new Date(d.ts).toLocaleTimeString('nl-NL')+'</span></div>';
-  }
-  if(node.rating_a!=null){
-    const pct = maxFase!=null ? Math.min(100, (maxFase/node.rating_a)*100) : 0;
-    const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-    html += '<div class="metric"><span class="k">Belasting (hoogste fase / rating)</span><span>'+(maxFase!=null?Math.round(pct)+'%':'geen data')+'</span></div>';
-    html += '<div class="barwrap"><div class="bar" style="width:'+pct+'%;background:'+cls+'"></div></div>';
-  } else if(maxFase!=null){
-    html += '<div class="metric"><span class="k">Belasting</span><span>geen rating ingesteld</span></div>';
-  }
-  return html;
-}
-
-function renderDetail(){
-  const n = nodeById(selectedId);
-  if(!n){ detailEl.innerHTML = '<div class="empty">Selecteer een kast om details te zien.</div>'; return; }
-  const d = liveData[n.id];
-  let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+'</h2>';
-  if(!isGen(n)){
-    html += '<div class="sub">'+(n.type==='batterij'?'Batterij/piekscheerder — ':'')+genNaam(n.generator)+' · rating '+n.rating_a+'A per fase'+(n.opmerking?(' · '+n.opmerking):'')+'</div>';
-    if(n.type==='batterij' && n.heeft_bypass){
-      html += '<div class="metric"><span class="k">Bypass</span><span>Bij overbelasting gaat het vermogen rechtstreeks naar het afgaande veld</span></div>';
-    }
-    html += metingenHtml(n, d);
-  } else {
-    const typeLabel = n.type==='batterij' ? 'Batterij' : n.type==='groep' ? 'Groep' : 'Generator';
-    html += '<div class="sub">'+typeIcon(n)+' '+typeLabel+(n.rating_a!=null?' · rating '+n.rating_a+'A per fase':'')+'</div>';
-    if(n.type==='groep' && n.leden && n.leden.length){
-      const soortLabel = n.groep_soort==='parallel' ? 'Parallel (load-sharing)' : n.groep_soort==='backup' ? 'N+1 backup (auto-start bij uitval)' : n.groep_soort==='hybride' ? 'Hybride (generators + opslag)' : 'onbekend';
-      html += '<div class="metric"><span class="k">Soort koppeling</span><span>'+soortLabel+'</span></div>';
-      html += '<div class="metric"><span class="k">Leden ('+n.leden.length+')</span><span>'+n.leden.map(l=>typeIcon(l)+' '+l.naam+(l.vermogen_kva?' ('+l.vermogen_kva+'kVA)':'')).join(', ')+'</span></div>';
-    }
-    html += metingenHtml(n, d);
-  }
-  html += '<div class="metric" style="margin-top:10px"><span class="k">Positie</span><span>'+(n.positie && n.positie.x_pct!=null? n.positie.x_pct.toFixed(1)+'%, '+n.positie.y_pct.toFixed(1)+'%' : 'nog niet geplaatst')+'</span></div>';
-  detailEl.innerHTML = html;
-}
-
-function renderPins(){
-  mapinner.querySelectorAll('.pin,.pinlabel').forEach(e=>e.remove());
-  const surface = getSurfaceEl();
-  const w = surface.clientWidth, h = surface.clientHeight;
-  if(!w || !h) return;
-  svg.setAttribute('width', w); svg.setAttribute('height', h);
-  svg.innerHTML = '';
-
-  TOPO.kasten.forEach(k=>{
-    const from = k.parent ? nodeById(k.parent) : nodeById(k.generator);
-    if(!from || !from.positie || from.positie.x_pct==null || !k.positie || k.positie.x_pct==null) return;
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', from.positie.x_pct/100*w);
-    line.setAttribute('y1', from.positie.y_pct/100*h);
-    line.setAttribute('x2', k.positie.x_pct/100*w);
-    line.setAttribute('y2', k.positie.y_pct/100*h);
-    line.setAttribute('stroke', 'rgba(79,209,197,0.55)');
-    line.setAttribute('stroke-width', '2');
-    svg.appendChild(line);
-  });
-
-  allNodes().forEach(n=>{
-    if(!n.positie || n.positie.x_pct==null) return;
-    const pin = document.createElement('div');
-    pin.className = 'pin' + (isGen(n)?' gen':'') + ' ' + statusClass(n) + (n.id===selectedId?' selected':'');
-    pin.style.left = (n.positie.x_pct/100*w)+'px';
-    pin.style.top = (n.positie.y_pct/100*h)+'px';
-    pin.title = n.naam;
-    pin.dataset.id = n.id;
-    pin.onmousedown = (ev)=>{
-      ev.stopPropagation();
-      selectedId = n.id; renderList(); renderDetail(); renderPins();
-      if(mode==='live' && !isGen(n)){
-        openPopupKastId = (openPopupKastId===n.id) ? null : n.id;
-        renderKastPopup();
-      }
-      if(mode!=='cal') return;
-      const move = (mv)=>{
-        const rect = getSurfaceEl().getBoundingClientRect();
-        let x = ((mv.clientX-rect.left)/rect.width)*100;
-        let y = ((mv.clientY-rect.top)/rect.height)*100;
-        x = Math.max(0,Math.min(100,x)); y = Math.max(0,Math.min(100,y));
-        n.positie = {x_pct:x, y_pct:y};
-        pin.style.left = (x/100*w)+'px'; pin.style.top = (y/100*h)+'px';
-      };
-      const up = ()=>{
-        document.removeEventListener('mousemove', move);
-        document.removeEventListener('mouseup', up);
-        savePositie(n); renderList(); renderPins(); renderDetail();
-      };
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', up);
-    };
-    mapinner.appendChild(pin);
-
-    const label = document.createElement('div');
-    label.className = 'pinlabel';
-    label.style.left = (n.positie.x_pct/100*w)+'px';
-    label.style.top = (n.positie.y_pct/100*h)+'px';
-    label.textContent = isGen(n) ? typeIcon(n)+' '+n.naam : (n.type==='batterij'?'🔋 ':'')+n.naam;
-    mapinner.appendChild(label);
-  });
-
-  renderKastPopup();
-}
-
-// ---------- kast-databallon op de plattegrond (Live-modus), zie specs/kast-popup-mqtt-spec.md ----------
-function fmtVeld(v, eenheid, decimals){
-  if(v==null) return '—';
-  const d = decimals==null ? 2 : decimals;
-  return v.toFixed(d) + (eenheid ? ' '+eenheid : '');
-}
-
-function renderKastPopup(){
-  let el = document.getElementById('kastPopup');
-  if(mode!=='live' || !openPopupKastId){
-    if(el) el.remove();
-    return;
-  }
-  const k = TOPO.kasten.find(x=>x.id===openPopupKastId);
-  if(!k || !k.positie || k.positie.x_pct==null){
-    openPopupKastId = null;
-    if(el) el.remove();
-    return;
-  }
-
-  if(!el){
-    el = document.createElement('div');
-    el.id = 'kastPopup';
-    // buiten #mapinner (die het zoom-schaal-transform draagt) zodat de ballon zelf een constant
-    // schermformaat houdt bij uit-/inzoomen — alleen het ankerpunt (de pin) volgt de kaart mee
-    mapwrap.appendChild(el);
-  }
-  el.className = 'kastpopup';
-  el.innerHTML = '';
-
-  const arrow = document.createElement('div');
-  arrow.className = 'kastpopup-arrow';
-  el.appendChild(arrow);
-
-  const closeBtn = document.createElement('div');
-  closeBtn.className = 'kastpopup-close';
-  closeBtn.textContent = '✕';
-  closeBtn.onclick = ()=>{ openPopupKastId = null; renderKastPopup(); };
-  el.appendChild(closeBtn);
-
-  const head = document.createElement('div');
-  head.className = 'kastpopup-head';
-  const dot = document.createElement('span');
-  dot.className = 'dot2 ' + statusClass(k);
-  const naam = document.createElement('span');
-  naam.className = 'naam';
-  naam.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam;
-  head.appendChild(dot); head.appendChild(naam);
-  el.appendChild(head);
-
-  const gevoedVanaf = k.parent ? nodeById(k.parent).naam : genNaam(k.generator);
-  const sub = document.createElement('div');
-  sub.className = 'kastpopup-sub';
-  sub.innerHTML = 'Rating ' + k.rating_a + 'A per fase · gevoed vanaf ' + gevoedVanaf + '<br>' + k.mqtt_topic_prefix;
-  el.appendChild(sub);
-
-  const d = liveData[k.id];
-  if(!d){
-    const geen = document.createElement('div');
-    geen.className = 'geendata';
-    geen.textContent = 'Geen data ontvangen';
-    el.appendChild(geen);
-  } else {
-    const tabel = document.createElement('table');
-    tabel.innerHTML =
-      '<tr><th></th><th>A</th><th>B</th><th>C</th></tr>'+
-      '<tr><td>Stroom</td><td>'+fmtVeld(d.a_current,'A')+'</td><td>'+fmtVeld(d.b_current,'A')+'</td><td>'+fmtVeld(d.c_current,'A')+'</td></tr>'+
-      '<tr><td>Spanning</td><td>'+fmtVeld(d.a_voltage,'V',0)+'</td><td>'+fmtVeld(d.b_voltage,'V',0)+'</td><td>'+fmtVeld(d.c_voltage,'V',0)+'</td></tr>'+
-      '<tr><td>Act. vermogen</td><td>'+fmtVeld(d.a_act_power,'W',0)+'</td><td>'+fmtVeld(d.b_act_power,'W',0)+'</td><td>'+fmtVeld(d.c_act_power,'W',0)+'</td></tr>'+
-      '<tr><td>Schijnb. vermogen</td><td>'+fmtVeld(d.a_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.b_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.c_aprt_power,'VA',0)+'</td></tr>'+
-      '<tr><td>cos φ</td><td>'+fmtVeld(d.a_pf,'',2)+'</td><td>'+fmtVeld(d.b_pf,'',2)+'</td><td>'+fmtVeld(d.c_pf,'',2)+'</td></tr>';
-    el.appendChild(tabel);
-
-    const totRow = document.createElement('div');
-    totRow.className = 'kprow';
-    totRow.innerHTML = '<span class="k">Totale stroom</span><span>'+fmtVeld(d.total_current,'A')+'</span>';
-    el.appendChild(totRow);
-    const totRow2 = document.createElement('div');
-    totRow2.className = 'kprow';
-    totRow2.innerHTML = '<span class="k">Totaal schijnbaar vermogen</span><span>'+fmtVeld(d.total_aprt_power,'VA',0)+'</span>';
-    el.appendChild(totRow2);
-  }
-
-  const ed = liveEnergyData[k.id];
-  const energieRow = document.createElement('div');
-  energieRow.className = 'kprow';
-  energieRow.innerHTML = '<span class="k">Cumulatieve energie</span><span>'+(ed && ed.total_act!=null ? (ed.total_act/1000).toFixed(2)+' kWh' : 'geen data')+'</span>';
-  el.appendChild(energieRow);
-
-  // statusbalk: zelfde logica als de aside-detail (metingenHtml) — hoogste fase t.o.v. rating_a,
-  // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 6)
-  const maxFase = maxFaseStroom(d);
-  const pct = maxFase!=null ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
-  const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-  const barwrap = document.createElement('div');
-  barwrap.className = 'barwrap';
-  barwrap.style.marginTop = '8px';
-  barwrap.innerHTML = '<div class="bar" style="width:'+pct+'%;background:'+cls+'"></div>';
-  el.appendChild(barwrap);
-
-  const laatste = document.createElement('div');
-  laatste.className = 'laatste';
-  laatste.textContent = d ? 'laatste update ' + Math.max(0, Math.round((Date.now()-d.ts)/1000)) + 's geleden' : 'geen data ontvangen';
-  el.appendChild(laatste);
-
-  // positioneren t.o.v. de pin, boven met pijl naar beneden — of eronder/horizontaal verschoven
-  // als de ballon anders buiten #mapwrap zou uitsteken, of over de zoom-knoppen (#zoomCtl, een
-  // los overlay-element linksboven in #mainBody, geen onderdeel van mapwrap's scroll-inhoud) heen
-  // zou vallen. Ankerpunt = de daadwerkelijke schermpositie van de pin (getBoundingClientRect, dus
-  // altijd correct ongeacht zoom/pan), niet een herberekening uit x_pct — de ballon zelf staat
-  // buiten #mapinner dus heeft geen eigen zoomschaal.
-  const pinEl = mapinner.querySelector('.pin[data-id="'+CSS.escape(k.id)+'"]');
-  if(!pinEl){ el.remove(); return; }
-  const pinRect = pinEl.getBoundingClientRect();
-  const wrapRect = mapwrap.getBoundingClientRect();
-  const zoomCtlRect = document.getElementById('zoomCtl').getBoundingClientRect();
-  const pinCenterX = pinRect.left + pinRect.width/2, pinCenterY = pinRect.top + pinRect.height/2;
-
-  // in "inhoud-coördinaten" van mapwrap (schermpositie + huidige scroll) zetten, zodat de ballon
-  // vanzelf meeschuift bij pannen tot de eerstvolgende herberekening (open/zoom/databericht)
-  el.style.left = (pinCenterX - wrapRect.left + mapwrap.scrollLeft) + 'px';
-  el.style.top = (pinCenterY - wrapRect.top + mapwrap.scrollTop) + 'px';
-  el.style.transform = 'none';
-  el.classList.remove('onder');
-  const ownW = el.offsetWidth, ownH = el.offsetHeight;
-
-  let dx = -ownW/2;
-  let dy = -(ownH + 14);
-  let onder = false;
-
-  // effectieve bovengrens: normaal de rand van #mapwrap, maar lager (onder de zoom-knoppen) als
-  // de ballon daar horizontaal overheen zou vallen
-  const valtOverZoomCtl = !(pinCenterX+dx+ownW < zoomCtlRect.left || pinCenterX+dx > zoomCtlRect.right);
-  const bovengrens = valtOverZoomCtl ? Math.max(wrapRect.top, zoomCtlRect.bottom) + 8 : wrapRect.top + 4;
-  if(pinCenterY + dy < bovengrens){
-    onder = true;
-    el.classList.add('onder');
-    dy = Math.max(14, bovengrens - pinCenterY);
-  }
-
-  if(pinCenterX + dx < wrapRect.left + 4){
-    dx = wrapRect.left + 4 - pinCenterX;
-  } else if(pinCenterX + dx + ownW > wrapRect.right - 4){
-    dx = wrapRect.right - 4 - ownW - pinCenterX;
-  }
-
-  el.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
-  const arrowShift = dx - (-ownW/2);
-  if(arrowShift) arrow.style.left = 'calc(50% - ' + arrowShift + 'px)';
-}
-
-// ---------- schema: automatisch gegenereerd stroomschema (parent/child-boom), geen plattegrond nodig ----------
-function schemaChildrenOf(node){
-  return isGen(node)
-    ? TOPO.kasten.filter(k=>k.generator===node.id && !k.parent)
-    : TOPO.kasten.filter(k=>k.parent===node.id);
-}
-
-function computeSchemaLayout(){
-  const NODE_W = 150, NODE_H = 36, GAP_X = 30, LEVEL_H = 100, PAD = 50;
-  let cursor = 0;
-  const positioned = [];
-  const links = [];
-
-  function place(node, depth){
-    const kids = schemaChildrenOf(node);
-    let x;
-    if(kids.length === 0){
-      x = cursor * (NODE_W + GAP_X) + NODE_W / 2;
-      cursor++;
-    } else {
-      const xs = kids.map(k=>{ const kx = place(k, depth + 1); links.push({ from: node, to: k }); return kx; });
-      x = (Math.min(...xs) + Math.max(...xs)) / 2;
-    }
-    positioned.push({ node, depth, x });
-    return x;
-  }
-
-  TOPO.generators.forEach(g => place(g, 0));
-
-  const maxDepth = positioned.reduce((m, p) => Math.max(m, p.depth), 0);
-  const width = Math.max(cursor * (NODE_W + GAP_X) + PAD, 300);
-  const height = PAD * 2 + (maxDepth + 1) * LEVEL_H;
-  return { positioned, links, width, height, NODE_W, NODE_H, LEVEL_H, PAD };
-}
-
-function renderSchema(){
-  const { positioned, links, width, height, NODE_W, NODE_H, LEVEL_H, PAD } = computeSchemaLayout();
-  const schemaSvg = document.getElementById('schemaSvg');
-  document.getElementById('schemaEmptyHint').style.display = positioned.length ? 'none' : 'block';
-  schemaSvg.setAttribute('width', width);
-  schemaSvg.setAttribute('height', height);
-  // zonder expliciete CSS-breedte/hoogte rekt een display:block <svg> zich uit naar de containerbreedte
-  // i.p.v. de width/height-attributen te respecteren — daarmee viel alles voorbij die breedte letterlijk
-  // buiten het svg-viewport (geen scroll-probleem, het werd o(nzichtbaar) geclipt)
-  schemaSvg.style.width = width + 'px';
-  schemaSvg.style.height = height + 'px';
-  // een onthouden zoomniveau is alleen geldig voor de boomgrootte waarvoor het ooit is bepaald — het schema
-  // groeit/krimpt met de topologie (andere testset, kasten toegevoegd/verwijderd), dus bij een gewijzigde
-  // afmeting is het onthouden percentage zinloos en moet opnieuw gefit worden i.p.v. blind toegepast
-  const sizeMismatch = !zoomLevels.schemaSize || Math.abs(zoomLevels.schemaSize.w - width) > 2 || Math.abs(zoomLevels.schemaSize.h - height) > 2;
-  if(zoomLevels.schema != null && sizeMismatch){
-    zoomLevels.schema = null;
-    // de DOM draagt tot de volgende applyZoom()/fitToScreen() nog de oude, inmiddels ongeldige transform;
-    // die moet nu al gereset zodat een eventuele fitToScreen()-meting niet tegen een verkeerde schaal aanmeet
-    schemaSvg.style.transform = 'scale(1)';
-  }
-  schemaSvg.innerHTML = '';
-  const yOf = depth => PAD + depth * LEVEL_H;
-
-  links.forEach(({ from, to })=>{
-    const fp = positioned.find(p=>p.node.id===from.id);
-    const tp = positioned.find(p=>p.node.id===to.id);
-    if(!fp || !tp) return;
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', fp.x + PAD/2); line.setAttribute('y1', yOf(fp.depth) + NODE_H/2);
-    line.setAttribute('x2', tp.x + PAD/2); line.setAttribute('y2', yOf(tp.depth) - NODE_H/2);
-    line.setAttribute('stroke', 'rgba(79,209,197,0.55)');
-    line.setAttribute('stroke-width', '2');
-    schemaSvg.appendChild(line);
-  });
-
-  positioned.forEach(p=>{
-    const gen = isGen(p.node);
-    const cx = p.x + PAD/2, cy = yOf(p.depth);
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.style.cursor = 'pointer';
-    g.onclick = ()=>{ selectedId = p.node.id; renderList(); renderDetail(); renderSchema(); };
-
-    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x', cx - NODE_W/2); rect.setAttribute('y', cy - NODE_H/2);
-    rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
-    rect.setAttribute('rx', gen ? 6 : 18);
-    const cls = statusClass(p.node);
-    const typeFill = gen ? (p.node.type==='batterij' ? '#5b8def' : p.node.type==='groep' ? '#b18cf0' : 'var(--accent)') : 'var(--panel2)';
-    const fill = cls==='status-red' ? 'var(--red)' : cls==='status-amber' ? 'var(--amber)' : cls==='status-green' ? 'var(--green)' : typeFill;
-    rect.setAttribute('fill', fill);
-    rect.setAttribute('stroke', p.node.id===selectedId ? '#fff' : 'var(--border)');
-    rect.setAttribute('stroke-width', p.node.id===selectedId ? '2' : '1');
-    g.appendChild(rect);
-
-    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
-    text.setAttribute('x', cx); text.setAttribute('y', cy + 4);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', '11');
-    text.setAttribute('font-family', 'var(--sans)');
-    text.setAttribute('fill', gen ? '#0b1210' : '#e8eaed');
-    const naamMetIcon = (!gen && p.node.type==='batterij' ? '🔋 ' : '') + p.node.naam;
-    const label = naamMetIcon.length > 18 ? naamMetIcon.slice(0, 17) + '…' : naamMetIcon;
-    text.textContent = label + (p.node.rating_a!=null ? ' (' + p.node.rating_a + 'A)' : '');
-    g.appendChild(text);
-
-    schemaSvg.appendChild(g);
-  });
-}
-
-mapinner.addEventListener('click', (ev)=>{
-  if(ev.target.classList.contains('pin') || ev.target.closest('.kastpopup')) return;
-  if(mode==='live' && openPopupKastId){ openPopupKastId = null; renderKastPopup(); }
-  if(mode!=='cal' || !armedId) return;
-  const rect = getSurfaceEl().getBoundingClientRect();
-  const x = ((ev.clientX-rect.left)/rect.width)*100;
-  const y = ((ev.clientY-rect.top)/rect.height)*100;
-  const n = nodeById(armedId);
-  n.positie = {x_pct:x, y_pct:y};
-  savePositie(n);
-  armedId = null;
-  document.getElementById('armedLabel').textContent = '';
-  renderList(); renderPins(); renderDetail();
-});
-
-mapimg.addEventListener('load', renderPins);
-window.addEventListener('resize', renderPins);
-
-// ---------- plattegrond uploaden ----------
-document.getElementById('mapFile').onchange = async (ev)=>{
-  const file = ev.target.files[0];
-  if(!file) return;
-  const fd = new FormData();
-  fd.append('kaart', file);
-  const errEl = document.getElementById('mapUploadErr');
-  errEl.style.display = 'none';
-  const res = await fetch('/api/map', { method:'POST', body: fd });
-  if(!res.ok){
-    const body = await res.json().catch(()=>({}));
-    errEl.textContent = body.error || 'upload mislukt';
-    errEl.style.display = 'inline';
-    ev.target.value = '';
-    return;
-  }
-  loadMap();
-};
-
-document.getElementById('logoFile').onchange = async (ev)=>{
-  const file = ev.target.files[0];
-  if(!file) return;
-  const fd = new FormData();
-  fd.append('logo', file);
-  const status = document.getElementById('logoStatus');
-  status.textContent = 'uploaden...';
-  status.style.color = 'var(--text2)';
-  const res = await fetch('/api/logo', { method:'POST', body: fd });
-  if(!res.ok){
-    const body = await res.json().catch(()=>({}));
-    status.textContent = body.error || 'upload mislukt';
-    status.style.color = 'var(--red)';
-    ev.target.value = '';
-    return;
-  }
-  loadLogo();
-  status.textContent = 'logo geupload';
-};
-
-// ---------- export / import ----------
-document.getElementById('exportBtn').onclick = ()=>{ window.location.href = '/api/export'; };
-document.getElementById('importFile').onchange = (ev)=>{
-  const file = ev.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async ()=>{
-    try{
-      const data = JSON.parse(reader.result);
-      await fetch('/api/import', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-      await loadTopology(); renderPins();
-    }catch(e){ alert('Kon bestand niet lezen: '+e.message); }
-  };
-  reader.readAsText(file);
-};
-
-// ---------- mode switching ----------
-function setActiveModeButton(id){
-  ['modeBeheer','modeCal','modeSchema','modeLive','modeTest'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
-  // geen kaart meer zichtbaar (of niet meer Live) na een tabwissel, dus een eventueel open
-  // MQTT-databalonnetje heeft dan geen ankerpunt meer — zie specs/kast-popup-mqtt-spec.md
-  if(openPopupKastId){ openPopupKastId = null; renderKastPopup(); }
-}
-document.getElementById('modeBeheer').onclick = ()=>{
-  mode='beheer';
-  setActiveModeButton('modeBeheer');
-  document.getElementById('liveControls').style.display='none';
-  document.getElementById('calControls').style.display='none';
-  document.getElementById('calbar').style.display='none';
-  document.getElementById('mainBody').style.display='none';
-  document.getElementById('testPanel').style.display='none';
-  document.getElementById('beheerPanel').style.display='flex';
-  renderBeheer();
-};
-document.getElementById('modeCal').onclick = ()=>{
-  mode='cal';
-  setActiveModeButton('modeCal');
-  document.getElementById('liveControls').style.display='none';
-  document.getElementById('calControls').style.display='flex';
-  document.getElementById('calbar').style.display='flex';
-  document.getElementById('beheerPanel').style.display='none';
-  document.getElementById('testPanel').style.display='none';
-  document.getElementById('mapwrap').style.display='flex';
-  document.getElementById('schemaWrap').style.display='none';
-  document.getElementById('mainBody').style.display='flex';
-  applyZoom();
-  renderPins();
-};
-document.getElementById('modeSchema').onclick = ()=>{
-  mode='schema';
-  setActiveModeButton('modeSchema');
-  document.getElementById('liveControls').style.display='none';
-  document.getElementById('calControls').style.display='none';
-  document.getElementById('calbar').style.display='none';
-  document.getElementById('beheerPanel').style.display='none';
-  document.getElementById('testPanel').style.display='none';
-  document.getElementById('mapwrap').style.display='none';
-  document.getElementById('schemaWrap').style.display='flex';
-  document.getElementById('mainBody').style.display='flex';
-  renderSchema();
-  if(zoomLevels.schema == null) fitToScreen(); else applyZoom();
-};
-document.getElementById('modeLive').onclick = ()=>{
-  mode='live';
-  setActiveModeButton('modeLive');
-  document.getElementById('liveControls').style.display='flex';
-  document.getElementById('calControls').style.display='none';
-  document.getElementById('calbar').style.display='none';
-  document.getElementById('beheerPanel').style.display='none';
-  document.getElementById('testPanel').style.display='none';
-  document.getElementById('mapwrap').style.display='flex';
-  document.getElementById('schemaWrap').style.display='none';
-  document.getElementById('mainBody').style.display='flex';
-  document.getElementById('brokerHost').value = document.getElementById('brokerHost').value || location.hostname || 'localhost';
-  applyZoom();
-  renderPins();
-};
-document.getElementById('modeTest').onclick = ()=>{
-  mode='test';
-  setActiveModeButton('modeTest');
-  document.getElementById('liveControls').style.display='none';
-  document.getElementById('calControls').style.display='none';
-  document.getElementById('calbar').style.display='none';
-  document.getElementById('beheerPanel').style.display='none';
-  document.getElementById('mainBody').style.display='none';
-  document.getElementById('testPanel').style.display='flex';
-  refreshSimStatus();
-};
-
-document.getElementById('loadTestSimpelBtn').onclick = async ()=>{
-  if(!confirm('Eenvoudige testtopologie laden? Dit overschrijft de huidige generators en kasten.')) return;
-  try{
-    await apiCall('/api/topology/test-data/simpel', 'POST');
-    await loadTopology();
-    alert('Eenvoudige testtopologie geladen. Ga naar "Beheer" of "Kalibreren" om verder te gaan.');
-  }catch(e){ alert(e.message); }
-};
-
-document.getElementById('loadTestUitgebreidBtn').onclick = async ()=>{
-  if(!confirm('Uitgebreide testtopologie (5 generators, 120 kasten, tot 10 niveaus diep) laden? Dit overschrijft de huidige generators en kasten.')) return;
-  try{
-    await apiCall('/api/topology/test-data/uitgebreid', 'POST');
-    await loadTopology();
-    alert('Uitgebreide testtopologie geladen (5 generators, 120 kasten). Ga naar "Beheer", "Schema" of "Kalibreren" om verder te gaan.');
-  }catch(e){ alert(e.message); }
-};
-
-async function refreshSimStatus(){
-  const dot = document.getElementById('simDot');
-  const label = document.getElementById('simStatusLabel');
-  try{
-    const res = await fetch('/api/simulator/status');
-    const data = await res.json();
-    dot.className = 'dot ' + (data.enabled ? 'ok' : '');
-    label.textContent = data.enabled ? 'simulator actief' : 'simulator gestopt';
-  }catch(e){
-    dot.className = 'dot err';
-    label.textContent = 'kon status niet ophalen';
-  }
-}
-
-document.getElementById('simStartBtn').onclick = async ()=>{
-  try{ await apiCall('/api/simulator/start', 'POST'); await refreshSimStatus(); }
-  catch(e){ alert(e.message); }
-};
-document.getElementById('simStopBtn').onclick = async ()=>{
-  try{ await apiCall('/api/simulator/stop', 'POST'); await refreshSimStatus(); }
-  catch(e){ alert(e.message); }
-};
-
-document.getElementById('resetMetingenBtn').onclick = async ()=>{
-  if(!confirm('Alle meetdata in InfluxDB wissen? De topologie blijft staan. Dit kan niet ongedaan gemaakt worden.')) return;
-  const status = document.getElementById('resetMetingenStatus');
-  status.textContent = 'bezig...';
-  try{
-    await apiCall('/api/metingen/reset', 'POST');
-    status.textContent = 'meetdata gewist';
-  }catch(e){ status.textContent = ''; alert(e.message); }
-};
-
-// ---------- Beheer: generators & kasten aanmaken, bewerken, koppelen, verwijderen ----------
-function vulGenSelect(select, geselecteerd){
-  select.innerHTML = TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
-}
-function vulParentSelect(select, generatorId, eigenId, geselecteerd){
-  const opties = TOPO.kasten.filter(k=>k.generator===generatorId && k.id!==eigenId);
-  select.innerHTML = '<option value="">Rechtstreeks op generator</option>' +
-    opties.map(k=>'<option value="'+k.id+'"'+(k.id===geselecteerd?' selected':'')+'>'+(k.type==='batterij'?'🔋 ':'')+k.naam+'</option>').join('');
-}
-async function apiCall(url, method, body){
-  const res = await fetch(url, { method, headers: body?{'Content-Type':'application/json'}:undefined, body: body?JSON.stringify(body):undefined });
-  const data = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error || ('fout ' + res.status));
-  return data;
-}
-
-// welke groepen (bijv. "Centrale Noord — 6 generators + CAT-batterij") hun ledenlijst opengeklapt hebben
-// staan; los van TOPO zodat het openklappen niet steeds dichtklapt na elke herlaad/opslaan-cyclus
-const expandedGroepen = new Set();
-
-// ---------- Beheer: kasten gegroepeerd per stroombron (zelfde aanpak/component als de
-// Kalibreren/Live-aside, zie sidebar-redesign-spec.md, maar met een eigen beheerState-opslag en
-// eigen, simpelere defaults: in Beheer wil je in principe alles zien, dus secties staan
-// standaard open; geneste kasten-met-kinderen staan net als in de sidebar standaard dicht, zodat
-// een diepe keten niet meteen de hele sectie vult) ----------
-let kastZoekQuery = '';
-let kastTypeFilter = 'alles';
-const KFILTER_LABEL = { kast: 'Kasten', batterij: 'Batterijen', bypass: 'Bypass actief' };
-
-function computeKastTableOpenStates(){
-  const states = {};
-  function visit(node, isGenerator){
-    const kids = listChildrenOf(node);
-    if(kids.length){
-      states[node.id] = isBeheerNodeOpen(node.id, isGenerator);
-    }
-    kids.forEach(k=>visit(k, false));
-  }
-  TOPO.generators.forEach(g=>visit(g, true));
-  return states;
-}
-
-function renderKastSecties(){
-  const container = document.getElementById('kastSections');
-  container.innerHTML = '';
-  const query = kastZoekQuery.trim().toLowerCase();
-  const filter = kastTypeFilter;
-  const searching = !!query || filter !== 'alles';
-  const openStates = computeKastTableOpenStates();
-
-  function kastMatchesFilter(k){
-    const bron = genNaam(k.generator);
-    const textOk = !query || k.naam.toLowerCase().includes(query) || (k.afkorting && k.afkorting.toLowerCase().includes(query)) || bron.toLowerCase().includes(query);
-    if(!textOk) return false;
-    if(filter==='kast') return (k.type||'kast')==='kast';
-    if(filter==='batterij') return k.type==='batterij';
-    if(filter==='bypass') return !!k.heeft_bypass;
-    return true;
-  }
-  const subtreeMatchCache = new Map();
-  function subtreeMatches(k){
-    if(subtreeMatchCache.has(k.id)) return subtreeMatchCache.get(k.id);
-    let result = kastMatchesFilter(k);
-    if(!result) result = listChildrenOf(k).some(subtreeMatches);
-    subtreeMatchCache.set(k.id, result);
-    return result;
-  }
-
-  function kastVeld(tr, waarde, opts){
-    const td = document.createElement('td');
-    td.appendChild(waarde);
-    if(opts && opts.style) td.style.cssText = opts.style;
-    tr.appendChild(td);
-  }
-
-  function kastRij(tbody, k, depth){
-    const heeftKinderen = listChildrenOf(k).length > 0;
-    const type = k.type || 'kast';
-    const isBatterij = type === 'batterij';
-    const tr = document.createElement('tr');
-
-    const naamWrap = document.createElement('div');
-    naamWrap.className = 'ktbl-naam';
-    naamWrap.style.paddingLeft = (depth*14) + 'px';
-    const marker = document.createElement('span');
-    marker.className = 'chev';
-    let open = true;
-    if(heeftKinderen){
-      open = searching ? true : openStates[k.id];
-      marker.textContent = open ? '▾' : '▸';
-      marker.style.cursor = 'pointer';
-      marker.onclick = ()=>{ beheerState[k.id] = !openStates[k.id]; saveBeheerState(); renderKastSecties(); };
-    } else if(depth>0){
-      marker.textContent = '↳';
-    }
-    naamWrap.appendChild(marker);
-    const naamInput = document.createElement('input');
-    naamInput.value = k.naam;
-    naamInput.style.flex = '1';
-    naamInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {naam: naamInput.value}); await loadTopology(); } catch(e){ alert(e.message); } };
-    naamWrap.appendChild(naamInput);
-    kastVeld(tr, naamWrap);
-
-    const afkInput = document.createElement('input');
-    afkInput.value = k.afkorting || '';
-    afkInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {afkorting: afkInput.value}); await loadTopology(); } catch(e){ alert(e.message); } };
-    kastVeld(tr, afkInput, {style:'width:80px'});
-
-    const ratingInput = document.createElement('input');
-    ratingInput.type = 'number';
-    ratingInput.value = k.rating_a;
-    ratingInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {rating_a: ratingInput.value}); await loadTopology(); } catch(e){ alert(e.message); } };
-    kastVeld(tr, ratingInput, {style:'width:70px'});
-
-    const typeSel = document.createElement('select');
-    typeSel.innerHTML = '<option value="kast"'+(!isBatterij?' selected':'')+'>Kast</option><option value="batterij"'+(isBatterij?' selected':'')+'>🔋 Batterij</option>';
-    typeSel.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {type: typeSel.value}); await loadTopology(); } catch(e){ alert(e.message); } };
-    kastVeld(tr, typeSel, {style:'width:110px'});
-
-    const bypassInput = document.createElement('input');
-    bypassInput.type = 'checkbox';
-    bypassInput.checked = !!k.heeft_bypass;
-    bypassInput.disabled = !isBatterij;
-    bypassInput.title = 'Bypasst zichzelf en stuurt vermogen rechtstreeks door bij overbelasting';
-    bypassInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {heeft_bypass: bypassInput.checked}); await loadTopology(); } catch(e){ alert(e.message); } };
-    kastVeld(tr, bypassInput, {style:'width:90px;text-align:center'});
-
-    const genSel = document.createElement('select');
-    vulGenSelect(genSel, k.generator);
-    const parentSel = document.createElement('select');
-    vulParentSelect(parentSel, k.generator, k.id, k.parent);
-    genSel.onchange = async ()=>{
-      vulParentSelect(parentSel, genSel.value, k.id, null);
-      try{ await apiCall('/api/kasten/'+k.id, 'PUT', {generator: genSel.value, parent: null}); await loadTopology(); }
-      catch(e){ alert(e.message); await loadTopology(); }
-    };
-    parentSel.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {parent: parentSel.value || null}); await loadTopology(); } catch(e){ alert(e.message); await loadTopology(); } };
-    kastVeld(tr, genSel, {style:'width:150px'});
-    kastVeld(tr, parentSel, {style:'width:190px'});
-
-    const delBtn = document.createElement('button');
-    delBtn.className = 'danger';
-    delBtn.textContent = 'Verwijder';
-    delBtn.onclick = async ()=>{
-      if(!confirm('Kast verwijderen? Kasten die hierop doorgelust waren worden automatisch aan de bovenliggende kast/generator gekoppeld.')) return;
-      try{ await apiCall('/api/kasten/'+k.id, 'DELETE'); await loadTopology(); }
-      catch(e){ alert(e.message); }
-    };
-    kastVeld(tr, delBtn, {style:'width:80px'});
-
-    tbody.appendChild(tr);
-    if(heeftKinderen && open){
-      listChildrenOf(k).forEach(kind=>{
-        if(searching && !subtreeMatches(kind)) return;
-        kastRij(tbody, kind, depth+1);
-      });
-    }
-  }
-
-  TOPO.generators.forEach(gen=>{
-    const alleKasten = collectDescendantKasten(gen);
-    if(searching && !alleKasten.some(subtreeMatches)) return;
-
-    const sectie = document.createElement('div');
-    sectie.className = 'ksectie';
-
-    const head = document.createElement('div');
-    head.className = 'ksectie-head';
-    const heeftKasten = alleKasten.length > 0;
-    let sectieOpen = true;
-    const chev = document.createElement('span');
-    chev.className = 'chev';
-    if(heeftKasten){
-      sectieOpen = searching ? true : openStates[gen.id];
-      chev.textContent = sectieOpen ? '▾' : '▸';
-      head.onclick = ()=>{ beheerState[gen.id] = !openStates[gen.id]; saveBeheerState(); renderKastSecties(); };
-    }
-    head.appendChild(chev);
-    const naam = document.createElement('div');
-    naam.className = 'naam';
-    naam.textContent = typeIcon(gen) + ' ' + gen.naam + (gen.type==='groep' ? ' (groep — '+gen.leden.length+' leden)' : '');
-    head.appendChild(naam);
-    const kva = document.createElement('div');
-    kva.className = 'kva';
-    kva.textContent = gen.vermogen_kva + ' kVA';
-    head.appendChild(kva);
-    const aantal = document.createElement('div');
-    aantal.className = 'aantal';
-    aantal.textContent = alleKasten.length + ' kast' + (alleKasten.length===1?'':'en');
-    head.appendChild(aantal);
-    sectie.appendChild(head);
-
-    if(heeftKasten && sectieOpen){
-      const tabel = document.createElement('table');
-      tabel.className = 'btable';
-      tabel.innerHTML = '<tr><th>Naam</th><th style="width:80px">Afk.</th><th style="width:70px">A</th><th style="width:110px">Type</th>'+
-        '<th style="width:90px">Bypass</th><th style="width:150px">Generator</th><th style="width:190px">Gevoed vanaf</th><th style="width:80px"></th></tr>';
-      listChildrenOf(gen).forEach(k=>{
-        if(searching && !subtreeMatches(k)) return;
-        kastRij(tabel, k, 0);
-      });
-      sectie.appendChild(tabel);
-
-      const hiddenCount = alleKasten.filter(k=>!kastMatchesFilter(k)).length;
-      let verbergReden = null;
-      if(filter !== 'alles') verbergReden = 'filter "'+KFILTER_LABEL[filter]+'"';
-      else if(query) verbergReden = 'de zoekopdracht';
-      if(searching && hiddenCount>0 && verbergReden){
-        const note = document.createElement('div');
-        note.className = 'ksectie-hidden-note';
-        note.textContent = '+ ' + hiddenCount + ' kast' + (hiddenCount===1?'':'en') + ' verborgen door ' + verbergReden;
-        sectie.appendChild(note);
-      }
-    }
-
-    const addWrap = document.createElement('div');
-    addWrap.className = 'ksectie-addbtn-wrap';
-    const addBtn = document.createElement('button');
-    addBtn.textContent = '+ Kast op ' + gen.naam;
-    addBtn.onclick = ()=>{
-      const newGenSel = document.getElementById('newKastGen');
-      const newParentSel = document.getElementById('newKastParent');
-      newGenSel.value = gen.id;
-      vulParentSelect(newParentSel, gen.id, null, null);
-      const naamVeld = document.getElementById('newKastNaam');
-      naamVeld.focus();
-      naamVeld.scrollIntoView({behavior:'smooth', block:'center'});
-    };
-    addWrap.appendChild(addBtn);
-    sectie.appendChild(addWrap);
-
-    container.appendChild(sectie);
-  });
-
-  const collapsibleIds = Object.keys(openStates);
-  const openCount = collapsibleIds.filter(id=>openStates[id]).length;
-  const toggleBtn = document.getElementById('kastToggleAllBtn');
-  const expandAction = openCount===0 && collapsibleIds.length>0;
-  toggleBtn.textContent = expandAction ? 'Alles uitklappen' : 'Alles inklappen';
-  toggleBtn.onclick = ()=>{
-    collapsibleIds.forEach(id=>{ beheerState[id] = expandAction; });
-    saveBeheerState();
-    renderKastSecties();
-  };
-}
-
-document.getElementById('kastZoek').addEventListener('input', (e)=>{
-  kastZoekQuery = e.target.value;
-  renderKastSecties();
-});
-document.querySelectorAll('#beheerPanel .chip[data-kfilter]').forEach(chip=>{
-  chip.onclick = ()=>{
-    kastTypeFilter = chip.dataset.kfilter;
-    document.querySelectorAll('#beheerPanel .chip[data-kfilter]').forEach(c=>c.classList.toggle('active', c===chip));
-    renderKastSecties();
-  };
-});
-
-function renderBeheer(){
-  // generators-tabel
-  const genTable = document.getElementById('genTable');
-  let gh = '<tr><th>Naam</th><th style="width:110px">Type</th><th style="width:80px">kVA</th><th style="width:90px">Rating (A)</th>'+
-    '<th style="width:70px"># kasten</th><th style="width:140px">Soort koppeling</th><th style="width:110px">Leden</th><th style="width:80px"></th></tr>';
-  TOPO.generators.forEach(g=>{
-    const aantal = TOPO.kasten.filter(k=>k.generator===g.id).length;
-    const type = g.type || 'generator';
-    const isGroep = type === 'groep';
-    if(!Array.isArray(g.leden)) g.leden = []; // oudere generators (van vóór dit veld bestond) missen 'leden' nog
-    gh += '<tr>'+
-      '<td><input value="'+g.naam.replace(/"/g,'&quot;')+'" data-gen-naam="'+g.id+'"></td>'+
-      '<td><select data-gen-type="'+g.id+'">'+
-        '<option value="generator"'+(type==='generator'?' selected':'')+'>⚡ Generator</option>'+
-        '<option value="batterij"'+(type==='batterij'?' selected':'')+'>🔋 Batterij</option>'+
-        '<option value="groep"'+(type==='groep'?' selected':'')+'>🏭 Groep</option>'+
-      '</select></td>'+
-      '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
-      '<td><input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="Alleen invullen als deze generator/groep zelf ook uitgelezen wordt (native of via Shelly+CT-klem)"></td>'+
-      '<td>'+aantal+'</td>'+
-      '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+'>'+
-        '<option value=""'+(!g.groep_soort?' selected':'')+'>—</option>'+
-        '<option value="parallel"'+(g.groep_soort==='parallel'?' selected':'')+'>Parallel (load-sharing)</option>'+
-        '<option value="backup"'+(g.groep_soort==='backup'?' selected':'')+'>N+1 backup (auto-start)</option>'+
-        '<option value="hybride"'+(g.groep_soort==='hybride'?' selected':'')+'>Hybride (gen. + opslag)</option>'+
-      '</select></td>'+
-      '<td>'+(isGroep ? '<button data-groep-toggle="'+g.id+'">'+(g.leden.length)+' leden '+(expandedGroepen.has(g.id)?'▴':'▾')+'</button>' : '—')+'</td>'+
-      '<td><button data-gen-del="'+g.id+'" class="danger">Verwijder</button></td>'+
-      '</tr>';
-    if(isGroep && expandedGroepen.has(g.id)){
-      gh += '<tr class="ledenrow"><td colspan="8"><table class="btable ledentable">'+
-        '<tr><th>Naam lid</th><th style="width:110px">Type</th><th style="width:90px">kVA</th><th style="width:70px"></th></tr>'+
-        g.leden.map((l,i)=>
-          '<tr>'+
-            '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
-            '<td><select data-lid-type="'+g.id+'|'+i+'"><option value="generator"'+(l.type!=='batterij'?' selected':'')+'>⚡ Generator</option><option value="batterij"'+(l.type==='batterij'?' selected':'')+'>🔋 Batterij</option></select></td>'+
-            '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
-            '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
-          '</tr>'
-        ).join('')+
-        '<tr>'+
-          '<td><input placeholder="Naam, bijv. Aggregaat 3" data-lid-new-naam="'+g.id+'"></td>'+
-          '<td><select data-lid-new-type="'+g.id+'"><option value="generator">⚡ Generator</option><option value="batterij">🔋 Batterij</option></select></td>'+
-          '<td><input type="number" placeholder="kVA" data-lid-new-kva="'+g.id+'"></td>'+
-          '<td><button data-lid-add="'+g.id+'">+</button></td>'+
-        '</tr>'+
-        '</table></td></tr>';
-    }
-  });
-  genTable.innerHTML = gh;
-
-  // stuurt de volledige ledenlijst van een groep naar de server; index-gebaseerd (geen eigen id's nodig,
-  // leden zijn puur beschrijvend en worden nergens anders naar verwezen)
-  async function saveLeden(genId, leden){
-    try{ await apiCall('/api/generators/'+genId, 'PUT', {leden}); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  }
-  function huidigeLeden(genId){ return (TOPO.generators.find(g=>g.id===genId)||{leden:[]}).leden.map(l=>({...l})); }
-
-  genTable.querySelectorAll('[data-gen-naam]').forEach(el=>el.onchange = async ()=>{
-    try{ await apiCall('/api/generators/'+el.dataset.genNaam, 'PUT', {naam: el.value}); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  });
-  genTable.querySelectorAll('[data-gen-kva]').forEach(el=>el.onchange = async ()=>{
-    try{ await apiCall('/api/generators/'+el.dataset.genKva, 'PUT', {vermogen_kva: el.value}); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  });
-  genTable.querySelectorAll('[data-gen-rating]').forEach(el=>el.onchange = async ()=>{
-    try{ await apiCall('/api/generators/'+el.dataset.genRating, 'PUT', {rating_a: el.value}); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  });
-  genTable.querySelectorAll('[data-gen-type]').forEach(el=>el.onchange = async ()=>{
-    try{ await apiCall('/api/generators/'+el.dataset.genType, 'PUT', {type: el.value}); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  });
-  genTable.querySelectorAll('[data-gen-soort]').forEach(el=>el.onchange = async ()=>{
-    try{ await apiCall('/api/generators/'+el.dataset.genSoort, 'PUT', {groep_soort: el.value}); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  });
-  genTable.querySelectorAll('[data-groep-toggle]').forEach(el=>el.onclick = ()=>{
-    const id = el.dataset.groepToggle;
-    if(expandedGroepen.has(id)) expandedGroepen.delete(id); else expandedGroepen.add(id);
-    renderBeheer();
-  });
-  genTable.querySelectorAll('[data-lid-naam]').forEach(el=>el.onchange = async ()=>{
-    const [genId, idx] = el.dataset.lidNaam.split('|');
-    const leden = huidigeLeden(genId); leden[idx].naam = el.value;
-    await saveLeden(genId, leden);
-  });
-  genTable.querySelectorAll('[data-lid-type]').forEach(el=>el.onchange = async ()=>{
-    const [genId, idx] = el.dataset.lidType.split('|');
-    const leden = huidigeLeden(genId); leden[idx].type = el.value;
-    await saveLeden(genId, leden);
-  });
-  genTable.querySelectorAll('[data-lid-kva]').forEach(el=>el.onchange = async ()=>{
-    const [genId, idx] = el.dataset.lidKva.split('|');
-    const leden = huidigeLeden(genId); leden[idx].vermogen_kva = el.value ? Number(el.value) : null;
-    await saveLeden(genId, leden);
-  });
-  genTable.querySelectorAll('[data-lid-del]').forEach(el=>el.onclick = async ()=>{
-    const [genId, idx] = el.dataset.lidDel.split('|');
-    const leden = huidigeLeden(genId); leden.splice(idx, 1);
-    await saveLeden(genId, leden);
-  });
-  genTable.querySelectorAll('[data-lid-add]').forEach(el=>el.onclick = async ()=>{
-    const genId = el.dataset.lidAdd;
-    const naamEl = genTable.querySelector('[data-lid-new-naam="'+genId+'"]');
-    const typeEl = genTable.querySelector('[data-lid-new-type="'+genId+'"]');
-    const kvaEl = genTable.querySelector('[data-lid-new-kva="'+genId+'"]');
-    const naam = naamEl.value.trim();
-    if(!naam) return;
-    expandedGroepen.add(genId);
-    const leden = huidigeLeden(genId);
-    leden.push({ naam, type: typeEl.value, vermogen_kva: kvaEl.value ? Number(kvaEl.value) : null });
-    await saveLeden(genId, leden);
-  });
-  genTable.querySelectorAll('[data-gen-del]').forEach(el=>el.onclick = async ()=>{
-    if(!confirm('Generator verwijderen?')) return;
-    try{ await apiCall('/api/generators/'+el.dataset.genDel, 'DELETE'); await loadTopology(); }
-    catch(e){ alert(e.message); }
-  });
-
-  renderKastSecties();
-
-  // "nieuwe kast" formulier: generator/parent-dropdowns vullen
-  const newGenSel = document.getElementById('newKastGen');
-  const newParentSel = document.getElementById('newKastParent');
-  const huidigeKeuze = newGenSel.value;
-  vulGenSelect(newGenSel, huidigeKeuze);
-  vulParentSelect(newParentSel, newGenSel.value, null, null);
-  newGenSel.onchange = ()=> vulParentSelect(newParentSel, newGenSel.value, null, null);
-}
-
-document.getElementById('addGenBtn').onclick = async ()=>{
-  const naam = document.getElementById('newGenNaam').value.trim();
-  const kva = document.getElementById('newGenKva').value;
-  const rating = document.getElementById('newGenRating').value;
-  if(!naam || !kva) return alert('Vul naam en kVA in');
-  try{
-    await apiCall('/api/generators', 'POST', {naam, vermogen_kva: kva, rating_a: rating || undefined});
-    document.getElementById('newGenNaam').value=''; document.getElementById('newGenKva').value=''; document.getElementById('newGenRating').value='';
-    await loadTopology();
-  }catch(e){ alert(e.message); }
-};
-
-document.getElementById('addKastBtn').onclick = async ()=>{
-  const naam = document.getElementById('newKastNaam').value.trim();
-  const afkorting = document.getElementById('newKastAfk').value.trim();
-  const rating_a = document.getElementById('newKastRating').value;
-  const generator = document.getElementById('newKastGen').value;
-  const parent = document.getElementById('newKastParent').value;
-  if(!naam || !rating_a || !generator) return alert('Vul naam, ampèrage en generator in');
-  try{
-    await apiCall('/api/kasten', 'POST', {naam, rating_a, generator, parent: parent || null, afkorting: afkorting || undefined});
-    document.getElementById('newKastNaam').value=''; document.getElementById('newKastAfk').value=''; document.getElementById('newKastRating').value='';
-    await loadTopology();
-  }catch(e){ alert(e.message); }
-};
-
-document.getElementById('resetAllBtn').onclick = async ()=>{
-  if(!confirm('Alle generators en kasten definitief wissen? Dit kan niet ongedaan gemaakt worden (exporteer eerst als je een back-up wilt).')) return;
-  await apiCall('/api/reset', 'POST');
-  selectedId = null; armedId = null;
-  await loadTopology();
-};
-
-// ---------- rapport exporteren (PDF) ----------
-let rapportPeriodeChip = 'alles';
-// los van de globale 5s-poll (die slaat Beheer expliciet over, zie hieronder bij de interval-
-// definitie zelf) — alleen actief zolang er een generatie loopt, gestart op klik en gestopt
-// zodra de status 'klaar'/'fout' wordt
-let rapportPollHandle = null;
-
-async function vulRapportEditieSelect(){
-  const select = document.getElementById('rapportEditieSelect');
-  const huidige = select.value;
-  try{
-    const data = await apiCall('/api/rapport/edities', 'GET');
-    select.innerHTML = '<option value="__alle__">Alle edities</option>' +
-      data.edities.map(e=>'<option value="'+e+'"'+(e===huidige?' selected':'')+'>'+e+'</option>').join('');
-    if(!huidige && data.edities.length) select.value = data.edities[data.edities.length-1];
-  }catch(e){ select.innerHTML = '<option value="__alle__">Alle edities</option>'; }
-}
-
-document.querySelectorAll('.listfilters [data-periodechip]').forEach(chip=>{
-  chip.onclick = ()=>{
-    rapportPeriodeChip = chip.dataset.periodechip;
-    document.querySelectorAll('.listfilters [data-periodechip]').forEach(c=>c.classList.toggle('active', c===chip));
-    document.getElementById('rapportAangepastPeriode').style.display = rapportPeriodeChip==='aangepast' ? 'flex' : 'none';
-  };
-});
-
-// levert {van, tot} als ISO-strings op basis van de gekozen periode-chip
-async function bepaalRapportPeriode(){
-  if(rapportPeriodeChip==='24u'){
-    const tot = new Date();
-    const van = new Date(tot.getTime() - 24*3600*1000);
-    return { van: van.toISOString(), tot: tot.toISOString() };
-  }
-  if(rapportPeriodeChip==='aangepast'){
-    const van = document.getElementById('rapportVanInput').value;
-    const tot = document.getElementById('rapportTotInput').value;
-    if(!van || !tot) throw new Error('Vul een van- en tot-datum in');
-    return { van: new Date(van).toISOString(), tot: new Date(tot).toISOString() };
-  }
-  // 'alles': volledige tijdrange van de gekozen editie opvragen
-  const editie = document.getElementById('rapportEditieSelect').value;
-  const periode = await apiCall('/api/rapport/periode?editie='+encodeURIComponent(editie), 'GET');
-  if(!periode.van || !periode.tot) throw new Error('Geen meetdata gevonden voor deze editie');
-  return { van: periode.van, tot: periode.tot };
-}
-
-function toonRapportCard(naam){
-  ['rapportStatusCard','rapportResultCard','rapportErrorCard'].forEach(id=>{
-    document.getElementById(id).style.display = (id===naam) ? 'flex' : 'none';
-  });
-}
-
-async function pollRapportStatus(){
-  let job;
-  try{ job = await apiCall('/api/rapport/status', 'GET'); }
-  catch(e){ return; }
-  if(job.status==='bezig'){
-    toonRapportCard('rapportStatusCard');
-    if(!rapportPollHandle) rapportPollHandle = setInterval(pollRapportStatus, 2000);
-    return;
-  }
-  if(rapportPollHandle){ clearInterval(rapportPollHandle); rapportPollHandle = null; }
-  if(job.status==='klaar'){
-    const grootteKb = job.bestandsgrootte ? Math.round(job.bestandsgrootte/1024)+' KB' : '';
-    const tijdstip = job.klaarOp ? new Date(job.klaarOp).toLocaleString('nl-NL') : '';
-    document.getElementById('rapportResultInfo').textContent = job.bestandsnaam+' · '+grootteKb+' · '+tijdstip;
-    toonRapportCard('rapportResultCard');
-  } else if(job.status==='fout'){
-    document.getElementById('rapportErrorInfo').textContent = job.foutmelding || 'onbekende fout';
-    toonRapportCard('rapportErrorCard');
-  } else {
-    toonRapportCard(null);
-  }
-}
-
-async function startRapportGeneratie(){
-  try{
-    const { van, tot } = await bepaalRapportPeriode();
-    const editie = document.getElementById('rapportEditieSelect').value;
-    const onderdelen = {
-      generatorTotalen: document.getElementById('rapportGeneratorTotalen').checked,
-      kastPerFase: document.getElementById('rapportKastPerFase').checked,
-      sankey: document.getElementById('rapportSankey').checked,
-      alarmen: document.getElementById('rapportAlarmen').checked,
-    };
-    await apiCall('/api/rapport/genereer', 'POST', { editie, van, tot, onderdelen });
-    toonRapportCard('rapportStatusCard');
-    if(rapportPollHandle) clearInterval(rapportPollHandle);
-    rapportPollHandle = setInterval(pollRapportStatus, 2000);
-  }catch(e){ alert(e.message); }
-}
-document.getElementById('rapportGenereerBtn').onclick = startRapportGeneratie;
-document.getElementById('rapportOpnieuwBtn').onclick = startRapportGeneratie;
-document.getElementById('rapportDownloadBtn').onclick = ()=>{ window.location.href = '/api/rapport/download'; };
-
-vulRapportEditieSelect();
-pollRapportStatus(); // pikt een generatie die al liep vóór een page-refresh weer op
-
-// ---------- MQTT live data ----------
-document.getElementById('connectBtn').onclick = ()=>{
-  const host = document.getElementById('brokerHost').value || 'localhost';
-  const port = document.getElementById('brokerPort').value || '9001';
-  const dot = document.getElementById('connDot');
-  const label = document.getElementById('connLabel');
-  if(mqttClient){ mqttClient.end(true); mqttClient=null; }
-  dot.className = 'dot busy'; label.textContent = 'verbinden…';
-  try{
-    mqttClient = mqtt.connect('ws://'+host+':'+port+'/mqtt');
-    mqttClient.on('connect', ()=>{
-      dot.className='dot ok'; label.textContent='verbonden';
-      mqttClient.subscribe('fest/+/+/status/em:0');
-      mqttClient.subscribe('fest/+/+/status/emdata:0');
-    });
-    mqttClient.on('error', (e)=>{ dot.className='dot err'; label.textContent='fout: '+e.message; });
-    mqttClient.on('close', ()=>{ dot.className='dot'; label.textContent='niet verbonden'; });
-    mqttClient.on('message', (topic, payload)=>{
-      const parts = topic.split('/');
-      const kastId = parts[2];
-      let data;
-      try{ data = JSON.parse(payload.toString()); }catch(e){ return; }
-      if(topic.endsWith('/status/emdata:0')){
-        liveEnergyData[kastId] = { total_act: data.total_act, ts: Date.now() };
-        if(openPopupKastId===kastId) renderKastPopup();
-        return;
-      }
-      // alle velden bewaren (niet alleen de subset die de aside-detail gebruikt) — de MQTT-
-      // databallon (specs/kast-popup-mqtt-spec.md) toont ook act_power/aprt_power/pf per fase
-      liveData[kastId] = { ...data, ts: Date.now() };
-      renderList(); renderPins(); if(mode==='schema') renderSchema(); if(selectedId===kastId) renderDetail();
-    });
-  }catch(e){ dot.className='dot err'; label.textContent='fout: '+e.message; }
-};
-
-// ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
-// niet op het Beheer-tabblad: daar ben je zelf de enige die bewerkt, en een tussentijdse herbouw van de
-// tabellen verstoort dan alleen het snel achter elkaar invoeren van velden (focus/cursor/onopgeslagen tekst)
-setInterval(async ()=>{
-  if(mode==='beheer') return;
-  const prevSelected = selectedId;
-  await loadTopology();
-  selectedId = prevSelected;
-  renderPins();
-  if(mode==='test') refreshSimStatus();
-}, 5000);
-
-loadTopology().then(loadMap);
-loadLogo();
-// het Testdata-tabblad (en de bijbehorende endpoints) bestaat alleen als de stack met
-// --profile test + TEST_MODE=true gestart is; anders geven die endpoints toch 404, dus verberg 'm
-fetch('/api/test-mode').then(r=>r.json()).then(d=>{
-  if(!d.testMode) document.getElementById('modeTest').style.display = 'none';
-}).catch(()=>{});
-</script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
