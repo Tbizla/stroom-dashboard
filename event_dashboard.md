@@ -291,3 +291,12 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
       sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina. Hangt
       ook samen met het uitgestelde "per-fase fout-/vlagindicatoren"-punt hierboven.
+- [ ] **Lijnen tussen kasten aanpasbaar (bochten/knikpunten).** Op Kalibreren/Live is de lijn tussen
+      een kast en zijn voedingsbron nu een rechte lijn tussen de twee pin-posities; in het echt loopt
+      een stroomkabel vaak niet recht (obstakels, paden, kabelgoten, hoeken om een gebouw). Wens:
+      knikpunten kunnen toevoegen/verslepen zodat de lijn de daadwerkelijke kabelroute volgt op de
+      plattegrond. Raakt alleen Kalibreren/Live — niet Schema, dat is een los auto-gegenereerd
+      boomdiagram zonder fysieke plaatsing. Dit is in de kern een bewerkinteractie-ontwerpvraag
+      (hoe voeg je een knikpunt toe, hoe versleep/verwijder je 'm) — eerst een Cowork-voorstel nodig
+      vóór Code het datamodel (knikpunten waarschijnlijk als extra percentage-coördinaten per lijn,
+      zie de percentage-plaatsing-afspraak in CLAUDE.md) en de opslag invult.
