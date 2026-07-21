@@ -57,12 +57,13 @@ moet het herbouwd worden:
 
 ## Versionering (tags & releases)
 
-- `main` = v1, afgesloten en getagd als `v1.0.0`. `dev` = v2 in ontwikkeling, nog niet gepromoveerd.
+- `main` = laatst uitgebrachte versie, momenteel `v2.0.0` (v1 was `v1.0.0`). `dev` = eerstvolgende
+  versie in ontwikkeling (nu v3), nog niet gepromoveerd.
 - Bij elke afgeronde roadmap-golf op `dev` (zoals nu al bijgehouden in event_dashboard.md/de
-  roadmap-secties): een pre-release tag `v2.0.0-alpha.N` zetten + een GitHub Release
+  roadmap-secties): een pre-release tag `v<volgende-major>.0.0-alpha.N` zetten + een GitHub Release
   (`--prerelease`) met de bijbehorende featurebullets als notes. Gebruik de eerstvolgende vrije
   `N`; er is geen vaste koppeling tussen alpha-nummer en specifiek roadmap-item.
-- Pas als `dev` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main`, taggen als
-  `v2.0.0` (geen `-alpha` meer) en een volwaardige Release aanmaken — dat is dan ook het moment
-  waarop `main` voor het eerst weer verandert sinds `v1.0.0`.
-- Bestaande tags/releases: zie de [releases-pagina](https://github.com/Tbizla/event-stroom-dashboard/releases).
+- Pas als `dev` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main` (fast-forward,
+  dev loopt altijd rechtdoor op main), taggen als `v<major>.0.0` (geen `-alpha` meer) en een
+  volwaardige Release aanmaken — dat is dan ook het moment waarop `main` weer verandert.
+- Bestaande tags/releases: zie de [releases-pagina](https://github.com/Tbizla/stroom-dashboard/releases).

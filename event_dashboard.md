@@ -1,5 +1,3 @@
-`🚧 DEV-V2 🚧`
-
 # Event Stroom-Dashboard — projectdocument
 
 > Voor installatie- en gebruiksinstructies (stack starten, Shelly's koppelen, Grafana-queries):
@@ -250,7 +248,7 @@ Grafana:
   (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
   `topology_edges` en de naamsbotsing-check)
 
-## Roadmap
+## Roadmap v2 (afgerond, uitgebracht als [v2.0.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v2.0.0))
 
 > **Werkafspraak vanaf nu**: voor elk van onderstaande punten eerst een uitgebreide spec/plan
 > uitwerken en afstemmen vóórdat er gebouwd wordt — geldt voor zowel de Cowork- als de Code-kant
