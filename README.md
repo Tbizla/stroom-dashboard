@@ -3,6 +3,37 @@
 Praktische handleiding: stack opzetten, Shelly's koppelen, Grafana-queries en export/import.
 Voor een projectoverzicht (omschrijving, features, roadmap) zie [event_dashboard.md](event_dashboard.md).
 
+## Screenshots
+
+**Beheer** — topologie invoeren: generators, kasten, koppelingen, systeeminstellingen.
+![Beheer](screenshots/01-beheer.png)
+
+**Kalibreren** — generators en kasten als pins op de plattegrond plaatsen.
+![Kalibreren](screenshots/02-kalibreren.png)
+
+**Schema** — automatisch gegenereerd stroomschema van de volledige generator→kast-keten.
+![Schema](screenshots/03-schema.png)
+
+**Live** — live status op de plattegrond, met een databallon per kast/generator (stroom, spanning,
+vermogen, frequentie per fase).
+![Live](screenshots/04-live.png)
+
+**Rapportages › Overzicht** — eigen hoofddashboard in de webapp: kWh per generator, staafdiagram
+zwaarst-belaste-fase, compacte Sankey-boomweergave.
+![Rapportages - Overzicht](screenshots/05-rapportages-overzicht.png)
+
+**Rapportages › PDF-rapport** — terugblikrapport samenstellen (editie, periode, onderdelen) en
+downloaden.
+![Rapportages - PDF-rapport](screenshots/07-rapportages-pdf.png)
+
+**Rapportages › Back-up** — back-up maken en herstellen (volledige restore of editie toevoegen aan
+archief).
+![Rapportages - Back-up](screenshots/08-rapportages-backup.png)
+
+**Testdata** *(alleen zichtbaar in testmodus)* — testtopologieën laden en de simulator aan/uit
+zetten, zonder Shelly-hardware nodig te hebben.
+![Testdata](screenshots/06-testdata.png)
+
 ## 1. Eerste installatie op een nieuwe locatie (checklist)
 
 Voor een verse Linux-machine op een nieuwe locatie, in deze volgorde. (Draai je al een instance van
