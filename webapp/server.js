@@ -994,7 +994,7 @@ async function voegVoettekstToe(pdf, taal, editie) {
     try { logoImg = await pdf.embedPng(fs.readFileSync(logoBestand)); } catch (e) { /* zie voegCoverPaginaToe */ }
   }
   const editieLabel = editie === '__alle__' ? d['rapport.alleEdities'] : editie;
-  const eventTekst = 'Stroomdashboard · ' + d['rapport.pdfEditieLabel'].toLowerCase() + ' ' + editieLabel;
+  const eventTekst = 'Stroom-Dashboard · ' + d['rapport.pdfEditieLabel'].toLowerCase() + ' ' + editieLabel;
 
   const paginas = pdf.getPages();
   const totaal = paginas.length;
@@ -1351,4 +1351,4 @@ app.post('/api/backup/herstel', metUploadFoutafhandeling(zipUpload.single('backu
 app.get('/api/backup/herstel/status', (req, res) => res.json(herstelJob));
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log('Stroomdashboard luistert op poort ' + PORT));
+app.listen(PORT, () => console.log('Stroom-Dashboard luistert op poort ' + PORT));

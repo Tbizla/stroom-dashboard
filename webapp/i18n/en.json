@@ -222,7 +222,7 @@
   "rapport.pdfPeriodeLabel": "Period",
   "rapport.pdfGegenereerdLabel": "Generated on",
   "rapport.pdfNietAangevinkt": "not selected for this report",
-  "rapport.pdfFooter": "Stroomdashboard · automatically generated",
+  "rapport.pdfFooter": "Stroom-Dashboard · automatically generated",
   "rapport.pdfAlarmenTitel": "Overruns & alarms",
   "rapport.pdfAlarmenTekst": "No alert history available yet for this period. The alerting notification channel is still on the roadmap — once that's in place, this page will automatically fill with overruns per box/generator.",
   "rapport.pdfGeenOnderdelen": "No report sections selected.",

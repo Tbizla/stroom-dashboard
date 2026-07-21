@@ -222,7 +222,7 @@
   "rapport.pdfPeriodeLabel": "Periode",
   "rapport.pdfGegenereerdLabel": "Gegenereerd op",
   "rapport.pdfNietAangevinkt": "niet aangevinkt voor dit rapport",
-  "rapport.pdfFooter": "Stroomdashboard · automatisch gegenereerd",
+  "rapport.pdfFooter": "Stroom-Dashboard · automatisch gegenereerd",
   "rapport.pdfAlarmenTitel": "Overschrijdingen & alarmen",
   "rapport.pdfAlarmenTekst": "Nog geen alert-geschiedenis beschikbaar voor deze periode. Het notificatiekanaal voor alerting staat nog op de roadmap — zodra dat er is, wordt deze pagina automatisch gevuld met overschrijdingen per kast/generator.",
   "rapport.pdfGeenOnderdelen": "Geen rapportonderdelen geselecteerd.",

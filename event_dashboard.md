@@ -1,6 +1,6 @@
 `🚧 DEV-V2 🚧`
 
-# Event Stroomdashboard — projectdocument
+# Event Stroom-Dashboard — projectdocument
 
 > Voor installatie- en gebruiksinstructies (stack starten, Shelly's koppelen, Grafana-queries):
 > zie [README.md](README.md). Dit document beschrijft wat het project ís, welke features er zijn,

@@ -1,4 +1,4 @@
-# Event Stroomdashboard — installatie & gebruik
+# Event Stroom-Dashboard — installatie & gebruik
 
 Praktische handleiding: stack opzetten, Shelly's koppelen, Grafana-queries en export/import.
 Voor een projectoverzicht (omschrijving, features, roadmap) zie [event_dashboard.md](event_dashboard.md).
@@ -95,7 +95,7 @@ Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 300
 
 Open `http://<ip-van-de-nhq-machine>:8080` — dat werkt vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 
-Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroomdashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een generator-totalenpaneel bovenaan, een paneel per kast (stroom per fase, geen los "totale stroom"-paneel — zie sectie 6 hieronder waarom) dat automatisch herhaald wordt via een `$kast`-variabele, en een `$editie`-variabele. Alarmdrempels bevat het dashboard bewust niet — die vereisen `rating_a` uit de webapp-topologie, die niet in InfluxDB zit; zie sectie 7 hieronder om die zelf toe te voegen.
+Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroom-Dashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een generator-totalenpaneel bovenaan, een paneel per kast (stroom per fase, geen los "totale stroom"-paneel — zie sectie 6 hieronder waarom) dat automatisch herhaald wordt via een `$kast`-variabele, en een `$editie`-variabele. Alarmdrempels bevat het dashboard bewust niet — die vereisen `rating_a` uit de webapp-topologie, die niet in InfluxDB zit; zie sectie 7 hieronder om die zelf toe te voegen.
 
 ## 5. Voorbeeldquery — één kast (paneel per kast)
 
