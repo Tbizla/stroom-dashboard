@@ -656,7 +656,7 @@ const RAPPORT_DIR = path.join(DATA_DIR, 'rapporten');
 if (!fs.existsSync(RAPPORT_DIR)) fs.mkdirSync(RAPPORT_DIR, { recursive: true });
 
 // paneel-id's in grafana/dashboards/stroomdashboard.json, per aanvinkbaar rapportonderdeel —
-// "alarmen" heeft geen paneel (nog geen alert-geschiedenis, zie event_dashboard.md-roadmap),
+// "alarmen" heeft geen paneel (nog geen alert-geschiedenis, zie roadmap.md),
 // die sectie wordt in de PDF zelf als losse placeholder-pagina toegevoegd i.p.v. via Grafana
 const RAPPORT_PANEL_IDS = { generatorTotalen: 8, kastPerFase: 4, sankey: 6 };
 const RAPPORT_PANEL_AFMETING = {

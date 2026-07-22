@@ -6,8 +6,11 @@ zijn gewijzigd — het wordt niet automatisch live herladen tijdens een lopend g
 
 Voor de rest van de projectcontext:
 - [README.md](README.md) — installatie- en gebruiksinstructies
-- [event_dashboard.md](event_dashboard.md) — featurelijst en roadmap (bijhouden bij elke
+- [event_dashboard.md](event_dashboard.md) — omschrijving en featurelijst (bijhouden bij elke
   feature-wijziging, door wie die ook doorvoert)
+- [roadmap.md](roadmap.md) — index naar de roadmap-bestanden per versie:
+  [roadmap_v2.md](roadmap_v2.md) (afgerond) en [roadmap_v3.md](roadmap_v3.md) (actief, incl.
+  ongefilterde ideeën) — bijhouden bij elke roadmap-wijziging, door wie die ook doorvoert
 
 ## Rolverdeling
 
@@ -49,18 +52,21 @@ moet het herbouwd worden:
 
 - Bestanden die door Cowork of andere tooling gegenereerd worden maar niet bij de repo horen
   (rapporten, exports, tijdelijke bestanden) horen in `.gitignore`, niet in een commit.
-- Wijzig je iets aan features of roadmap, werk dan [event_dashboard.md](event_dashboard.md) bij
-  in dezelfde beurt — dat is het canonieke overzicht, niet dit bestand.
-- **Vanaf de v2-roadmap (zie event_dashboard.md): eerst een uitgebreide spec/plan uitwerken en
-  afstemmen vóórdat er gebouwd wordt.** Geldt voor zowel Cowork- als Code-kant, niet alleen voor
-  UI-voorstellen — ook backend-/infra-werk op die roadmap start met een plan, niet met code.
+- Wijzig je iets aan features, werk dan [event_dashboard.md](event_dashboard.md) bij; wijzig je
+  iets aan de roadmap, werk dan het bijbehorende [roadmap_v2.md](roadmap_v2.md)/
+  [roadmap_v3.md](roadmap_v3.md) bij — allebei in dezelfde beurt als de wijziging zelf, dat zijn
+  de canonieke overzichten, niet dit bestand.
+- **Vanaf de v2-roadmap (zie roadmap_v2.md/roadmap_v3.md): eerst een uitgebreide spec/plan
+  uitwerken en afstemmen vóórdat er gebouwd wordt.** Geldt voor zowel Cowork- als Code-kant, niet
+  alleen voor UI-voorstellen — ook backend-/infra-werk op die roadmap start met een plan, niet met
+  code.
 
 ## Versionering (tags & releases)
 
 - `main` = laatst uitgebrachte versie, momenteel `v2.0.0` (v1 was `v1.0.0`). `dev` = eerstvolgende
   versie in ontwikkeling (nu v3), nog niet gepromoveerd.
-- Bij elke afgeronde roadmap-golf op `dev` (zoals nu al bijgehouden in event_dashboard.md/de
-  roadmap-secties): een pre-release tag `v<volgende-major>.0.0-alpha.N` zetten + een GitHub Release
+- Bij elke afgeronde roadmap-golf op `dev` (zoals nu al bijgehouden in roadmap_v3.md): een
+  pre-release tag `v<volgende-major>.0.0-alpha.N` zetten + een GitHub Release
   (`--prerelease`) met de bijbehorende featurebullets als notes. Gebruik de eerstvolgende vrije
   `N`; er is geen vaste koppeling tussen alpha-nummer en specifiek roadmap-item.
 - Pas als `dev` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main` (fast-forward,

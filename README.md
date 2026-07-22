@@ -1,7 +1,8 @@
 # Event Stroom-Dashboard — installatie & gebruik
 
 Praktische handleiding: stack opzetten, Shelly's koppelen, Grafana-queries en export/import.
-Voor een projectoverzicht (omschrijving, features, roadmap) zie [event_dashboard.md](event_dashboard.md).
+Voor een projectoverzicht zie [event_dashboard.md](event_dashboard.md) (omschrijving, features)
+en [roadmap.md](roadmap.md) (afgeronde en geplande versies, ideeën).
 
 ## Screenshots
 
