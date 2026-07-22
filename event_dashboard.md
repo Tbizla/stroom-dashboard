@@ -286,6 +286,25 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
 - [ ] **Generator-EM-rework-vervolg: native telemetrie-protocolintegratie.** Bewust uitgesteld
       tijdens de Generator-EM-rework — generators die niet via Shelly+CT-klem maar via een eigen
       protocol uit te lezen zijn.
+      **Conceptspec — CAN-bus/SAE J1939** (door Claude uitgewerkt op verzoek van Mike, nog niet
+      besproken/geaccordeerd, dus nog geen "echte" spec in de zin van de werkafspraak hierboven):
+      - De meeste generatoren met CAN-bus praten **SAE J1939**, een gestandaardiseerd protocol.
+        Basisdata (toerental, brandstofniveau, motortemperatuur, draaiuren, oliedruk, alarmen)
+        zit er als Parameter Group Numbers (PGN's) al standaard in. Fabrikant-specifieke waarden
+        (custom sensoren) vereisen wel de eigen DBC/PGN-lijst van die fabrikant — dat deel is dus
+        niet universeel plug-and-play.
+      - **Hardware**: een USB-CAN-adapter (bijv. CANable, Innodisk EMUC-B202, ViewTool Ginkgo)
+        die op Linux native als SocketCAN-device verschijnt, aangesloten op de CAN-H/CAN-L-lijnen
+        van de generator (vaak een Deutsch 9-pins J1939-connector).
+      - **Software**: `python-can` + de `can-j1939`-library (PyPI) decoderen de PGN's naar
+        leesbare waarden. Geen kant-en-klare J1939→MQTT-bridge gevonden bij het uitzoeken hiervan —
+        zelf te bouwen door `can-j1939` te combineren met `paho-mqtt`, qua omvang vergelijkbaar met
+        de bestaande `telegraf-herstarter`- of simulator-service. Publiceert op een eigen
+        MQTT-topic, Telegraf pikt het net als de Shelly-data op, komt zo gewoon in
+        InfluxDB/Grafana terecht.
+      - Raakt ook het "Brandstof-/onderhoudstracking"-idee hieronder (Ideeën van Claude) —
+        draaiuren/brandstofniveau/motortemperatuur zitten al in de J1939-data, geen aparte sensor
+        nodig als de generator toch al CAN-bus heeft.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
@@ -324,7 +343,9 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
 > roadmap-item gelden.
 
 - [ ] **Brandstof-/onderhoudstracking per generator.** Draaiuren, brandstofniveau, laatste
-      onderhoud, met een refuel-alert. Sluit aan bij de bestaande generator-rating-structuur.
+      onderhoud, met een refuel-alert. Sluit aan bij de bestaande generator-rating-structuur. Voor
+      generators met CAN-bus (J1939) zit deze data er mogelijk al in — zie de conceptspec bij
+      "Generator-EM-rework-vervolg" in Roadmap v3 hierboven.
 - [ ] **Batterij state-of-charge.** Voor losse batterijen/piekscheerders is nu alleen stroom/
       belasting zichtbaar, niet hoeveel capaciteit er nog in zit.
 - [ ] **Voorspellende piekbelasting.** Op basis van historische data van vorige edities (zelfde
