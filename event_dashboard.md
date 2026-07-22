@@ -300,3 +300,42 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
       (hoe voeg je een knikpunt toe, hoe versleep/verwijder je 'm) — eerst een Cowork-voorstel nodig
       vóór Code het datamodel (knikpunten waarschijnlijk als extra percentage-coördinaten per lijn,
       zie de percentage-plaatsing-afspraak in CLAUDE.md) en de opslag invult.
+- [ ] **Automatische back-up** (lokaal en/of naar een externe server) — vult de bestaande handmatige
+      Back-up-subtab aan met een geplande, onbeheerde variant. Nog te bepalen: frequentie, lokale
+      bestemming, externe-bestemming-protocol, bewaartermijn/rotatie.
+- [ ] **Toegang van buitenaf (HQ meekijken).** Drie mogelijke richtingen, nog open: (a) gewoon
+      externe toegang tot deze ene lokale instance, (b) deze app blijft puur lokaal/per locatie en
+      HQ krijgt een aparte instance die meerdere locaties samenbrengt, (c) alles in één app: dezelfde
+      instance kan zowel lokaal per-locatie als (met deze extra features) een multi-locatie
+      HQ-aanzicht zijn. Aanzienlijke architectuurvraag (multi-instance-aggregatie/beveiliging), eerst
+      een diagnose met Mike vóór er een voorstel komt.
+- [ ] **Vinkje "meetdata beschikbaar" per generator/lid.** Sommige generators hebben geen sensors, of
+      (nog) geen toegang om er een Shelly aan te hangen — nu blijkt dat alleen impliciet uit een leeg
+      rating (A)-veld, zonder duidelijke reden/label in de UI. Expliciet vinkje in Beheer + een
+      herkenbaar "geen sensor"-label op de plekken die nu gewoon niets tonen (Live-zijlijst,
+      aside-detail, schema) i.p.v. stil weglaten — zie
+      [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md).
+
+## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
+
+> Onderstaande punten zijn door Claude voorgesteld tijdens een brainstormsessie, niet door Mike
+> bedacht of al geaccordeerd. Volgen dezelfde werkafspraak (eerst spec/plan) zodra iets hiervan
+> opgepakt wordt — en moeten eerst nog besproken/geprioriteerd worden voordat ze als "echt"
+> roadmap-item gelden.
+
+- [ ] **Brandstof-/onderhoudstracking per generator.** Draaiuren, brandstofniveau, laatste
+      onderhoud, met een refuel-alert. Sluit aan bij de bestaande generator-rating-structuur.
+- [ ] **Batterij state-of-charge.** Voor losse batterijen/piekscheerders is nu alleen stroom/
+      belasting zichtbaar, niet hoeveel capaciteit er nog in zit.
+- [ ] **Voorspellende piekbelasting.** Op basis van historische data van vorige edities (zelfde
+      editie-tag) een verwacht piekmoment tonen, bijv. "foodtrucks pieken meestal rond 18:00".
+- [ ] **Anomaly-detectie los van de vaste 90%-drempel.** Een plotselinge stroom-dip (kabel
+      losgetrokken, generator uitgevallen) is heel iets anders dan een langzame stijging naar de
+      rating, maar krijgt nu dezelfde amber/rood-behandeling.
+- [ ] **QR-code per kast.** Sticker op de kast zelf, scannen opent direct de databallon/status,
+      zonder te zoeken in de zij-lijst. Handig voor rondlopend personeel.
+- [ ] **Rolverdeling/rechten.** Nu heeft iedereen die de webapp-URL heeft blijkbaar volledige
+      Beheer-rechten. Voor een HQ- of multi-persoon-scenario (zie ook het "toegang van
+      buitenaf"-punt) is een viewer/editor-onderscheid relevant.
+- [ ] **Brandstofkosten/CO2 in het PDF-rapport.** Logische aanvulling op de bestaande
+      generator-energietotalen.
