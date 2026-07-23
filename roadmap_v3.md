@@ -7,7 +7,8 @@
 ## Roadmap v3 (nog niet gestart)
 
 Bewust nog niet oppakken — komt aan de beurt ná de huidige v2-roadmap. Volgt dezelfde
-werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
+werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
+[CLAUDE.md](CLAUDE.md)) zodra dat zover is.
 
 - [ ] **Per-fase fout-/vlagindicatoren + neutrale stroom** (`a_errors`/`a_flags`/`b_*`/`c_*`/
       `n_current`/`n_errors`/component-brede `errors`) — uit de Shelly-audit. Waardevol (directe
@@ -76,9 +77,9 @@ werkafspraak (eerst spec/plan, dan pas bouwen) zodra dat zover is.
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
 > Onderstaande punten zijn door Claude voorgesteld tijdens een brainstormsessie, niet door Mike
-> bedacht of al geaccordeerd. Volgen dezelfde werkafspraak (eerst spec/plan) zodra iets hiervan
-> opgepakt wordt — en moeten eerst nog besproken/geprioriteerd worden voordat ze als "echt"
-> roadmap-item gelden.
+> bedacht of al geaccordeerd. Volgen dezelfde werkafspraak (spec/plan eerst, zie "Overige
+> afspraken" in [CLAUDE.md](CLAUDE.md)) zodra iets hiervan opgepakt wordt — en moeten eerst nog
+> besproken/geprioriteerd worden voordat ze als "echt" roadmap-item gelden.
 
 - [ ] **Brandstof-/onderhoudstracking per generator.** Draaiuren, brandstofniveau, laatste
       onderhoud, met een refuel-alert. Sluit aan bij de bestaande generator-rating-structuur. Voor

@@ -6,10 +6,9 @@
 
 ## Roadmap v2 (afgerond, uitgebracht als [v2.0.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v2.0.0))
 
-> **Werkafspraak vanaf nu**: voor elk van onderstaande punten eerst een uitgebreide spec/plan
-> uitwerken en afstemmen vóórdat er gebouwd wordt — geldt voor zowel de Cowork- als de Code-kant
-> (zie ook de afspraak hierover in CLAUDE.md). Geen van de items hieronder is dus "zomaar" te
-> starten, ook niet de kleine.
+> Werkafspraak voor deze en alle latere roadmap-golven (spec/plan eerst, dan pas bouwen): zie
+> "Overige afspraken" in [CLAUDE.md](CLAUDE.md) — dat is de canonieke plek, niet hier of in
+> roadmap_v3.md herhalen.
 
 - [x] **MQTT-topic-prefix van `fest` naar `site`, plus InfluxDB-org `festival` → `site`.** Afgerond
       — zie README.md §14 voor de migratiestappen op een bestaande instance (InfluxDB-org hernoemen,
