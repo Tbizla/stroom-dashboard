@@ -12,15 +12,17 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
 
 - [ ] **Per-fase fout-/vlagindicatoren + neutrale stroom** (`a_errors`/`a_flags`/`b_*`/`c_*`/
       `n_current`/`n_errors`/component-brede `errors`) — uit de Shelly-audit. Waardevol (directe
-      device-eigen overvoltage/overcurrent/overpower/bekabelingsfout-detectie), maar eerst moet
-      geverifieerd worden of Telegraf's standaard JSON-parser deze array-velden momenteel al dan
-      niet stilzwijgend laat vallen. Hangt bovendien samen met het nog openstaande
-      "Notificatiekanaal voor alerting"-item hierboven — niet in isolatie oppakken. Korte spec
-      (geen mockup, backend-first): zie
+      device-eigen overvoltage/overcurrent/overpower/bekabelingsfout-detectie). **Telegraf-
+      verificatie afgerond (24 juli 2026)**: bevestigd dat de array-velden stilzwijgend verdwijnen
+      met de huidige `json`-parser-config — een `json_v2`-parser-wissel + een omzetting naar
+      losse boolean-/string-velden is nodig (InfluxDB kent geen array-veldtype). Hangt bovendien
+      samen met het nog openstaande "Notificatiekanaal voor alerting"-item hierboven — niet in
+      isolatie oppakken. Korte spec (geen mockup, backend-first): zie
       [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 1.
 - [ ] **`EMData`-component-brede `errors`** (`database_error`/`ct_type_not_set`) — zelfde
-      array-kanttekening als hierboven, device-zelfdiagnose, lage prioriteit. Korte spec:
-      [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 2.
+      array-kanttekening als hierboven, ook geverifieerd (zelfde bevinding), device-zelfdiagnose,
+      lage prioriteit. Korte spec: [specs/backend-only-specs.md](specs/backend-only-specs.md),
+      sectie 2.
 - [ ] **Interval-aggregaten** (`EMData.GetRecords`/`GetData`/`GetNetEnergies`: min/max/gemiddelde
       per fase, reactief vermogen) — komen niet binnen via de huidige MQTT-architectuur, vereisen
       een fundamenteel andere ophaalmethode (HTTP-polling of een Shelly Script). Alleen oppakken bij
@@ -36,19 +38,20 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina. Hangt
       ook samen met het uitgestelde "per-fase fout-/vlagindicatoren"-punt hierboven. Spec + mockup:
       zie [specs/notificatiekanaal-plan.md](specs/notificatiekanaal-plan.md).
-- [ ] **Lijnen tussen kasten aanpasbaar (bochten/knikpunten).** Op Kalibreren/Live is de lijn tussen
-      een kast en zijn voedingsbron nu een rechte lijn tussen de twee pin-posities; in het echt loopt
-      een stroomkabel vaak niet recht (obstakels, paden, kabelgoten, hoeken om een gebouw). Wens:
-      knikpunten kunnen toevoegen/verslepen zodat de lijn de daadwerkelijke kabelroute volgt op de
-      plattegrond. Raakt alleen Kalibreren/Live — niet Schema, dat is een los auto-gegenereerd
-      boomdiagram zonder fysieke plaatsing. Cowork-voorstel uitgewerkt: zie
-      [specs/lijnen-knikpunten-plan.md](specs/lijnen-knikpunten-plan.md).
+- [x] **Lijnen tussen kasten aanpasbaar (bochten/knikpunten).** Afgerond — gebouwd conform
+      [specs/lijnen-knikpunten-plan.md](specs/lijnen-knikpunten-plan.md): op Kalibreren een
+      knikpunt toevoegen (dubbelklik op een lijnsegment of via het rechtsklik-menu), verslepen,
+      verwijderen (dubbelklik op het knikpunt) of de hele lijn resetten (rechtsklik-menu). Op Live
+      volgt de lijn dezelfde route, read-only. Zie event_dashboard.md, Kalibreren-tabblad.
 - [ ] **Automatische back-up** (lokaal en/of naar een externe server) — vult de bestaande handmatige
       Back-up-subtab aan met een geplande, onbeheerde variant. Spec + mockup: zie
       [specs/automatische-backup-plan.md](specs/automatische-backup-plan.md).
 - [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond en besluiten met Mike bevestigd
-      (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst) —
-      mockups (login-scherm, HQ-locatiesoverzicht) staan klaar, wachten op akkoord. Zie
+      (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst).
+      Volledig uitgewerkt: drie mockups (login-scherm, HQ-locatiesoverzicht, en het eerder
+      ontbrekende accounts-beheerscherm) plus een technisch-fundament-sectie met de functionele
+      eisen voor Code (accounts-opslag, wachtwoord-hashing, sessiemechanisme, HQ-status-ophaal).
+      Wacht nog op jouw akkoord op de mockups vóór het naar Code gaat. Zie
       [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md).
 - [ ] **Vinkje "meetdata beschikbaar" per generator/lid.** Sommige generators hebben geen sensors, of
       (nog) geen toegang om er een Shelly aan te hangen — nu blijkt dat alleen impliciet uit een leeg
@@ -56,6 +59,11 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       herkenbaar "geen sensor"-label op de plekken die nu gewoon niets tonen (Live-zijlijst,
       aside-detail, schema) i.p.v. stil weglaten — zie
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md).
+- [ ] **Grafieken-tabblad (vrije ad-hoc analyse).** Nieuw zesde hoofdtabblad in de mode-switch,
+      naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators, metric (stroom/
+      spanning/vermogen/energie), fase en periode/editie selecteren en in een tijdreeksgrafiek
+      zetten, zonder naar Grafana te hoeven wisselen voor een snelle ad-hoc vraag. Spec + mockup:
+      zie [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

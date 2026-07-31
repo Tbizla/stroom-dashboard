@@ -238,6 +238,24 @@ app.post('/api/topology/positie', (req, res) => {
   res.json({ ok: true, node });
 });
 
+// ---------- knikpunten bijwerken (bochten in de lijn kast<->voedingsbron, kalibratiemodus) ----------
+// vervangt steeds de hele array in één keer (toevoegen/verslepen/verwijderen/resetten lopen allemaal
+// via dit ene endpoint) — alleen kasten hebben een inkomende lijn, generators niet, dus geen lookup
+// in data.generators zoals bij /positie hierboven.
+app.post('/api/topology/knikpunten', (req, res) => {
+  const { id, knikpunten } = req.body || {};
+  if (!id || !Array.isArray(knikpunten)) return res.status(400).json({ error: 'id en knikpunten (array) zijn verplicht' });
+  if (!knikpunten.every(p => p && typeof p.x_pct === 'number' && typeof p.y_pct === 'number')) {
+    return res.status(400).json({ error: 'elk knikpunt moet x_pct en y_pct (getallen) hebben' });
+  }
+  const data = readTopo();
+  const kast = data.kasten.find(k => k.id === id);
+  if (!kast) return res.status(404).json({ error: 'onbekende kast-id: ' + id });
+  kast.knikpunten = knikpunten;
+  writeTopo(data);
+  res.json({ ok: true, kast });
+});
+
 // ---------- generators beheren ----------
 // een generator-node is normaal gesproken één aggregaat ('generator') of accu ('batterij'), maar kan ook
 // een 'groep' zijn: één logische krachtbron die intern uit meerdere generators/accu's bestaat (bijv. een

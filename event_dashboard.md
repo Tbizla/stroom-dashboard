@@ -88,9 +88,16 @@ zetten zonder code aan te passen.
   (4800×3000) als er nog geen kaart is — de posities blijven gewoon staan zodra je er later een
   toevoegt
 - Generators en kasten als pins plaatsen en verslepen
-- Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling
+- Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling. Standaard een
+  rechte lijn, maar met knikpunten aan te passen aan de daadwerkelijke kabelroute (obstakels,
+  paden, hoeken om een gebouw): dubbelklik op een lijnsegment voegt een knikpunt toe op die
+  positie, slepen verplaatst het, dubbelklik op een knikpunt verwijdert het weer. Rechtsklik op een
+  lijn of knikpunt opent een mini-menu ("Knikpunt hier invoegen" / "Rechte lijn terugzetten") als
+  alternatief voor dubbelklikken. Alleen bewerkbaar op Kalibreren; op Live volgt de lijn dezelfde
+  route, puur ter weergave, zonder handles
 - In-/uitzoomen (knoppen of scrollwiel) en pannen (klikken en slepen), met een "fit to screen"-knop
-  die alles in één keer in beeld brengt — handig bij een grote topologie
+  die alles in één keer in beeld brengt (incl. eventuele knikpunten) — handig bij een grote
+  topologie
 
 **Schema-tabblad**
 - Automatisch gegenereerd stroomschema (boomdiagram) van de volledige parent/child-keten, generator

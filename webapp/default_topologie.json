@@ -7,6 +7,7 @@
     "shelly_ip": "in te vullen met het lokale IP-adres van de Shelly Pro 3EM in deze kast",
     "mqtt_topic_prefix": "automatisch gegenereerd als site/<generator_id>/<kast_id>; vul deze waarde in de Shelly in onder Settings > MQTT > Custom MQTT prefix",
     "positie": "x_pct/y_pct: locatie op de plattegrond als percentage van breedte/hoogte (0-100). Wordt ingevuld via de kalibratiemodus.",
-    "afkorting": "optionele korte naam zoals gebruikt op de plattegrond/in de crew-communicatie"
+    "afkorting": "optionele korte naam zoals gebruikt op de plattegrond/in de crew-communicatie",
+    "knikpunten": "optionele array {x_pct, y_pct}, geordend van voedingsbron naar kast, voor bochten in de verbindingslijn op Kalibreren/Live (bijv. om een gebouw heen); leeg/afwezig betekent een rechte lijn. Wordt ingevuld via de kalibratiemodus."
   }
 }

@@ -9,7 +9,8 @@ en [roadmap.md](roadmap.md) (afgeronde en geplande versies, ideeën).
 **Beheer** — topologie invoeren: generators, kasten, koppelingen, systeeminstellingen.
 ![Beheer](screenshots/01-beheer.png)
 
-**Kalibreren** — generators en kasten als pins op de plattegrond plaatsen.
+**Kalibreren** — generators en kasten als pins op de plattegrond plaatsen; lijnen naar de
+voedingsbron zijn met knikpunten aan te passen aan de daadwerkelijke kabelroute.
 ![Kalibreren](screenshots/02-kalibreren.png)
 
 **Schema** — automatisch gegenereerd stroomschema van de volledige generator→kast-keten.

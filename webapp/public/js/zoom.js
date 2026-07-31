@@ -95,12 +95,17 @@ export function fitToScreenKaart(){
   if(availW <= 0 || availH <= 0) return;
 
   const geplaatst = allNodes().filter(n => n.positie && n.positie.x_pct != null);
+  // knikpuntcoördinaten meenemen in de bounding box — een bocht die ver van de rechte lijn tussen
+  // twee nodes afligt, mag "fit to screen" niet buiten beeld laten vallen
+  const knikpunten = state.TOPO.kasten.flatMap(k => k.knikpunten || []);
   let minX = 0, maxX = 100, minY = 0, maxY = 100;
   if(geplaatst.length){
-    minX = Math.min(...geplaatst.map(n => n.positie.x_pct));
-    maxX = Math.max(...geplaatst.map(n => n.positie.x_pct));
-    minY = Math.min(...geplaatst.map(n => n.positie.y_pct));
-    maxY = Math.max(...geplaatst.map(n => n.positie.y_pct));
+    const xs = geplaatst.map(n => n.positie.x_pct).concat(knikpunten.map(p => p.x_pct));
+    const ys = geplaatst.map(n => n.positie.y_pct).concat(knikpunten.map(p => p.y_pct));
+    minX = Math.min(...xs);
+    maxX = Math.max(...xs);
+    minY = Math.min(...ys);
+    maxY = Math.max(...ys);
     const PAD = 4;
     minX = Math.max(0, minX - PAD); maxX = Math.min(100, maxX + PAD);
     minY = Math.max(0, minY - PAD); maxY = Math.min(100, maxY + PAD + 3); // iets extra onder voor het pin-label

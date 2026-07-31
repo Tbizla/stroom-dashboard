@@ -10,6 +10,10 @@
   "subnav.pdfRapport": "PDF report",
   "subnav.backup": "Backup",
 
+  "knikpunt.invoegen": "Insert bend point here",
+  "knikpunt.rechtzetten": "Reset to straight line",
+  "knikpunt.sleepTitel": "Drag to move · double-click to remove",
+
   "overzicht.kastenTotaal": "Boxes total",
   "overzicht.bovenNegentig": "{n} above 90%",
   "overzicht.geenRating": "no rating",

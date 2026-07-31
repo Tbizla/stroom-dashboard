@@ -30,6 +30,13 @@ export async function savePositie(node){
   });
 }
 
+export async function saveKnikpunten(kast){
+  await fetch('/api/topology/knikpunten', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ id: kast.id, knikpunten: kast.knikpunten || [] })
+  });
+}
+
 export function loadMap(){
   const img = new Image();
   img.onload = ()=>{
