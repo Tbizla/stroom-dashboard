@@ -54,9 +54,9 @@ nog niet eerder gebruikte machine.)
    ```
    git clone <repo-url>
    cd event_stroom_dashboard
-   git checkout dev
    ```
-   Let op: **`dev`**, niet `main` — `main` is nog de oude v1-stand van vóór de v2-rebuild.
+   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v2.0.0`) — voor een nieuwe
+   locatie is dat de juiste branch. `dev-v3` bevat nog niet-uitgebrachte v3-ontwikkeling.
 5. **`.env` invullen**:
    ```
    cp .env.example .env

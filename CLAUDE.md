@@ -63,13 +63,16 @@ moet het herbouwd worden:
 
 ## Versionering (tags & releases)
 
-- `main` = laatst uitgebrachte versie, momenteel `v2.0.0` (v1 was `v1.0.0`). `dev` = eerstvolgende
+- `main` = laatst uitgebrachte versie, momenteel `v2.0.0` (v1 was `v1.0.0`). `dev-v3` = eerstvolgende
   versie in ontwikkeling (nu v3), nog niet gepromoveerd.
-- Bij elke afgeronde roadmap-golf op `dev` (zoals nu al bijgehouden in roadmap_v3.md): een
+- **Branchnaamschema**: de ontwikkelbranch heet `dev-v<major>` (dus `dev-v3`, straks `dev-v4`,
+  enz.) — niet kaal `dev`. Bij promotie naar `main` (zie hieronder) begint de volgende
+  roadmap-golf op een nieuwe branch `dev-v<volgende-major>`.
+- Bij elke afgeronde roadmap-golf op `dev-v3` (zoals nu al bijgehouden in roadmap_v3.md): een
   pre-release tag `v<volgende-major>.0.0-alpha.N` zetten + een GitHub Release
   (`--prerelease`) met de bijbehorende featurebullets als notes. Gebruik de eerstvolgende vrije
   `N`; er is geen vaste koppeling tussen alpha-nummer en specifiek roadmap-item.
-- Pas als `dev` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main` (fast-forward,
-  dev loopt altijd rechtdoor op main), taggen als `v<major>.0.0` (geen `-alpha` meer) en een
+- Pas als `dev-v3` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main` (fast-forward,
+  `dev-v3` loopt altijd rechtdoor op main), taggen als `v<major>.0.0` (geen `-alpha` meer) en een
   volwaardige Release aanmaken — dat is dan ook het moment waarop `main` weer verandert.
 - Bestaande tags/releases: zie de [releases-pagina](https://github.com/Tbizla/stroom-dashboard/releases).
