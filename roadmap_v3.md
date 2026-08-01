@@ -10,6 +10,12 @@ Bewust nog niet oppakken — komt aan de beurt ná de huidige v2-roadmap. Volgt 
 werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
 [CLAUDE.md](CLAUDE.md)) zodra dat zover is.
 
+> "v3" is hier een roadmap-generatienaam, geen belofte dat deze items als `v3.0.0` uitkomen: sinds
+> de overstap naar echte [semantic versioning](CLAUDE.md) (§ Versionering) bepaalt de aard van elke
+> individuele wijziging het MAJOR/MINOR/PATCH-cijfer bij release, niet welk roadmap-bestand 'm
+> bevat. Zo werd het eerste afgeronde item hieronder (knikpunten) een MINOR-release (`v2.1.0`),
+> geen `v3.0.0`.
+
 - [ ] **Per-fase fout-/vlagindicatoren + neutrale stroom** (`a_errors`/`a_flags`/`b_*`/`c_*`/
       `n_current`/`n_errors`/component-brede `errors`) — uit de Shelly-audit. Waardevol (directe
       device-eigen overvoltage/overcurrent/overpower/bekabelingsfout-detectie). **Telegraf-

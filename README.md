@@ -56,7 +56,7 @@ nog niet eerder gebruikte machine.)
    cd event_stroom_dashboard
    ```
    Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v2.0.0`) — voor een nieuwe
-   locatie is dat de juiste branch. `dev-v3` bevat nog niet-uitgebrachte v3-ontwikkeling.
+   locatie is dat de juiste branch. `dev` bevat nog niet-uitgebrachte ontwikkeling.
 5. **`.env` invullen**:
    ```
    cp .env.example .env

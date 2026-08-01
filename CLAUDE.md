@@ -63,16 +63,31 @@ moet het herbouwd worden:
 
 ## Versionering (tags & releases)
 
-- `main` = laatst uitgebrachte versie, momenteel `v2.0.0` (v1 was `v1.0.0`). `dev-v3` = eerstvolgende
-  versie in ontwikkeling (nu v3), nog niet gepromoveerd.
-- **Branchnaamschema**: de ontwikkelbranch heet `dev-v<major>` (dus `dev-v3`, straks `dev-v4`,
-  enz.) — niet kaal `dev`. Bij promotie naar `main` (zie hieronder) begint de volgende
-  roadmap-golf op een nieuwe branch `dev-v<volgende-major>`.
-- Bij elke afgeronde roadmap-golf op `dev-v3` (zoals nu al bijgehouden in roadmap_v3.md): een
-  pre-release tag `v<volgende-major>.0.0-alpha.N` zetten + een GitHub Release
-  (`--prerelease`) met de bijbehorende featurebullets als notes. Gebruik de eerstvolgende vrije
-  `N`; er is geen vaste koppeling tussen alpha-nummer en specifiek roadmap-item.
-- Pas als `dev-v3` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main` (fast-forward,
-  `dev-v3` loopt altijd rechtdoor op main), taggen als `v<major>.0.0` (geen `-alpha` meer) en een
-  volwaardige Release aanmaken — dat is dan ook het moment waarop `main` weer verandert.
+Sinds 2026-08-01 echte [semantic versioning](https://semver.org/lang/nl/): MAJOR.MINOR.PATCH,
+waarbij elk cijfer alleen omhoog gaat als de wijziging dat daadwerkelijk rechtvaardigt — niet
+mechanisch "elke roadmap-golf is een nieuwe major" (dat was de vorige, inmiddels verlaten
+afspraak).
+
+- **MAJOR**: breaking/incompatibele wijziging (bijv. een API-/datamodelwijziging die bestaande
+  topologie-data of integraties breekt zonder migratiepad).
+- **MINOR**: nieuwe, backwards-compatible functionaliteit (het gangbare geval voor een
+  roadmap-item — bijv. de knikpunten-feature: nieuw optioneel veld/endpoint, niets bestaands
+  breekt).
+- **PATCH**: backwards-compatible bugfix, geen nieuwe functionaliteit.
+- Beoordeel dit **per wijziging**, niet per roadmap-bestand — roadmap_v2.md/roadmap_v3.md zijn een
+  planningsindeling, geen garantie dat alles daarin uiteindelijk onder dezelfde major uitkomt.
+
+**Branch**: één doorlopende `dev`-branch (geen versienummer in de naam — welk MAJOR/MINOR/PATCH-
+cijfer een release straks krijgt hangt af van wat er daadwerkelijk gebouwd wordt, niet vooraf vast
+te leggen in de branchnaam). `main` = laatst uitgebrachte versie, momenteel `v2.0.0`.
+
+**Tags/releases**:
+- Bij elke afgeronde feature/roadmap-item op `dev`: direct een pre-release tag zetten op het
+  eerstvolgende MAJOR/MINOR/PATCH-niveau dat bij die wijziging past, met `-alpha.N` erachter
+  (bijv. `v2.1.0-alpha.1`, en bij de eerstvolgende backwards-compatible feature daarna
+  `v2.1.0-alpha.2` — pas een nieuw MINOR/PATCH-cijfer als de daadwérkelijke aard van de wijziging
+  dat rechtvaardigt) + een GitHub Release (`--prerelease`) met de featurebullets als notes.
+- Pas als `dev` daadwerkelijk naar productie gepromoveerd wordt: mergen naar `main`
+  (fast-forward), taggen als het definitieve `v<major>.<minor>.<patch>` (geen `-alpha` meer) en
+  een volwaardige Release aanmaken — dat is dan ook het moment waarop `main` weer verandert.
 - Bestaande tags/releases: zie de [releases-pagina](https://github.com/Tbizla/stroom-dashboard/releases).
