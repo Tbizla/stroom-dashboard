@@ -273,4 +273,34 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .toggleslider::before{position:absolute;content:"";height:14px;width:14px;left:2px;top:2px;
   background:var(--text2);border-radius:50%;transition:.2s}
 .toggleswitch input:checked + .toggleslider{background:var(--accent-dim);border-color:var(--accent)}
+
+/* ---------- Grafieken-tabblad (specs/grafieken-tabblad-plan.md): vrije ad-hoc analyse.
+   Spiegelbeeld van de Live/Kalibreren-indeling (.body/aside): hier zit de selectiekolom LINKS
+   (.grafcol) en het hoofdgebied (grafiek) rechts, omdat de linkerkolom hier de aansturing is
+   (welke kasten/metric/fase/periode), niet een los detailpaneel. ---------- */
+.grafbody{display:flex;flex:1;min-height:0}
+.grafcol{width:320px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto}
+.grafcol .list{flex:0 1 auto;max-height:260px;overflow-y:auto}
+.graf-empty-selectie{padding:10px 14px;color:var(--text3);font-size:12px}
+.grafcontrols{padding:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:14px}
+.grafctlgroup{display:flex;flex-direction:column;gap:6px}
+.graflbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700}
+.grafctlgroup select{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:var(--sans);width:100%}
+
+.grafmain{flex:1;display:flex;flex-direction:column;min-width:0;padding:14px 18px}
+.graftoolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+#grafTypeRow button:disabled{opacity:.4;cursor:not-allowed}
+#grafTypeRow button:disabled:hover{border-color:transparent}
+.grafacties{display:flex;gap:8px}
+.grafchartwrap{position:relative;flex:1;min-height:0;background:var(--panel);border:1px solid var(--border);
+  border-radius:10px;padding:16px}
+.grafchartwrap canvas{width:100% !important;height:100% !important}
+.graf-status{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--text3);font-size:13px;text-align:center;padding:20px}
+.graf-checkrow{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12.5px;cursor:pointer}
+.graf-checkrow:hover{background:var(--panel2)}
+.graf-checkrow input{flex-shrink:0}
+.graf-checkrow .swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .toggleswitch input:checked + .toggleslider::before{transform:translateX(16px);background:var(--accent)}

@@ -20,6 +20,7 @@ export const state = {
   backupPeriodeChip: 'alles',
   backupPollHandle: null,
   herstelPollHandle: null,
+  grafiekenPeriodeChip: '24u',
 };
 
 export const liveData = {};

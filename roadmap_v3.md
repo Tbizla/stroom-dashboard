@@ -66,10 +66,18 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       aside-detail, schema) i.p.v. stil weglaten — zie
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md).
 - [ ] **Grafieken-tabblad (vrije ad-hoc analyse).** Nieuw zesde hoofdtabblad in de mode-switch,
-      naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators, metric (stroom/
-      spanning/vermogen/energie), fase en periode/editie selecteren en in een tijdreeksgrafiek
-      zetten, zonder naar Grafana te hoeven wisselen voor een snelle ad-hoc vraag. Spec + mockup:
-      zie [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md).
+      naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators, metric
+      (stroom/spanning/vermogen/energie), fase en periode/editie selecteren, zonder naar Grafana
+      te hoeven wisselen voor een snelle ad-hoc vraag. Vijf grafiektypes (lijn, staaf, Sankey,
+      taart, heatmap) plus een live-modus met schuifvenster. Volledig uitgewerkt, incl. technisch
+      fundament (query-downsampling, tijdzone, foutafhandeling) en een deelbare link per grafiek.
+      Spec + mockup: zie [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md).
+      **Eerste bouwstap afgerond**: het tabblad zelf, checklist/metric/fase/periode/editie-
+      selectie, het lijndiagram (historisch, server-side downsampling), PNG-download en de
+      deelbare link — volgens de "Lijn eerst"-bouwvolgorde uit de spec. Nog te bouwen: staaf-,
+      Sankey-, taart- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI) en de live-modus;
+      meerdere-edities-vergelijking wacht op de tijd-sinds-start-uitlijning uit
+      voorspellende-piekbelasting-plan.md. Zie event_dashboard.md, Grafieken-tabblad.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

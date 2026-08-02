@@ -14,6 +14,7 @@ import { initRapport } from './rapport.js';
 import { initBackup } from './backup.js';
 import { initInstellingen } from './instellingen.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
+import './grafieken.js';
 import './mqtt.js';
 import { refreshSimStatusIfTest } from './modes.js';
 import { renderPins } from './render-pins.js';
@@ -91,7 +92,13 @@ setInterval(async ()=>{
   ververOverzichtLiveWeergave();
 }, 5000);
 
-loadTopology().then(loadMap);
+loadTopology().then(()=>{
+  loadMap();
+  // een "Kopieer link"-URL van het Grafieken-tabblad (?mode=grafieken&...) opent dat tabblad
+  // automatisch — geen algemene router, alleen deze ene deeplink (zie grafieken.js
+  // herstelVanUrl()); pas ná loadTopology() zodat de checklist niet leeg begint
+  if(new URLSearchParams(location.search).get('mode') === 'grafieken') document.getElementById('modeGrafieken').click();
+});
 loadLogo();
 // het Testdata-tabblad (en de bijbehorende endpoints) bestaat alleen als de stack met
 // --profile test + TEST_MODE=true gestart is; anders geven die endpoints toch 404, dus verberg 'm

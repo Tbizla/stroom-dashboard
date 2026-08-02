@@ -17,6 +17,7 @@
       <button id="modeLive" data-i18n="mode.live">Live</button>
       <button id="modeTest" data-i18n="mode.testdata">Testdata</button>
       <button id="modeRapportages" data-i18n="mode.rapportages">Rapportages</button>
+      <button id="modeGrafieken" data-i18n="mode.grafieken">Grafieken</button>
     </div>
     <div class="connbar" id="liveControls" style="display:none">
       <input id="brokerHost" data-i18n-placeholder="header.brokerHostPlaceholder" placeholder="broker host" value="">
@@ -345,6 +346,79 @@
     </div>
   </div>
 
+  <div class="grafbody" id="grafiekenPanel" style="display:none">
+    <div class="grafcol">
+      <div class="listhead" data-i18n="grafieken.selectieTitel">Kasten &amp; generators</div>
+      <div class="listtools">
+        <input type="text" id="grafZoek" data-i18n-placeholder="aside.zoekPlaceholder" placeholder="Zoek op naam of afkorting...">
+      </div>
+      <div class="list" id="grafList"></div>
+      <div class="graf-empty-selectie" id="grafGeenNodes" style="display:none" data-i18n="grafieken.geenKastenPlaceholder">Nog geen generators/kasten.</div>
+
+      <div class="grafcontrols">
+        <div class="grafctlgroup">
+          <div class="graflbl" data-i18n="grafieken.metricLabel">Metric</div>
+          <div class="listfilters" id="grafMetricRow">
+            <button class="chip active" data-metric="stroom" data-i18n="grafieken.metricStroom">Stroom (A)</button>
+            <button class="chip" data-metric="spanning" data-i18n="grafieken.metricSpanning">Spanning (V)</button>
+            <button class="chip" data-metric="vermogen" data-i18n="grafieken.metricVermogen">Vermogen (W)</button>
+            <button class="chip" data-metric="energie" data-i18n="grafieken.metricEnergie">Energie (kWh)</button>
+          </div>
+        </div>
+        <div class="grafctlgroup">
+          <div class="graflbl" data-i18n="grafieken.faseLabel">Fase</div>
+          <div class="listfilters" id="grafFaseRow">
+            <button class="chip" data-fase="a">A</button>
+            <button class="chip" data-fase="b">B</button>
+            <button class="chip" data-fase="c">C</button>
+            <button class="chip active" data-fase="totaal" data-i18n="grafieken.faseTotaal">Totaal</button>
+          </div>
+        </div>
+        <div class="grafctlgroup">
+          <div class="graflbl" data-i18n="grafieken.periodeLabel">Periode</div>
+          <div class="listfilters" id="grafPeriodeRow">
+            <button class="chip" data-periodechip="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
+            <button class="chip active" data-periodechip="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
+            <button class="chip" data-periodechip="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
+          </div>
+          <div class="addform" id="grafAangepastPeriode" style="display:none;margin-top:8px">
+            <input type="datetime-local" id="grafVanInput">
+            <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
+            <input type="datetime-local" id="grafTotInput">
+          </div>
+        </div>
+        <div class="grafctlgroup">
+          <div class="graflbl" data-i18n="grafieken.editieLabel">Editie</div>
+          <select id="grafEditieSelect"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="grafmain">
+      <div class="graftoolbar">
+        <div class="modeswitch" id="grafTypeRow">
+          <button class="active" data-type="lijn" data-i18n="grafieken.typeLijn">Lijndiagram</button>
+          <button data-type="staaf" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeStaaf">Staafdiagram</button>
+          <button data-type="sankey" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeSankey">Sankey</button>
+          <button data-type="taart" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeTaart">Taart</button>
+          <button data-type="heatmap" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeHeatmap">Heatmap</button>
+        </div>
+        <div class="grafacties">
+          <button id="grafPngBtn" data-i18n="grafieken.downloadPng">Downloaden als PNG</button>
+          <button id="grafLinkBtn" data-i18n="grafieken.kopieerLink">Kopieer link</button>
+        </div>
+      </div>
+      <div class="grafchartwrap" id="grafChartWrap">
+        <canvas id="grafCanvas"></canvas>
+        <div class="graf-status" id="grafLeegState" data-i18n="grafieken.leegState">Selecteer minstens één kast of generator links om een grafiek te zien.</div>
+        <div class="graf-status" id="grafFoutState" style="display:none">
+          <span id="grafFoutInfo" style="color:var(--red)"></span><br>
+          <button id="grafOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="body" id="mainBody" style="display:none">
     <div class="zoomctl" id="zoomCtl">
       <button id="zoomOutBtn" data-i18n-title="zoom.uitzoomen" title="Uitzoomen">−</button>
@@ -383,6 +457,7 @@
 </div>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

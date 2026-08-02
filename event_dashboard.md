@@ -36,8 +36,9 @@ zetten zonder code aan te passen.
 
 **Meertalige UI (NL/EN)**
 - Taalkeuze-toggle in de header (naast de mode-switch-pill, zelfde visuele stijl), onthouden in
-  `localStorage`. Dekt alle tabbladen (Beheer/Kalibreren/Schema/Live/Testdata/Rapportages) en het
-  PDF-rapport (het rapport volgt de UI-taal die actief was op het moment van genereren)
+  `localStorage`. Dekt alle tabbladen (Beheer/Kalibreren/Schema/Live/Testdata/Rapportages/
+  Grafieken) en het PDF-rapport (het rapport volgt de UI-taal die actief was op het moment van
+  genereren)
 - Domeintermen zijn bewust vertaald, niet automatisch: "kast" → "distribution box" (of "box" kort
   in tabelkoppen/dropdowns), "Beheer" → "Manage", "Kalibreren" → "Calibrate", "Schema" → "Diagram"
 - Vertalingen zitten in platte dot-key JSON-bestanden (`webapp/i18n/nl.json`/`en.json`), gedeeld
@@ -142,6 +143,25 @@ zetten zonder code aan te passen.
   `--fase3`) vóór het fase-label in de kastpopup-tabelkop (A/B/C) en de aside-detail (Fase A/B/C-
   rijen) — losstaand naast de bestaande groen/amber/rood-statuskleur, geen samensmelting van de
   twee conventies
+
+**Grafieken-tabblad (vrije ad-hoc analyse)** — *werk in uitvoering, zie specs/grafieken-tabblad-plan.md*
+- Zesde hoofdtabblad, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators,
+  metric en fase kiezen en in een lijndiagram zetten, zonder naar Grafana te hoeven wisselen voor
+  een snelle ad-hoc vraag ("hoe deed kast 12 het gisteren t.o.v. kast 13?")
+- Linkerkolom: doorzoekbare, aan-/uitvinkbare boomlijst van generators/kasten (meerdere tegelijk),
+  metric (Stroom A / Spanning V / Vermogen W / Energie kWh), fase (A/B/C/Totaal — bij Spanning+
+  Totaal het gemiddelde van de drie fasen, er is geen fysiek `total_voltage`-veld), periode (hele
+  evenement/laatste 24u/aangepast) en editie (één, of "alle edities")
+- Server-side downsampling (InfluxDB `aggregateWindow`, venstergrootte berekend uit de
+  periodelengte) — bij "hele evenement" komt nooit de ruwe ~1s-puntenreeks naar de browser
+- "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie als leesbare query-string,
+  `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in dezelfde staat, geen
+  opslag/database erbij)
+- **Nog niet gebouwd** (staan als uitgeschakelde knoppen in de grafiektype-rij): staafdiagram,
+  Sankey, taartdiagram, heatmap, en een live-modus voor het lijndiagram — volgen in latere stappen,
+  zie de spec voor het volledige ontwerp. Meerdere-edities-vergelijking (jaar-op-jaar) is ook nog
+  niet meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
+  voorspellende-piekbelasting-plan.md
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (3 generators, 11 kasten, 3 niveaus) voor een

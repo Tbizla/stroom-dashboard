@@ -862,6 +862,111 @@ app.get('/api/overzicht/energie', async (req, res) => {
   }
 });
 
+// ---------- Grafieken-tabblad (roadmap-item, vrije ad-hoc analyse — specs/grafieken-tabblad-plan.md):
+// historische tijdreeks-query voor het lijndiagram. Eerste bouwstap van dat item (zie de
+// "Bouwvolgorde-suggestie" in de spec: Lijn eerst) — staaf/taart/heatmap/Sankey en live-modus
+// volgen in een latere stap. Server-side downsampling is een harde eis uit de spec: bij "hele
+// evenement" (mogelijk dagen aan ~1s-data) mag de ruwe puntenreeks niet naar de browser, dus
+// aggregateWindow() met een venstergrootte afgeleid van de periodelengte i.p.v. een vaste
+// resolutie. Meerdere-edities-vergelijking (jaar-op-jaar) is bewust nog niet meegenomen — dat
+// vraagt de tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md, de spec zelf
+// stelt voor die twee samen te bouwen; dit endpoint filtert intussen gewoon op één editie. ----------
+const GRAFIEKEN_MAX_PUNTEN = 800;
+
+// welk(e) InfluxDB-veld(en) een metric+fase-combinatie nodig heeft. "Totaal" bij spanning heeft
+// geen echt total_voltage-veld (i.t.t. stroom/vermogen, waar de Shelly zelf al een total_*-veld
+// publiceert) — daarvoor vraagt dit de drie fasevelden op en middelt grafiekenCsvNaarSeries() ze,
+// i.p.v. een fysiek onjuiste "som" te tonen.
+function grafiekenVeldenVoorMetric(metric, fase) {
+  if (metric === 'energie') {
+    return { measurement: 'shelly_emdata', velden: fase === 'totaal' ? ['total_act'] : [fase + '_total_act_energy'] };
+  }
+  if (metric === 'spanning' && fase === 'totaal') {
+    return { measurement: 'shelly_em', velden: ['a_voltage', 'b_voltage', 'c_voltage'] };
+  }
+  const suffix = { stroom: 'current', spanning: 'voltage', vermogen: 'act_power' }[metric];
+  if (!suffix) return null;
+  return { measurement: 'shelly_em', velden: [(fase === 'totaal' ? 'total_' : fase + '_') + suffix] };
+}
+
+// Flux-duration-string voor aggregateWindow(), berekend uit de periodelengte zodat het aantal
+// punten per lijn ongeveer GRAFIEKEN_MAX_PUNTEN blijft, ongeacht periodelengte
+function grafiekenVensterVoorPeriode(vanMs, totMs) {
+  return Math.max(1, Math.floor((totMs - vanMs) / 1000 / GRAFIEKEN_MAX_PUNTEN)) + 's';
+}
+
+// zet de platte pivot-CSV (kolommen: _time, kast, <veld1>[, <veld2>, <veld3>]) om naar
+// [{ id, punten: [[epoch_ms, waarde], ...] }] — bij 3 velden (de spanning+totaal-uitzondering
+// hierboven) is de waarde het gemiddelde van de drie, anders het ene veld direct. Skipt een rij
+// stil als niet alle benodigde velden een getal hebben (liever geen punt dan een punt op een
+// onvolledig gemiddelde).
+function grafiekenCsvNaarSeries(csv, velden) {
+  const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
+  if (regels.length < 2) return [];
+  const kolommen = regels[0].split(',');
+  const tijdIdx = kolommen.indexOf('_time');
+  const kastIdx = kolommen.indexOf('kast');
+  const veldIdxen = velden.map((v) => kolommen.indexOf(v));
+  if (tijdIdx === -1 || kastIdx === -1 || veldIdxen.some((i) => i === -1)) return [];
+  const perKast = new Map();
+  regels.slice(1).forEach((regel) => {
+    const waarden = regel.split(',');
+    const id = waarden[kastIdx];
+    const getallen = veldIdxen.map((i) => parseFloat(waarden[i]));
+    if (!id || getallen.some((n) => isNaN(n))) return;
+    const t = Date.parse(waarden[tijdIdx]);
+    if (isNaN(t)) return;
+    if (!perKast.has(id)) perKast.set(id, []);
+    perKast.get(id).push([t, getallen.reduce((a, b) => a + b, 0) / getallen.length]);
+  });
+  return Array.from(perKast, ([id, punten]) => ({ id, punten }));
+}
+
+app.get('/api/grafieken/tijdreeks', async (req, res) => {
+  const { ids, metric, fase, van, tot, editie } = req.query;
+  const idLijst = (ids || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!idLijst.length) return res.status(400).json({ error: 'ids is verplicht (komma-gescheiden)' });
+  if (!idLijst.every(veiligeTagWaarde)) return res.status(400).json({ error: 'ongeldig id in ids' });
+  if (!['a', 'b', 'c', 'totaal'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
+    return res.status(400).json({ error: 'van en tot zijn verplicht en moeten geldige datums zijn' });
+  }
+  const veldinfo = grafiekenVeldenVoorMetric(metric, fase);
+  if (!veldinfo) return res.status(400).json({ error: 'ongeldige metric' });
+  let editieFilter = '';
+  if (editie && editie !== '__alle__') {
+    const veiligeEditie = veiligeTagWaarde(editie);
+    if (!veiligeEditie) return res.status(400).json({ error: 'ongeldige editie' });
+    editieFilter = '  |> filter(fn: (r) => r.editie == "' + veiligeEditie + '")\n';
+  }
+
+  const vanMs = new Date(van).getTime(), totMs = new Date(tot).getTime();
+  const venster = grafiekenVensterVoorPeriode(vanMs, totMs);
+  const veldFilter = veldinfo.velden.map((v) => 'r._field == "' + v + '"').join(' or ');
+  const kastFilter = idLijst.map((id) => 'r.kast == "' + id + '"').join(' or ');
+
+  const flux =
+    'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+    '  |> range(start: ' + new Date(vanMs).toISOString() + ', stop: ' + new Date(totMs).toISOString() + ')\n' +
+    '  |> filter(fn: (r) => r._measurement == "' + veldinfo.measurement + '")\n' +
+    '  |> filter(fn: (r) => ' + veldFilter + ')\n' +
+    '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+    editieFilter +
+    '  |> group(columns: ["kast", "_field"])\n' +
+    '  |> aggregateWindow(every: ' + venster + ', fn: mean, createEmpty: false)\n' +
+    '  |> group(columns: ["kast"])\n' +
+    '  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")\n' +
+    '  |> sort(columns: ["_time"])\n' +
+    '  |> keep(columns: ' + JSON.stringify(['_time', 'kast', ...veldinfo.velden]) + ')';
+
+  try {
+    const csv = await influxQueryPlatteCsv(flux);
+    res.json({ series: grafiekenCsvNaarSeries(csv, veldinfo.velden) });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 // haalt één paneel als PDF op bij Grafana's eigen /render-endpoint (via grafana-image-renderer) —
 // ondanks een misleidende "image/png"-Content-Type-header staat er een echte PDF in de body
 // (geverifieerd op byte-niveau tijdens implementatie)

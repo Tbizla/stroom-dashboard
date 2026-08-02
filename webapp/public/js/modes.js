@@ -10,9 +10,10 @@ import { applyZoom, fitToScreen } from './zoom.js';
 import { zoomLevels } from './state.js';
 import { t } from './i18n.js';
 import { toonOverzicht } from './overzicht.js';
+import { toonGrafieken } from './grafieken.js';
 
 function setActiveModeButton(id){
-  ['modeBeheer','modeCal','modeSchema','modeLive','modeTest','modeRapportages'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
+  ['modeBeheer','modeCal','modeSchema','modeLive','modeTest','modeRapportages','modeGrafieken'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
   // geen kaart meer zichtbaar (of niet meer Live) na een tabwissel, dus een eventueel open
   // MQTT-databalonnetje heeft dan geen ankerpunt meer
   if(state.openPopupKastId){ state.openPopupKastId = null; renderKastPopup(); }
@@ -26,6 +27,7 @@ document.getElementById('modeBeheer').onclick = ()=>{
   document.getElementById('mainBody').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('beheerPanel').style.display='flex';
   renderBeheer();
 };
@@ -38,6 +40,7 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('mapwrap').style.display='flex';
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
@@ -53,6 +56,7 @@ document.getElementById('modeSchema').onclick = ()=>{
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('mapwrap').style.display='none';
   document.getElementById('schemaWrap').style.display='flex';
   document.getElementById('mainBody').style.display='flex';
@@ -68,6 +72,7 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('mapwrap').style.display='flex';
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
@@ -84,6 +89,7 @@ document.getElementById('modeTest').onclick = ()=>{
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('mainBody').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('testPanel').style.display='flex';
   refreshSimStatus();
 };
@@ -111,8 +117,23 @@ document.getElementById('modeRapportages').onclick = ()=>{
   document.getElementById('mainBody').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='flex';
   toonRapportSubnav(state.rapportSubnav);
+};
+
+document.getElementById('modeGrafieken').onclick = ()=>{
+  state.mode='grafieken';
+  setActiveModeButton('modeGrafieken');
+  document.getElementById('liveControls').style.display='none';
+  document.getElementById('calControls').style.display='none';
+  document.getElementById('calbar').style.display='none';
+  document.getElementById('mainBody').style.display='none';
+  document.getElementById('beheerPanel').style.display='none';
+  document.getElementById('testPanel').style.display='none';
+  document.getElementById('rapportagesPanel').style.display='none';
+  document.getElementById('grafiekenPanel').style.display='flex';
+  toonGrafieken();
 };
 
 document.getElementById('loadTestSimpelBtn').onclick = async ()=>{
