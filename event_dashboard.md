@@ -296,6 +296,17 @@ Grafana:
   serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
   (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
   `topology_edges` en de naamsbotsing-check)
+- **Automatische back-up**: geplande, onbeheerde variant tussen "Back-up maken" en "Back-up
+  herstellen" — aan/uit-toggle, frequentie (elk uur/dagelijks/wekelijks + tijdstip), optioneel
+  meetdata meenemen, en één of meer bestemmingen tegelijk (lokaal pad op de server, extern via
+  SFTP, extern via een S3-compatible endpoint — MinIO/Backblaze B2/Wasabi enz.), elk met een eigen
+  bewaartermijn ("bewaar laatste N"). Rotatie gebeurt altijd pas ná een bevestigd geslaagde nieuwe
+  back-up (nooit oudere back-ups wissen vóór de nieuwe veilig staat) en een geplande run wacht op
+  een eventuele handmatige back-up-/restore-/PDF-rapportflow i.p.v. er gelijktijdig mee te draaien.
+  Statusregel toont de laatste run (geslaagd/deels mislukt/mislukt, per bestemming) en de
+  eerstvolgende geplande run. Bij een mislukte of deels mislukte run gaat er, als het
+  Alert-notificatiekanaal geconfigureerd is, een bericht naar alle aangezette kanalen — zonder
+  kanaal blijft het bij de statusregel
 
 **Grafieken-tabblad** (zesde tab in de mode-switch, naast Beheer/Kalibreren/Schema/Live/
 Rapportages) — vrije ad-hoc analyse zonder naar Grafana te hoeven wisselen:

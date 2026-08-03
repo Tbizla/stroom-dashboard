@@ -183,6 +183,10 @@ const NOTIFICATIE_KANALEN_DEFAULT = {
 function readInstellingen() {
   const data = JSON.parse(fs.readFileSync(INSTELLINGEN_FILE, 'utf8'));
   if (!data.notificaties) data.notificaties = JSON.parse(JSON.stringify(NOTIFICATIE_KANALEN_DEFAULT));
+  // AUTOMATISCHE_BACKUP_DEFAULT staat verderop in dit bestand (bij de automatische-back-up-sectie)
+  // maar is hier al bruikbaar: deze functie wordt pas ná volledige module-evaluatie aangeroepen
+  // (route-handlers/async callbacks), niet tijdens het top-level inladen zelf
+  if (!data.automatischeBackup) data.automatischeBackup = JSON.parse(JSON.stringify(AUTOMATISCHE_BACKUP_DEFAULT));
   return data;
 }
 function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
@@ -1485,10 +1489,10 @@ async function genereerMeetdataBestanden(meetdataPeriode) {
   return { csv, lp };
 }
 
-async function voerBackupGeneratieUit(meetdataPeriode) {
-  const bestandsnaam = 'backup_stroom-dashboard_' + Date.now() + '.zip';
-  const bestandspad = path.join(BACKUP_DIR, bestandsnaam);
-
+// herbruikbaar tussen de handmatige back-up-flow hieronder en de automatische-back-up-scheduler
+// (zie provisionAutomatischeBackup() verderop) — bouwt de zip op het opgegeven pad, geen jobstatus-
+// bijwerking hier (die is voor de twee aanroepers verschillend: backupJob vs. autoBackupStatus)
+async function bouwBackupZip(bestandspad, meetdataPeriode) {
   await new Promise((resolve, reject) => {
     const output = fs.createWriteStream(bestandspad);
     const archive = archiver('zip', { zlib: { level: 9 } });
@@ -1514,7 +1518,12 @@ async function voerBackupGeneratieUit(meetdataPeriode) {
       archive.finalize();
     });
   });
+}
 
+async function voerBackupGeneratieUit(meetdataPeriode) {
+  const bestandsnaam = 'backup_stroom-dashboard_' + Date.now() + '.zip';
+  const bestandspad = path.join(BACKUP_DIR, bestandsnaam);
+  await bouwBackupZip(bestandspad, meetdataPeriode);
   const stat = fs.statSync(bestandspad);
   backupJob = { ...backupJob, status: 'klaar', klaarOp: new Date().toISOString(), bestandsnaam, bestandsgrootte: stat.size };
 }
@@ -1679,6 +1688,234 @@ app.post('/api/backup/herstel', metUploadFoutafhandeling(zipUpload.single('backu
 });
 
 app.get('/api/backup/herstel/status', (req, res) => res.json(herstelJob));
+
+// ---------- Automatische back-up: geplande, onbeheerde variant van de handmatige back-up
+// hierboven — zelfde zip-inhoud (bouwBackupZip), automatisch getriggerd i.p.v. met een klik. Zie
+// specs/automatische-backup-plan.md. ----------
+const AUTOMATISCHE_BACKUP_DEFAULT = {
+  aan: false, frequentie: 'dagelijks', dag: 'maandag', tijdstip: '03:00', meetdataMeenemen: true,
+  bestemmingen: {
+    lokaal: { aan: false, pad: '', bewaarAantal: '14' },
+    sftp: { aan: false, host: '', poort: '22', gebruiker: '', wachtwoord: '', doelmap: '', bewaarAantal: '30' },
+    s3: { aan: false, endpoint: '', bucket: '', access_key: '', secret_key: '', prefix: '', bewaarAantal: '30' },
+  },
+};
+function saniteerAutomatischeBackup(body) {
+  const bron = body || {};
+  const schoon = {
+    aan: !!bron.aan,
+    frequentie: ['elk_uur', 'dagelijks', 'wekelijks'].includes(bron.frequentie) ? bron.frequentie : AUTOMATISCHE_BACKUP_DEFAULT.frequentie,
+    dag: bron.dag || AUTOMATISCHE_BACKUP_DEFAULT.dag,
+    tijdstip: /^\d{2}:\d{2}$/.test(bron.tijdstip) ? bron.tijdstip : AUTOMATISCHE_BACKUP_DEFAULT.tijdstip,
+    meetdataMeenemen: bron.meetdataMeenemen !== false,
+    bestemmingen: {},
+  };
+  Object.keys(AUTOMATISCHE_BACKUP_DEFAULT.bestemmingen).forEach((id) => {
+    const defaults = AUTOMATISCHE_BACKUP_DEFAULT.bestemmingen[id];
+    const bestemmingBron = (bron.bestemmingen || {})[id] || {};
+    const schoneBestemming = { aan: !!bestemmingBron.aan };
+    Object.keys(defaults).forEach((key) => {
+      if (key === 'aan') return;
+      schoneBestemming[key] = bestemmingBron[key] != null ? String(bestemmingBron[key]) : defaults[key];
+    });
+    schoon.bestemmingen[id] = schoneBestemming;
+  });
+  return schoon;
+}
+
+// alleen niet-persistent (zelfde soort in-memory jobstatus als backupJob/rapportJob/herstelJob) —
+// wordt bij elke wijziging van de instelling en na elke run herberekend
+let autoBackupVolgendeRun = null;
+let autoBackupStatus = { laatsteRunOp: null, laatsteRunResultaat: null, laatsteRunDetails: null, volgendeGeplandOp: null };
+
+const DAGEN_VOLGORDE = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+function berekenVolgendeRunTijd(cfg, vanaf) {
+  const nu = vanaf || new Date();
+  if (cfg.frequentie === 'elk_uur') {
+    const next = new Date(nu);
+    next.setMinutes(0, 0, 0);
+    next.setHours(next.getHours() + 1);
+    return next;
+  }
+  const [uur, minuut] = (cfg.tijdstip || '03:00').split(':').map(Number);
+  if (cfg.frequentie === 'dagelijks') {
+    const next = new Date(nu);
+    next.setHours(uur, minuut, 0, 0);
+    if (next <= nu) next.setDate(next.getDate() + 1);
+    return next;
+  }
+  // wekelijks
+  const doelDag = DAGEN_VOLGORDE.indexOf(cfg.dag || 'maandag');
+  const next = new Date(nu);
+  next.setHours(uur, minuut, 0, 0);
+  let deltaDagen = (doelDag - next.getDay() + 7) % 7;
+  if (deltaDagen === 0 && next <= nu) deltaDagen = 7;
+  next.setDate(next.getDate() + deltaDagen);
+  return next;
+}
+function herbereikenAutoBackupSchema() {
+  const { automatischeBackup } = readInstellingen();
+  autoBackupVolgendeRun = automatischeBackup && automatischeBackup.aan ? berekenVolgendeRunTijd(automatischeBackup, new Date()) : null;
+  autoBackupStatus.volgendeGeplandOp = autoBackupVolgendeRun ? autoBackupVolgendeRun.toISOString() : null;
+}
+
+async function verstuurNaarLokaal(cfg, bestandspad, bestandsnaam) {
+  if (!cfg.pad) throw new Error('pad is verplicht');
+  fs.mkdirSync(cfg.pad, { recursive: true });
+  fs.copyFileSync(bestandspad, path.join(cfg.pad, bestandsnaam));
+}
+async function roteerLokaal(cfg) {
+  const N = Number(cfg.bewaarAantal) || 14;
+  const bestanden = fs.readdirSync(cfg.pad).filter((f) => f.startsWith('auto-backup_')).sort();
+  bestanden.slice(0, Math.max(0, bestanden.length - N)).forEach((f) => fs.unlinkSync(path.join(cfg.pad, f)));
+}
+
+function sftpVerbindingsopties(cfg) {
+  return { host: cfg.host, port: cfg.poort ? Number(cfg.poort) : 22, username: cfg.gebruiker, password: cfg.wachtwoord };
+}
+async function verstuurNaarSftp(cfg, bestandspad, bestandsnaam) {
+  if (!cfg.host || !cfg.gebruiker) throw new Error('host en gebruiker zijn verplicht');
+  const SftpClient = require('ssh2-sftp-client');
+  const sftp = new SftpClient();
+  const doelmap = (cfg.doelmap || '/').replace(/\/+$/, '') || '/';
+  try {
+    await sftp.connect(sftpVerbindingsopties(cfg));
+    await sftp.mkdir(doelmap, true).catch(() => {}); // bestaat de map al, dan is dat prima
+    await sftp.put(bestandspad, doelmap + '/' + bestandsnaam);
+  } finally {
+    await sftp.end().catch(() => {});
+  }
+}
+async function roteerSftp(cfg) {
+  const SftpClient = require('ssh2-sftp-client');
+  const sftp = new SftpClient();
+  const doelmap = (cfg.doelmap || '/').replace(/\/+$/, '') || '/';
+  const N = Number(cfg.bewaarAantal) || 30;
+  try {
+    await sftp.connect(sftpVerbindingsopties(cfg));
+    const lijst = (await sftp.list(doelmap)).filter((f) => f.name.startsWith('auto-backup_')).sort((a, b) => a.name.localeCompare(b.name));
+    for (const f of lijst.slice(0, Math.max(0, lijst.length - N))) await sftp.delete(doelmap + '/' + f.name);
+  } finally {
+    await sftp.end().catch(() => {});
+  }
+}
+
+function s3Client(cfg) {
+  const { Client } = require('minio');
+  const zonderProtocol = cfg.endpoint.replace(/^https?:\/\//, '');
+  const [host, poortStr] = zonderProtocol.split(':');
+  const useSSL = !cfg.endpoint.startsWith('http://');
+  return new Client({ endPoint: host, port: poortStr ? Number(poortStr) : (useSSL ? 443 : 80), useSSL, accessKey: cfg.access_key, secretKey: cfg.secret_key });
+}
+function s3ObjectNaam(cfg, bestandsnaam) { return (cfg.prefix ? cfg.prefix.replace(/\/+$/, '') + '/' : '') + bestandsnaam; }
+async function verstuurNaarS3(cfg, bestandspad, bestandsnaam) {
+  if (!cfg.endpoint || !cfg.bucket) throw new Error('endpoint en bucket zijn verplicht');
+  await s3Client(cfg).fPutObject(cfg.bucket, s3ObjectNaam(cfg, bestandsnaam), bestandspad);
+}
+async function roteerS3(cfg) {
+  const client = s3Client(cfg);
+  const prefix = cfg.prefix ? cfg.prefix.replace(/\/+$/, '') + '/' : '';
+  const N = Number(cfg.bewaarAantal) || 30;
+  const objecten = [];
+  await new Promise((resolve, reject) => {
+    const stream = client.listObjectsV2(cfg.bucket, prefix, false);
+    stream.on('data', (obj) => { if (obj.name && obj.name.slice(prefix.length).startsWith('auto-backup_')) objecten.push(obj.name); });
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+  objecten.sort();
+  const teVerwijderen = objecten.slice(0, Math.max(0, objecten.length - N));
+  if (teVerwijderen.length) await client.removeObjects(cfg.bucket, teVerwijderen);
+}
+
+const AUTOMATISCHE_BACKUP_BESTEMMINGEN = {
+  lokaal: { verstuur: verstuurNaarLokaal, roteer: roteerLokaal },
+  sftp: { verstuur: verstuurNaarSftp, roteer: roteerSftp },
+  s3: { verstuur: verstuurNaarS3, roteer: roteerS3 },
+};
+
+async function stuurAutoBackupMisluktNotificatie(onderwerp, tekst) {
+  const { notificaties } = readInstellingen();
+  if (!notificaties) return;
+  for (const kanaal of Object.keys(NOTIFICATIE_KANALEN_DEFAULT)) {
+    const cfg = notificaties[kanaal];
+    if (!cfg || !cfg.aan) continue;
+    try { await stuurNotificatie(kanaal, cfg, onderwerp, tekst); }
+    catch (e) { console.error('kon back-up-mislukt-melding niet versturen via ' + kanaal + ':', e.message); }
+  }
+}
+
+async function voerAutomatischeBackupUit(cfg) {
+  const bestandsnaam = 'auto-backup_stroom-dashboard_' + Date.now() + '.zip';
+  const bestandspad = path.join(BACKUP_DIR, bestandsnaam);
+  try {
+    const meetdataPeriode = cfg.meetdataMeenemen ? { van: '1970-01-01T00:00:00.000Z', tot: new Date().toISOString() } : null;
+    await bouwBackupZip(bestandspad, meetdataPeriode);
+
+    const resultaten = {};
+    for (const [id, { verstuur, roteer }] of Object.entries(AUTOMATISCHE_BACKUP_BESTEMMINGEN)) {
+      const bestemmingCfg = cfg.bestemmingen[id];
+      if (!bestemmingCfg || !bestemmingCfg.aan) continue;
+      try {
+        await verstuur(bestemmingCfg, bestandspad, bestandsnaam);
+        // rotatie ALTIJD pas na een bevestigd geslaagde nieuwe back-up — nooit oude back-ups
+        // opschonen vóór de nieuwe veilig staat, anders zit je zonder geldige back-up als de
+        // rotatie-stap zelf iets zou raken (zie "Betrouwbaarheid" in de spec)
+        await roteer(bestemmingCfg);
+        resultaten[id] = { ok: true };
+      } catch (e) {
+        resultaten[id] = { ok: false, foutmelding: e.message };
+      }
+    }
+
+    const aantalBestemmingen = Object.keys(resultaten).length;
+    const alleGeslaagd = aantalBestemmingen > 0 && Object.values(resultaten).every((r) => r.ok);
+    autoBackupStatus.laatsteRunOp = new Date().toISOString();
+    if (aantalBestemmingen === 0) {
+      autoBackupStatus.laatsteRunResultaat = 'fout';
+      autoBackupStatus.laatsteRunDetails = 'geen bestemming aangezet';
+      await stuurAutoBackupMisluktNotificatie('Stroom-Dashboard: automatische back-up mislukt', 'De automatische back-up is niet verstuurd: geen enkele bestemming staat aan.');
+    } else if (alleGeslaagd) {
+      autoBackupStatus.laatsteRunResultaat = 'ok';
+      autoBackupStatus.laatsteRunDetails = resultaten;
+    } else {
+      autoBackupStatus.laatsteRunResultaat = 'deels_mislukt';
+      autoBackupStatus.laatsteRunDetails = resultaten;
+      const mislukteBestemmingen = Object.entries(resultaten).filter(([, r]) => !r.ok).map(([id, r]) => id + ': ' + r.foutmelding).join('; ');
+      await stuurAutoBackupMisluktNotificatie('Stroom-Dashboard: automatische back-up deels mislukt', mislukteBestemmingen);
+    }
+  } catch (e) {
+    autoBackupStatus.laatsteRunOp = new Date().toISOString();
+    autoBackupStatus.laatsteRunResultaat = 'fout';
+    autoBackupStatus.laatsteRunDetails = e.message;
+    console.error('automatische back-up mislukt:', e.message);
+    await stuurAutoBackupMisluktNotificatie('Stroom-Dashboard: automatische back-up mislukt', e.message);
+  } finally {
+    // het lokale scratch-bestand in BACKUP_DIR is alleen een tussenstap voor het versturen naar de
+    // bestemmingen hierboven (die zelf hun eigen kopie/rotatie beheren) — hier niet laten opstapelen
+    fs.unlink(bestandspad, () => {});
+  }
+}
+
+setInterval(async () => {
+  if (!autoBackupVolgendeRun || Date.now() < autoBackupVolgendeRun.getTime()) return;
+  const { automatischeBackup } = readInstellingen();
+  if (!automatischeBackup || !automatischeBackup.aan) { herbereikenAutoBackupSchema(); return; }
+  // niet gelijktijdig met een handmatige back-up-/restore-/PDF-rapportflow — deze tick overslaan
+  // en op de eerstvolgende tick opnieuw proberen i.p.v. de geplande run te laten vervallen
+  if (backupJob.status === 'bezig' || herstelJob.status === 'bezig' || rapportJob.status === 'bezig') return;
+  await voerAutomatischeBackupUit(automatischeBackup);
+  herbereikenAutoBackupSchema();
+}, 15000);
+herbereikenAutoBackupSchema(); // pikt een al aangezette planning weer op bij webapp-herstart
+
+app.put('/api/instellingen/automatische-backup', (req, res) => {
+  const automatischeBackup = saniteerAutomatischeBackup(req.body);
+  writeInstellingen({ ...readInstellingen(), automatischeBackup });
+  herbereikenAutoBackupSchema();
+  res.json({ ok: true });
+});
+app.get('/api/backup/automatisch/status', (req, res) => res.json(autoBackupStatus));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log('Stroom-Dashboard luistert op poort ' + PORT));

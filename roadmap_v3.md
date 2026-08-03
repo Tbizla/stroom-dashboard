@@ -51,13 +51,15 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       knikpunt toevoegen (dubbelklik op een lijnsegment of via het rechtsklik-menu), verslepen,
       verwijderen (dubbelklik op het knikpunt) of de hele lijn resetten (rechtsklik-menu). Op Live
       volgt de lijn dezelfde route, read-only. Zie event_dashboard.md, Kalibreren-tabblad.
-- [ ] **Automatische back-up** (lokaal en/of naar een externe server) — vult de bestaande handmatige
-      Back-up-subtab aan met een geplande, onbeheerde variant. Aangevuld met twee
-      betrouwbaarheidseisen: rotatie mag pas na een bevestigd geslaagde nieuwe back-up (nooit oude
-      back-ups wissen vóór de nieuwe veilig staat), en een geplande run mag niet gelijktijdig met
-      een handmatige back-up/restore draaien — plus een koppeling met het notificatiekanaal bij
-      herhaald mislukken. Spec + mockup: zie
-      [specs/automatische-backup-plan.md](specs/automatische-backup-plan.md).
+- [x] **Automatische back-up** (lokaal en/of naar een externe server). Afgerond — gebouwd conform
+      [specs/automatische-backup-plan.md](specs/automatische-backup-plan.md): aan/uit, frequentie
+      (elk uur/dagelijks/wekelijks), meetdata optioneel meenemen, en tegelijk aan te zetten
+      bestemmingen (lokaal, SFTP, S3-compatible) met een eigen bewaartermijn per bestemming.
+      Rotatie gebeurt pas ná een bevestigd geslaagde nieuwe back-up en een geplande run wacht op een
+      lopende handmatige back-up-/restore-/PDF-rapportflow i.p.v. gelijktijdig te draaien. Mislukte
+      runs sturen een bericht naar de aangezette alert-notificatiekanalen. Geverifieerd tegen echte
+      lokale/SFTP-/S3(MinIO)-testbestemmingen, inclusief rotatie na vier opeenvolgende runs. Zie
+      event_dashboard.md, Back-up-subtab.
 - [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond en besluiten met Mike bevestigd
       (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst).
       Drie mockups (login-scherm, HQ-locatiesoverzicht, accounts-beheerscherm) plus een technisch-

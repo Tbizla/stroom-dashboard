@@ -12,6 +12,7 @@ import './render-schema.js';
 import './render-beheer.js';
 import { initRapport } from './rapport.js';
 import { initBackup } from './backup.js';
+import { initAutomatischeBackup } from './automatische-backup.js';
 import { initInstellingen } from './instellingen.js';
 import { initNotificaties } from './notificaties.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
@@ -78,6 +79,7 @@ document.getElementById('importFile').onchange = (ev)=>{
 
 initRapport();
 initBackup();
+initAutomatischeBackup();
 initInstellingen();
 initNotificaties();
 
