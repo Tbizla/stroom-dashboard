@@ -1978,4 +1978,15 @@ app.put('/api/instellingen/automatische-backup', (req, res) => {
 app.get('/api/backup/automatisch/status', (req, res) => res.json(autoBackupStatus));
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log('Stroom-Dashboard luistert op poort ' + PORT));
+const HOST_LAN_IP = process.env.HOST_LAN_IP || '';
+app.listen(PORT, () => {
+  console.log('Stroom-Dashboard luistert op poort ' + PORT);
+  console.log('Open in de browser:');
+  console.log('  http://localhost:' + PORT + '  (op deze machine)');
+  if (HOST_LAN_IP) {
+    console.log('  http://' + HOST_LAN_IP + ':' + PORT + '  (vanaf een ander apparaat op hetzelfde netwerk)');
+  } else {
+    console.log('  Netwerk-IP niet gedetecteerd — start via start.sh/start.ps1 voor automatische detectie,');
+    console.log('  of zoek het handmatig op met `ip addr` (Linux) / `ipconfig` (Windows).');
+  }
+});

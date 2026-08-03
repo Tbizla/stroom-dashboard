@@ -93,6 +93,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - HOST_LAN_IP=${HOST_LAN_IP:-}
       - INFLUX_URL=http://influxdb:8086
       - INFLUX_TOKEN=${INFLUX_TOKEN}
       - INFLUX_ORG=site
