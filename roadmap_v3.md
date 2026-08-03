@@ -36,8 +36,9 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 3.
 - [ ] **Generator-EM-rework-vervolg: native telemetrie-protocolintegratie.** Bewust uitgesteld
       tijdens de Generator-EM-rework — generators die niet via Shelly+CT-klem maar via een eigen
-      protocol uit te lezen zijn. Conceptspec (CAN-bus/SAE J1939, nog niet besproken/geaccordeerd)
-      geconsolideerd in [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 4.
+      protocol uit te lezen zijn. Bevestigd: er zijn CAN-bus/J1939-generators in het park, maar
+      **on hold** wegens drukte — geen vervolgstappen nu. Conceptspec geconsolideerd in
+      [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 4.
 - [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
       aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
       Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
@@ -50,28 +51,35 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       verwijderen (dubbelklik op het knikpunt) of de hele lijn resetten (rechtsklik-menu). Op Live
       volgt de lijn dezelfde route, read-only. Zie event_dashboard.md, Kalibreren-tabblad.
 - [ ] **Automatische back-up** (lokaal en/of naar een externe server) — vult de bestaande handmatige
-      Back-up-subtab aan met een geplande, onbeheerde variant. Spec + mockup: zie
+      Back-up-subtab aan met een geplande, onbeheerde variant. Aangevuld met twee
+      betrouwbaarheidseisen: rotatie mag pas na een bevestigd geslaagde nieuwe back-up (nooit oude
+      back-ups wissen vóór de nieuwe veilig staat), en een geplande run mag niet gelijktijdig met
+      een handmatige back-up/restore draaien — plus een koppeling met het notificatiekanaal bij
+      herhaald mislukken. Spec + mockup: zie
       [specs/automatische-backup-plan.md](specs/automatische-backup-plan.md).
 - [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond en besluiten met Mike bevestigd
       (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst).
-      Volledig uitgewerkt: drie mockups (login-scherm, HQ-locatiesoverzicht, en het eerder
-      ontbrekende accounts-beheerscherm) plus een technisch-fundament-sectie met de functionele
-      eisen voor Code (accounts-opslag, wachtwoord-hashing, sessiemechanisme, HQ-status-ophaal).
-      Wacht nog op jouw akkoord op de mockups vóór het naar Code gaat. Zie
-      [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md).
-- [ ] **Vinkje "meetdata beschikbaar" per generator/lid.** Sommige generators hebben geen sensors, of
-      (nog) geen toegang om er een Shelly aan te hangen — nu blijkt dat alleen impliciet uit een leeg
-      rating (A)-veld, zonder duidelijke reden/label in de UI. Expliciet vinkje in Beheer + een
-      herkenbaar "geen sensor"-label op de plekken die nu gewoon niets tonen (Live-zijlijst,
-      aside-detail, schema) i.p.v. stil weglaten — zie
-      [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md).
-- [ ] **Grafieken-tabblad (vrije ad-hoc analyse).** Nieuw zesde hoofdtabblad in de mode-switch,
-      naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators, metric
-      (stroom/spanning/vermogen/energie), fase en periode/editie selecteren, zonder naar Grafana
-      te hoeven wisselen voor een snelle ad-hoc vraag. Vijf grafiektypes (lijn, staaf, Sankey,
-      taart, heatmap) plus een live-modus met schuifvenster. Volledig uitgewerkt, incl. technisch
-      fundament (query-downsampling, tijdzone, foutafhandeling) en een deelbare link per grafiek.
-      Spec + mockup: zie [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md).
+      Drie mockups (login-scherm, HQ-locatiesoverzicht, accounts-beheerscherm) plus een technisch-
+      fundament-sectie staan klaar. **Belangrijke bevinding (3 augustus 2026)**: naast de
+      login-laag (bevinding #1) is er een tweede blokkerende voorwaarde ontdekt — het
+      Live-tabblad gebruikt een apart, volledig onbeveiligd MQTT-websocketkanaal
+      (`allow_anonymous true`, geen auto-adresdetectie) dat een reverse-proxy naar de webapp
+      alleen niet afdekt. Groter technisch werk dan aanvankelijk gedacht, geen kleinste stapje
+      meer op de bouwvolgorde-lijst. Wacht op jouw akkoord op de mockups vóór het naar Code gaat.
+      Zie [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md).
+- [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
+      [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete
+      "Heeft sensor"-checkbox naast het rating-veld in Beheer (generatorrij + ledentabel), en een
+      herkenbaar grijs "geen sensor"-label op de vier plekken die voorheen stil niets toonden
+      (Live-zijlijst, aside-detail, schema-tabblad, kastpopup-ledentabel). Zie event_dashboard.md,
+      Topologiebeheer (Beheer-tabblad).
+- [x] **Grafieken-tabblad (vrije ad-hoc analyse).** Afgerond en geïmplementeerd. Zesde
+      hoofdtabblad in de mode-switch, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf
+      kasten/generators, metric (stroom/spanning/vermogen/energie), fase en periode/editie
+      selecteren, zonder naar Grafana te hoeven wisselen voor een snelle ad-hoc vraag. Vijf
+      grafiektypes (lijn, staaf, Sankey, taart, heatmap) plus een live-modus met schuifvenster.
+      Spec + mockup (voor het historisch overzicht): zie
+      [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md).
       **Eerste bouwstap afgerond**: het tabblad zelf, checklist/metric/fase/periode/editie-
       selectie, het lijndiagram (historisch, server-side downsampling), PNG-download en de
       deelbare link — volgens de "Lijn eerst"-bouwvolgorde uit de spec. Nog te bouwen: staaf-,
@@ -102,9 +110,18 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       losgetrokken, generator uitgevallen) is heel iets anders dan een langzame stijging naar de
       rating, maar krijgt nu dezelfde amber/rood-behandeling. Spec + mockup: zie
       [specs/anomaly-detectie-plan.md](specs/anomaly-detectie-plan.md).
-- [ ] **QR-code per kast.** Sticker op de kast zelf, scannen opent direct de databallon/status,
-      zonder te zoeken in de zij-lijst. Handig voor rondlopend personeel. Spec + mockup: zie
+- [ ] **QR-code per kast.** Sticker op de kast zelf, scannen opent direct de status van precies
+      die kast. Onderweg bleek de oorspronkelijke aanname ("Live-modus werkt al op mobiel") niet
+      te kloppen (geverifieerd in de code: vaste 320px-zijlijst, geen responsive CSS, geen
+      touch-events) — daarom nu een eigen lichte mobiele statuspagina i.p.v. de volledige
+      Live-modus opendraaien op een klein scherm. Spec + mockup: zie
       [specs/qr-code-plan.md](specs/qr-code-plan.md).
+- [ ] **Shelly-koppeling: "Open Shelly"-knop.** Aangedragen tijdens het uitwerken van QR-code per
+      kast — een knop bij de kast-/generatorstatus (kastpopup, aside-detail, QR-statuspagina) die
+      direct naar de lokale webinterface van de bijbehorende Shelly linkt. Het `shelly_ip`-veld
+      bestaat al in het datamodel voor kasten maar is nergens bewerkbaar/zichtbaar; voor
+      generators is het nieuw. Spec + mockup: zie
+      [specs/shelly-ip-koppeling-plan.md](specs/shelly-ip-koppeling-plan.md).
 - [ ] **Rolverdeling/rechten.** Nu heeft iedereen die de webapp-URL heeft blijkbaar volledige
       Beheer-rechten. Voor een HQ- of multi-persoon-scenario (zie ook het "toegang van
       buitenaf"-punt) is een viewer/editor-onderscheid relevant. Spec + mockup: zie

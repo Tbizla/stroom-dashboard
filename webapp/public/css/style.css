@@ -140,6 +140,7 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .row .name{flex:1}
 .row .val{font-family:var(--mono);color:var(--text2);font-size:12px}
 .row .sub2{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
+.geen-sensor-label{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
 
 .chev{width:14px;flex-shrink:0;text-align:center;color:var(--text3);font-size:10px;cursor:pointer;user-select:none}
 .genrow .chev{color:var(--accent)}
@@ -197,6 +198,10 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .btable button{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer}
 .btable button:hover{border-color:var(--accent);color:var(--text)}
 .btable button.danger:hover{border-color:var(--red);color:var(--red)}
+.rating-cell{display:flex;align-items:center;gap:6px}
+.rating-cell input[type=checkbox]{width:auto;flex-shrink:0}
+.rating-cell input[type=number]{flex:1;min-width:0}
+.rating-cell input[type=number]:disabled{opacity:.45}
 .addform{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--panel2);padding:10px;border-radius:8px}
 .addform input, .addform select{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:var(--sans)}
 .addform button{background:var(--accent);border:none;color:#0b1210;border-radius:6px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer}

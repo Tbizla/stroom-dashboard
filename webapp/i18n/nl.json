@@ -84,6 +84,7 @@
   "common.download": "Download",
   "common.opnieuwProberen": "Opnieuw proberen",
   "common.toepassen": "Toepassen",
+  "common.geenSensor": "geen sensor",
 
   "header.brokerHostPlaceholder": "broker host",
   "header.brokerPortPlaceholder": "poort",
@@ -187,6 +188,7 @@
   "beheer.typeGroep": "🏭 Groep",
   "beheer.ratingTitle": "Alleen invullen als deze generator/groep zelf ook uitgelezen wordt (native of via Shelly+CT-klem)",
   "beheer.ledenRatingTitle": "Alleen invullen als dit lid zelf ook uitgelezen wordt (eigen Shelly+CT-klem)",
+  "beheer.heeftSensorTitle": "Heeft sensor — aanvinken als er meetdata van deze generator/dit lid beschikbaar is",
   "beheer.soortLeeg": "—",
   "beheer.soortParallel": "Parallel (load-sharing)",
   "beheer.soortBackup": "N+1 backup (auto-start)",

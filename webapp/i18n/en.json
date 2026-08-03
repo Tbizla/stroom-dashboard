@@ -84,6 +84,7 @@
   "common.download": "Download",
   "common.opnieuwProberen": "Try again",
   "common.toepassen": "Apply",
+  "common.geenSensor": "no sensor",
 
   "header.brokerHostPlaceholder": "broker host",
   "header.brokerPortPlaceholder": "port",
@@ -187,6 +188,7 @@
   "beheer.typeGroep": "🏭 Group",
   "beheer.ratingTitle": "Only fill in if this generator/group is itself metered too (native or via Shelly+CT clamp)",
   "beheer.ledenRatingTitle": "Only fill in if this member is itself metered too (its own Shelly+CT clamp)",
+  "beheer.heeftSensorTitle": "Has sensor — check if metering data is available for this generator/member",
   "beheer.soortLeeg": "—",
   "beheer.soortParallel": "Parallel (load-sharing)",
   "beheer.soortBackup": "N+1 backup (auto-start)",

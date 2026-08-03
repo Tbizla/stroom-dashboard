@@ -269,7 +269,8 @@ export function renderBeheer(){
         '<option value="groep"'+(type==='groep'?' selected':'')+'>'+t('beheer.typeGroep')+'</option>'+
       '</select></td>'+
       '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
-      '<td><input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'"></td>'+
+      '<td class="rating-cell"><input type="checkbox" data-gen-heeft-sensor="'+g.id+'" '+(g.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
+        '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
       '<td>'+aantal+'</td>'+
       '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+'>'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>'+t('beheer.soortLeeg')+'</option>'+
@@ -288,7 +289,8 @@ export function renderBeheer(){
             '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
             '<td><select data-lid-type="'+g.id+'|'+i+'"><option value="generator"'+(l.type!=='batterij'?' selected':'')+'>'+t('beheer.typeGenerator')+'</option><option value="batterij"'+(l.type==='batterij'?' selected':'')+'>'+t('beheer.typeBatterij')+'</option></select></td>'+
             '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
-            '<td><input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'"></td>'+
+            '<td class="rating-cell"><input type="checkbox" data-lid-heeft-sensor="'+g.id+'|'+i+'" '+(l.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
+              '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
             '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
           '</tr>'
         ).join('')+
@@ -327,6 +329,20 @@ export function renderBeheer(){
     try{ await apiCall('/api/generators/'+el.dataset.genRating, 'PUT', {rating_a: el.value}); await loadTopology(); }
     catch(e){ alert(e.message); }
   });
+  // uitvinken wist meteen de rating (opzettelijke "geen sensor"-declaratie, geen halve toestand);
+  // aanvinken opent alleen het invoerveld, de save gebeurt pas via de rating-onchange hierboven
+  // zodra Mike er ook echt een waarde intypt
+  genTable.querySelectorAll('[data-gen-heeft-sensor]').forEach(el=>el.onchange = async ()=>{
+    const id = el.dataset.genHeeftSensor;
+    const ratingInput = genTable.querySelector('[data-gen-rating="'+id+'"]');
+    if(!el.checked){
+      ratingInput.value = ''; ratingInput.disabled = true;
+      try{ await apiCall('/api/generators/'+id, 'PUT', {rating_a: ''}); await loadTopology(); }
+      catch(e){ alert(e.message); }
+    } else {
+      ratingInput.disabled = false; ratingInput.focus();
+    }
+  });
   genTable.querySelectorAll('[data-gen-type]').forEach(el=>el.onchange = async ()=>{
     try{ await apiCall('/api/generators/'+el.dataset.genType, 'PUT', {type: el.value}); await loadTopology(); }
     catch(e){ alert(e.message); }
@@ -359,6 +375,18 @@ export function renderBeheer(){
     const [genId, idx] = el.dataset.lidRating.split('|');
     const leden = huidigeLeden(genId); leden[idx].rating_a = el.value ? Number(el.value) : null;
     await saveLeden(genId, leden);
+  });
+  // zelfde opzettelijke-uitvinken-wist-meteen-patroon als bij data-gen-heeft-sensor hierboven
+  genTable.querySelectorAll('[data-lid-heeft-sensor]').forEach(el=>el.onchange = async ()=>{
+    const [genId, idx] = el.dataset.lidHeeftSensor.split('|');
+    const ratingInput = genTable.querySelector('[data-lid-rating="'+genId+'|'+idx+'"]');
+    if(!el.checked){
+      ratingInput.value = ''; ratingInput.disabled = true;
+      const leden = huidigeLeden(genId); leden[idx].rating_a = null;
+      await saveLeden(genId, leden);
+    } else {
+      ratingInput.disabled = false; ratingInput.focus();
+    }
   });
   genTable.querySelectorAll('[data-lid-del]').forEach(el=>el.onclick = async ()=>{
     const [genId, idx] = el.dataset.lidDel.split('|');

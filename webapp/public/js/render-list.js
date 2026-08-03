@@ -136,6 +136,13 @@ export function renderList(){
     genName.textContent = typeIcon(gen)+' '+gen.naam + ' · ' + gen.vermogen_kva + ' kVA' + (gen.type==='groep' ? ' '+t('aside.ledenSuffix', {n: gen.leden.length}) : '');
     top.appendChild(genName);
 
+    if(gen.rating_a==null){
+      const geenSensor = document.createElement('span');
+      geenSensor.className = 'geen-sensor-label';
+      geenSensor.textContent = t('common.geenSensor');
+      top.appendChild(geenSensor);
+    }
+
     const genVal = document.createElement('div');
     genVal.className = 'val';
     const genMaxFase = maxFaseStroom(liveData[gen.id]);

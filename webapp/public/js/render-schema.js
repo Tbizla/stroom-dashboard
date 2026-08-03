@@ -3,6 +3,7 @@ import { state, zoomLevels } from './state.js';
 import { isGen, statusClass } from './topology.js';
 import { renderList } from './render-list.js';
 import { renderDetail } from './render-detail.js';
+import { t } from './i18n.js';
 
 export function schemaChildrenOf(node){
   return isGen(node)
@@ -101,7 +102,18 @@ export function renderSchema(){
     text.setAttribute('fill', gen ? '#0b1210' : '#e8eaed');
     const naamMetIcon = (!gen && p.node.type==='batterij' ? '🔋 ' : '') + p.node.naam;
     const label = naamMetIcon.length > 18 ? naamMetIcon.slice(0, 17) + '…' : naamMetIcon;
-    text.textContent = label + (p.node.rating_a!=null ? ' (' + p.node.rating_a + 'A)' : '');
+    text.textContent = label;
+    if(p.node.rating_a!=null){
+      text.textContent += ' (' + p.node.rating_a + 'A)';
+    } else if(gen){
+      // alleen generators/groepen/batterijen kunnen een lege rating_a hebben (kasten hebben 'm
+      // altijd verplicht) — expliciete "geen sensor"-notitie i.p.v. de rating-suffix stil weglaten
+      const geenSensorSpan = document.createElementNS('http://www.w3.org/2000/svg','tspan');
+      geenSensorSpan.setAttribute('fill', 'rgba(11,18,16,0.55)');
+      geenSensorSpan.setAttribute('font-size', '9');
+      geenSensorSpan.textContent = ' · ' + t('common.geenSensor');
+      text.appendChild(geenSensorSpan);
+    }
     g.appendChild(text);
 
     schemaSvg.appendChild(g);

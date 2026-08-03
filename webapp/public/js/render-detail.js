@@ -11,7 +11,7 @@ function ledenblokHtml(gen){
   if(gen.type!=='groep' || !gen.leden || !gen.leden.length) return '';
   const rijen = gen.leden.map(lid=>{
     if(lid.rating_a==null){
-      return '<div class="lidrow"><span class="dot2"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val">—</span></div>';
+      return '<div class="lidrow"><span class="dot2"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val geen-sensor-label">'+t('common.geenSensor')+'</span></div>';
     }
     const maxFase = maxFaseStroom(liveData[lid.id]);
     const waarde = maxFase!=null ? maxFase.toFixed(2)+' A · '+Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
@@ -40,6 +40,8 @@ export function metingenHtml(node, d){
     html += '<div class="barwrap"><div class="bar" style="width:'+pct+'%;background:'+cls+'"></div></div>';
   } else if(maxFase!=null){
     html += '<div class="metric"><span class="k">'+t('detail.belasting')+'</span><span>'+t('detail.geenRatingIngesteld')+'</span></div>';
+  } else {
+    html += '<div class="metric"><span class="k">'+t('detail.belasting')+'</span><span class="geen-sensor-label">'+t('common.geenSensor')+'</span></div>';
   }
   return html;
 }

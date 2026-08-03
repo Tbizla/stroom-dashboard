@@ -68,6 +68,13 @@ zetten zonder code aan te passen.
 - Automatisch gegenereerde `mqtt_topic_prefix` per kast, direct bruikbaar in de Shelly-config
 - Generators/groepen kunnen optioneel een rating (A) per fase krijgen, voor de generators die ook
   echt uitgelezen worden — zonder rating gewoon een topologie-plek zonder status/belastingberekening
+- Expliciete **"Heeft sensor"-checkbox** naast het rating-veld van elke generator/groep en elk lid
+  van een groep (kasten hebben altijd verplicht een rating, dus geen checkbox nodig): uitgevinkt
+  (default) grijst het rating-veld uit en wist een eventuele waarde, aangevinkt maakt het weer
+  invulbaar. Puur een opzettelijke UI-bevestiging bovenop het bestaande `rating_a`-veld (geen nieuw
+  databaseveld) — zodat "bewust geen sensor" onderscheiden is van "per ongeluk leeg gelaten". Overal
+  waar tot nu toe stil niets werd getoond bij een ontbrekende rating (Live-zijlijst, aside-detail,
+  schema-tabblad, kastpopup-ledentabel) staat nu een herkenbaar grijs "geen sensor"-label
 - Evenementlogo uploaden, zichtbaar in de header. Logo- en plattegronduploads zijn beperkt tot
   .png/.bmp/.svg, gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen de
   bestandsnaam), zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
@@ -277,3 +284,23 @@ Grafana:
   serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
   (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
   `topology_edges` en de naamsbotsing-check)
+
+**Grafieken-tabblad** (zesde tab in de mode-switch, naast Beheer/Kalibreren/Schema/Live/
+Rapportages) — vrije ad-hoc analyse zonder naar Grafana te hoeven wisselen:
+- Linkerkolom met dataselectie: kasten/generators (doorzoekbare, aan-/uitvinkbare lijst, meerdere
+  tegelijk), metric (stroom/spanning/vermogen/energie), fase (A/B/C/totaal), periode (hele
+  evenement/laatste 24u/aangepast/live) en editie(s) — bij meerdere edities schakelt de x-as om
+  naar tijd-sinds-start-van-de-editie zodat de curves over elkaar te leggen zijn
+- Vijf grafiektypes via een knoppenrij boven de grafiek: lijndiagram (tijdreeks), staafdiagram
+  (aggregatie piek/gemiddelde/periode-totaal, kleur volgt de groen/amber/rood-belastingsconventie),
+  Sankey (energieverdeling vanaf één gekozen startpunt-generator, linkerkolom wisselt dan naar een
+  startpunt-dropdown), taartdiagram (aandeel per kast in het totaal) en een belasting-heatmap
+  (patroon per uur, groen/amber/rood per cel)
+- **Live-modus**: vierde periode-optie met een schuifvenster (5/15/30/60 min) dat continu meeschuift,
+  hergebruikt dezelfde MQTT-websocketverbinding als het Live-tabblad, met een pulserende
+  LIVE-indicator en een pauzeknop. Sankey/taart tonen in live-modus vermogen (kW) i.p.v. energie
+  (kWh); de heatmap heeft geen live-modus
+- "Kopieer link"-knop codeert de huidige selectie (kasten/metric/fase/periode/editie/grafiektype)
+  als deelbare URL — geen opgeslagen/benoemde weergaven, puur een stateless snapshot-link
+- "Downloaden als PNG"-knop, en dezelfde status-/foutkaart-aanpak ("Opnieuw proberen") als de
+  PDF-rapport-/back-upflows bij een mislukte historische data-ophaal

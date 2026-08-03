@@ -82,12 +82,13 @@ export function renderKastPopup(){
     tabel.innerHTML =
       '<tr><th></th><th>'+t('kastpopup.stroom')+'</th><th>'+t('kastpopup.belasting')+'</th></tr>' +
       k.leden.map(lid=>{
-        const ld = lid.rating_a!=null ? liveData[lid.id] : null;
-        const maxFase = maxFaseStroom(ld);
+        if(lid.rating_a==null){
+          return '<tr><td><span class="dot2" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td colspan="2" class="geen-sensor-label">'+t('common.geenSensor')+'</td></tr>';
+        }
+        const maxFase = maxFaseStroom(liveData[lid.id]);
         const stroom = maxFase!=null ? fmtVeld(maxFase,'A') : '—';
-        const belasting = (lid.rating_a!=null && maxFase!=null) ? Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
-        const dotCls = lid.rating_a!=null ? 'dot2 '+statusClass(lid) : 'dot2';
-        return '<tr><td><span class="'+dotCls+'" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td>'+stroom+'</td><td>'+belasting+'</td></tr>';
+        const belasting = maxFase!=null ? Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
+        return '<tr><td><span class="dot2 '+statusClass(lid)+'" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td>'+stroom+'</td><td>'+belasting+'</td></tr>';
       }).join('');
     el.appendChild(tabel);
   } else if(!d){
