@@ -82,7 +82,7 @@
           <div class="chancard-status"><div class="dot" id="notifTelegramDot"></div><span id="notifTelegramStatusText" data-i18n="beheer.notifNogNietGetest">Nog niet getest</span></div>
         </div>
         <div class="chancard-body">
-          <div class="field"><label data-i18n="beheer.notifTelegramBotToken">Bot-token</label><input id="notifTelegramBotToken"></div>
+          <div class="field secretfield"><label data-i18n="beheer.notifTelegramBotToken">Bot-token</label><input id="notifTelegramBotToken"><a class="wislink" id="notifTelegramBotTokenWis" data-i18n="beheer.notifWissen">Wissen</a></div>
           <div class="field"><label data-i18n="beheer.notifTelegramChatId">Chat-ID</label><input id="notifTelegramChatId"></div>
           <div class="testrow">
             <button id="notifTelegramTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
@@ -99,7 +99,7 @@
         </div>
         <div class="chancard-body">
           <div class="field"><label data-i18n="beheer.notifPushoverUserKey">User key</label><input id="notifPushoverUserKey"></div>
-          <div class="field"><label data-i18n="beheer.notifPushoverApiToken">API-token</label><input id="notifPushoverApiToken"></div>
+          <div class="field secretfield"><label data-i18n="beheer.notifPushoverApiToken">API-token</label><input id="notifPushoverApiToken"><a class="wislink" id="notifPushoverApiTokenWis" data-i18n="beheer.notifWissen">Wissen</a></div>
           <div class="testrow">
             <button id="notifPushoverTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
             <span class="testresult" id="notifPushoverTestResult"></span>
@@ -135,7 +135,7 @@
             <div class="field"><label data-i18n="beheer.notifSmtpHost">SMTP-host</label><input id="notifEmailSmtpHost"></div>
             <div class="field"><label data-i18n="beheer.notifSmtpPoort">Poort</label><input id="notifEmailSmtpPoort" type="number" value="587"></div>
             <div class="field"><label data-i18n="beheer.notifSmtpGebruiker">Gebruiker</label><input id="notifEmailSmtpGebruiker"></div>
-            <div class="field"><label data-i18n="beheer.notifSmtpWachtwoord">Wachtwoord</label><input id="notifEmailSmtpWachtwoord" type="password"></div>
+            <div class="field secretfield"><label data-i18n="beheer.notifSmtpWachtwoord">Wachtwoord</label><input id="notifEmailSmtpWachtwoord" type="password"><a class="wislink" id="notifEmailSmtpWachtwoordWis" data-i18n="beheer.notifWissen">Wissen</a></div>
           </div>
           <div class="testrow">
             <button id="notifEmailTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
@@ -436,7 +436,7 @@
               <div class="field"><label data-i18n="backup.autoSftpHost">Host</label><input id="autoDestSftpHost"></div>
               <div class="field"><label data-i18n="backup.autoSftpPoort">Poort</label><input id="autoDestSftpPoort" type="number" value="22"></div>
               <div class="field"><label data-i18n="backup.autoSftpGebruiker">Gebruiker</label><input id="autoDestSftpGebruiker"></div>
-              <div class="field"><label data-i18n="backup.autoSftpWachtwoord">Wachtwoord</label><input id="autoDestSftpWachtwoord" type="password"></div>
+              <div class="field secretfield"><label data-i18n="backup.autoSftpWachtwoord">Wachtwoord</label><input id="autoDestSftpWachtwoord" type="password"><a class="wislink" id="autoDestSftpWachtwoordWis" data-i18n="beheer.notifWissen">Wissen</a></div>
               <div class="field"><label data-i18n="backup.autoSftpDoelmap">Doelmap</label><input id="autoDestSftpDoelmap"></div>
               <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestSftpBewaar" type="number" value="30"></div>
             </div>
@@ -451,7 +451,7 @@
               <div class="field"><label data-i18n="backup.autoS3Endpoint">Endpoint</label><input id="autoDestS3Endpoint" placeholder="s3.eu-central-1.wasabisys.com"></div>
               <div class="field"><label data-i18n="backup.autoS3Bucket">Bucket</label><input id="autoDestS3Bucket"></div>
               <div class="field"><label data-i18n="backup.autoS3AccessKey">Access key</label><input id="autoDestS3AccessKey"></div>
-              <div class="field"><label data-i18n="backup.autoS3SecretKey">Secret key</label><input id="autoDestS3SecretKey" type="password"></div>
+              <div class="field secretfield"><label data-i18n="backup.autoS3SecretKey">Secret key</label><input id="autoDestS3SecretKey" type="password"><a class="wislink" id="autoDestS3SecretKeyWis" data-i18n="beheer.notifWissen">Wissen</a></div>
               <div class="field"><label data-i18n="backup.autoS3Prefix">Prefix/map</label><input id="autoDestS3Prefix"></div>
               <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestS3Bewaar" type="number" value="30"></div>
             </div>

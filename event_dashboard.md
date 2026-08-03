@@ -102,6 +102,12 @@ zetten zonder code aan te passen.
   webhook. Provisioning is best effort — mislukt die stap (Grafana onbereikbaar, onvolledig
   ingevuld kanaal), dan blijven de al opgeslagen instellingen en de overige, wél correcte kanalen
   gewoon staan; alleen het mislukte kanaal wordt gemeld
+- **Geheimen afgeschermd**: `GET /api/instellingen` geeft echte geheimen (Telegram-bot-token,
+  Pushover-API-token, SMTP-wachtwoord, en bij Automatische back-up het SFTP-wachtwoord/S3-
+  secret-key) nooit in platte tekst terug — alleen een `<veld>_ingesteld`-boolean. Een leeg gelaten
+  geheim veld bij het opslaan laat de bestaande waarde ongewijzigd; een expliciete "Wissen"-link per
+  veld verwijdert 'm. Niet-geheime velden (chat-ID, ntfy-topic, SFTP-host/gebruiker, S3-access-key,
+  enz.) blijven gewoon zichtbaar/bewerkbaar
 
 **Plattegrond & kalibratie (Kalibreren-tabblad)**
 - Plattegrond (afbeelding) uploaden, of zonder plattegrond werken op een leeg, ruim canvas

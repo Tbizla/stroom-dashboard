@@ -60,6 +60,15 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       runs sturen een bericht naar de aangezette alert-notificatiekanalen. Geverifieerd tegen echte
       lokale/SFTP-/S3(MinIO)-testbestemmingen, inclusief rotatie na vier opeenvolgende runs. Zie
       event_dashboard.md, Back-up-subtab.
+- [x] **Secrets afschermen in instellingen-API (bugfix).** Afgerond — gebouwd conform
+      [specs/secrets-afscherming-plan.md](specs/secrets-afscherming-plan.md): `GET /api/instellingen`
+      geeft geheimen (Telegram-bot-token, Pushover-API-token, SMTP-wachtwoord, SFTP-wachtwoord,
+      S3-secret-key) niet meer terug, alleen een `<veld>_ingesteld`-boolean; een leeg gelaten veld
+      bij het opslaan laat de bestaande waarde staan, een "Wissen"-link verwijdert 'm expliciet.
+      Geverifieerd met een volledige round-trip (instellen → geredigeerd in GET → ongewijzigd na
+      leeg opslaan → daadwerkelijk weg na Wissen). Nog steeds onafhankelijk van, en niet opgelost
+      door, de login-laag van "Toegang van buitenaf" hieronder. Zie event_dashboard.md,
+      Topologiebeheer (Beheer-tabblad).
 - [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond en besluiten met Mike bevestigd
       (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst).
       Drie mockups (login-scherm, HQ-locatiesoverzicht, accounts-beheerscherm) plus een technisch-

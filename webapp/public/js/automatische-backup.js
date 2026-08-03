@@ -13,11 +13,24 @@ function veldenVoorBestemming(id){
   if(id==='sftp') return { host: 'autoDestSftpHost', poort: 'autoDestSftpPoort', gebruiker: 'autoDestSftpGebruiker', wachtwoord: 'autoDestSftpWachtwoord', doelmap: 'autoDestSftpDoelmap', bewaarAantal: 'autoDestSftpBewaar' };
   return { endpoint: 'autoDestS3Endpoint', bucket: 'autoDestS3Bucket', access_key: 'autoDestS3AccessKey', secret_key: 'autoDestS3SecretKey', prefix: 'autoDestS3Prefix', bewaarAantal: 'autoDestS3Bewaar' };
 }
+// welk veld per bestemming een geheim is — zelfde afscherming/wis-patroon als notificaties.js, zie
+// specs/secrets-afscherming-plan.md en AUTOMATISCHE_BACKUP_GEHEIM_VELD_PER_BESTEMMING in server.js
+const GEHEIM_VELD_PER_BESTEMMING = { sftp: 'wachtwoord', s3: 'secret_key' };
+const gewisteVelden = new Set();
 
 function huidigeBestemmingConfig(id){
   const velden = veldenVoorBestemming(id);
   const cfg = { aan: document.getElementById('autoDest' + bestemmingNaam(id) + 'Toggle').classList.contains('on') };
-  Object.entries(velden).forEach(([key, elId])=>{ cfg[key] = document.getElementById(elId).value.trim(); });
+  const geheimVeld = GEHEIM_VELD_PER_BESTEMMING[id];
+  Object.entries(velden).forEach(([key, elId])=>{
+    const waarde = document.getElementById(elId).value.trim();
+    if(key === geheimVeld){
+      if(waarde) cfg[key] = waarde;
+      else if(gewisteVelden.has(id+'.'+key)) cfg[key] = null;
+      return;
+    }
+    cfg[key] = waarde;
+  });
   return cfg;
 }
 function vulBestemmingConfig(id, cfg){
@@ -26,11 +39,31 @@ function vulBestemmingConfig(id, cfg){
   const card = document.getElementById('autoDest' + bestemmingNaam(id) + 'Card');
   toggle.classList.toggle('on', !!(cfg && cfg.aan));
   card.classList.toggle('off', !(cfg && cfg.aan));
+  const geheimVeld = GEHEIM_VELD_PER_BESTEMMING[id];
   Object.entries(velden).forEach(([key, elId])=>{
     const el = document.getElementById(elId);
+    if(key === geheimVeld){
+      const ingesteld = !!(cfg && cfg[key + '_ingesteld']);
+      el.value = '';
+      el.placeholder = ingesteld ? t('beheer.notifGeheimIngesteld') : t('beheer.notifGeheimNietIngesteld');
+      el.closest('.secretfield').classList.toggle('heeft-waarde', ingesteld);
+      gewisteVelden.delete(id+'.'+key);
+      return;
+    }
     if(cfg && cfg[key]!=null && cfg[key]!=='') el.value = cfg[key];
   });
 }
+
+Object.entries(GEHEIM_VELD_PER_BESTEMMING).forEach(([id, veld])=>{
+  const elId = veldenVoorBestemming(id)[veld];
+  document.getElementById(elId + 'Wis').onclick = ()=>{
+    gewisteVelden.add(id+'.'+veld);
+    const el = document.getElementById(elId);
+    el.value = '';
+    el.placeholder = t('beheer.notifGeheimNietIngesteld');
+    el.closest('.secretfield').classList.remove('heeft-waarde');
+  };
+});
 
 BESTEMMINGEN.forEach(id=>{
   const naam = bestemmingNaam(id);
@@ -73,7 +106,9 @@ document.getElementById('autoBackupOpslaanBtn').onclick = async ()=>{
       ? t('beheer.notifOpgeslagenGrafanaFout', {fout: res.fout})
       : t('backup.autoOpgeslagen');
     document.getElementById('autoBackupResultCard').style.display = 'flex';
-    ververAutoBackupStatus();
+    // na opslaan opnieuw inladen: geheime velden tonen weer de correcte "ingesteld"-placeholder
+    // i.p.v. de invoerwaarde te laten staan (zelfde reden als notificaties.js)
+    initAutomatischeBackup();
   }catch(e){
     document.getElementById('autoBackupErrorInfo').textContent = e.message;
     document.getElementById('autoBackupErrorCard').style.display = 'flex';

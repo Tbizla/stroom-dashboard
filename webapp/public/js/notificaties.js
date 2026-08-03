@@ -6,6 +6,15 @@ import { apiCall } from './api.js';
 import { t } from './i18n.js';
 
 const KANALEN = ['telegram', 'pushover', 'ntfy', 'email'];
+// welk veld per kanaal een geheim is — de server stuurt de waarde nooit terug (zie
+// specs/secrets-afscherming-plan.md), dus deze velden worden nooit uit GET /api/instellingen
+// gevuld, alleen een "<veld>_ingesteld"-boolean. Zelfde mapping als NOTIFICATIE_GEHEIM_VELD_PER_KANAAL
+// in server.js.
+const GEHEIM_VELD_PER_KANAAL = { telegram: 'bot_token', pushover: 'api_token', email: 'smtp_wachtwoord' };
+// bijgehouden binnen deze pagina-sessie: welke geheime velden de gebruiker expliciet gewist heeft
+// via de "Wissen"-link (zie huidigeKanaalConfig) — een leeg gelaten veld zonder wis-actie betekent
+// "ongewijzigd laten", niet "verwijderen"
+const gewisteVelden = new Set();
 
 function veldenVoorKanaal(kanaal){
   if(kanaal==='telegram') return { bot_token: 'notifTelegramBotToken', chat_id: 'notifTelegramChatId' };
@@ -18,7 +27,17 @@ function kanaalNaam(kanaal){ return kanaal.charAt(0).toUpperCase() + kanaal.slic
 function huidigeKanaalConfig(kanaal){
   const velden = veldenVoorKanaal(kanaal);
   const cfg = { aan: document.getElementById('notif' + kanaalNaam(kanaal) + 'Toggle').classList.contains('on') };
-  Object.entries(velden).forEach(([key, id])=>{ cfg[key] = document.getElementById(id).value.trim(); });
+  const geheimVeld = GEHEIM_VELD_PER_KANAAL[kanaal];
+  Object.entries(velden).forEach(([key, id])=>{
+    const waarde = document.getElementById(id).value.trim();
+    if(key === geheimVeld){
+      if(waarde) cfg[key] = waarde; // nieuwe waarde ingetypt -> overschrijven
+      else if(gewisteVelden.has(kanaal+'.'+key)) cfg[key] = null; // expliciet gewist
+      // anders: veld weglaten -> server laat de bestaande waarde ongewijzigd (saniteerGeheimVeld)
+      return;
+    }
+    cfg[key] = waarde;
+  });
   return cfg;
 }
 
@@ -28,8 +47,17 @@ function vulKanaalConfig(kanaal, cfg){
   const card = document.getElementById('notif' + kanaalNaam(kanaal) + 'Card');
   toggle.classList.toggle('on', !!(cfg && cfg.aan));
   card.classList.toggle('off', !(cfg && cfg.aan));
+  const geheimVeld = GEHEIM_VELD_PER_KANAAL[kanaal];
   Object.entries(velden).forEach(([key, id])=>{
     const el = document.getElementById(id);
+    if(key === geheimVeld){
+      const ingesteld = !!(cfg && cfg[key + '_ingesteld']);
+      el.value = '';
+      el.placeholder = ingesteld ? t('beheer.notifGeheimIngesteld') : t('beheer.notifGeheimNietIngesteld');
+      el.closest('.secretfield').classList.toggle('heeft-waarde', ingesteld);
+      gewisteVelden.delete(kanaal+'.'+key);
+      return;
+    }
     // lege string niet overschrijven: anders wist een nog-nooit-opgeslagen kanaal (default '' uit
     // instellingen.json) bij elke pageload de HTML-eigen default (bijv. SMTP-poort 587)
     if(cfg && cfg[key]!=null && cfg[key]!=='') el.value = cfg[key];
@@ -65,6 +93,20 @@ KANALEN.forEach(kanaal=>{
   };
 });
 
+// "Wissen"-link per geheim veld: markeert het veld als expliciet te wissen (zie gewisteVelden) en
+// toont meteen de "niet ingesteld"-placeholder, ongeacht wat er nu in het invoerveld staat
+Object.entries(GEHEIM_VELD_PER_KANAAL).forEach(([kanaal, veld])=>{
+  const id = veldenVoorKanaal(kanaal)[veld];
+  const wisLink = document.getElementById(id + 'Wis');
+  wisLink.onclick = ()=>{
+    gewisteVelden.add(kanaal+'.'+veld);
+    const el = document.getElementById(id);
+    el.value = '';
+    el.placeholder = t('beheer.notifGeheimNietIngesteld');
+    el.closest('.secretfield').classList.remove('heeft-waarde');
+  };
+});
+
 document.getElementById('notifOpslaanBtn').onclick = async ()=>{
   ['notifResultCard','notifErrorCard'].forEach(id=>document.getElementById(id).style.display='none');
   const notificaties = {};
@@ -75,6 +117,9 @@ document.getElementById('notifOpslaanBtn').onclick = async ()=>{
       ? t('beheer.notifOpgeslagenGrafanaFout', {fout: res.grafanaFout})
       : t('beheer.notifOpgeslagen');
     document.getElementById('notifResultCard').style.display = 'flex';
+    // na opslaan opnieuw inladen: geheime velden tonen weer de correcte "ingesteld"-placeholder
+    // (incl. net gewiste/nieuw gezette velden) i.p.v. de invoerwaarde te laten staan
+    initNotificaties();
   }catch(e){
     document.getElementById('notifErrorInfo').textContent = e.message;
     document.getElementById('notifErrorCard').style.display = 'flex';

@@ -180,6 +180,41 @@ const NOTIFICATIE_KANALEN_DEFAULT = {
   ntfy: { aan: false, topic: '', server_url: '' },
   email: { aan: false, ontvangers: '', smtp_host: '', smtp_poort: '', smtp_gebruiker: '', smtp_wachtwoord: '' },
 };
+// welk veld per kanaal/bestemming een echt geheim is (token/wachtwoord/secret-key) — die komen nooit
+// in platte tekst terug via GET /api/instellingen, zie specs/secrets-afscherming-plan.md. Overige
+// velden (chat-ID, ntfy-topic, SFTP-host/gebruiker, S3-access-key, enz.) zijn geen geheim en blijven
+// gewoon zichtbaar. AUTOMATISCHE_BACKUP_GEHEIM_VELD_PER_BESTEMMING staat verderop bij die sectie.
+const NOTIFICATIE_GEHEIM_VELD_PER_KANAAL = { telegram: 'bot_token', pushover: 'api_token', email: 'smtp_wachtwoord' };
+// een geheim veld in een PUT-body is drieledig: leeg/afwezig = ongewijzigd laten, `null` = expliciet
+// wissen (de "Wissen"-link in de UI), een echte string = nieuwe waarde opslaan
+function saniteerGeheimVeld(nieuweWaarde, bestaandeWaarde) {
+  if (nieuweWaarde === null) return '';
+  if (nieuweWaarde == null || nieuweWaarde === '') return bestaandeWaarde || '';
+  return String(nieuweWaarde);
+}
+// vervangt geheime velden door een `<veld>_ingesteld`-boolean vóórdat instellingen.json de browser
+// bereikt — interne aanroepers (stuurTelegram/stuurEmail/provisionGrafanaContactPoints/enz.) blijven
+// gewoon readInstellingen() gebruiken en krijgen de echte waarden, alleen dit HTTP-antwoord is geredigeerd
+function redigeerGeheimen(data) {
+  const kopie = JSON.parse(JSON.stringify(data));
+  if (kopie.notificaties) {
+    Object.entries(NOTIFICATIE_GEHEIM_VELD_PER_KANAAL).forEach(([kanaal, veld]) => {
+      const cfg = kopie.notificaties[kanaal];
+      if (!cfg) return;
+      cfg[veld + '_ingesteld'] = !!cfg[veld];
+      delete cfg[veld];
+    });
+  }
+  if (kopie.automatischeBackup && kopie.automatischeBackup.bestemmingen) {
+    Object.entries(AUTOMATISCHE_BACKUP_GEHEIM_VELD_PER_BESTEMMING).forEach(([bestemming, veld]) => {
+      const cfg = kopie.automatischeBackup.bestemmingen[bestemming];
+      if (!cfg) return;
+      cfg[veld + '_ingesteld'] = !!cfg[veld];
+      delete cfg[veld];
+    });
+  }
+  return kopie;
+}
 function readInstellingen() {
   const data = JSON.parse(fs.readFileSync(INSTELLINGEN_FILE, 'utf8'));
   if (!data.notificaties) data.notificaties = JSON.parse(JSON.stringify(NOTIFICATIE_KANALEN_DEFAULT));
@@ -191,7 +226,7 @@ function readInstellingen() {
 }
 function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
 
-app.get('/api/instellingen', (req, res) => res.json(readInstellingen()));
+app.get('/api/instellingen', (req, res) => res.json(redigeerGeheimen(readInstellingen())));
 app.put('/api/instellingen', (req, res) => {
   const { event_name, event_edition } = req.body || {};
   if (!veiligeTagWaarde(event_name) || !veiligeTagWaarde(event_edition)) {
@@ -244,19 +279,28 @@ app.get('/api/instellingen/telegraf-herstart/status', (req, res) => res.json(tel
 // paden gebruiken dezelfde stuur*()-functies: de "Stuur testbericht"-knop (rechtstreeks, buiten
 // Grafana om) en de webhook die Grafana's eigen alerting aanroept via de hieronder geprovisioneerde
 // contact points (voor ntfy, dat geen native Grafana-contact-point-type heeft). ----------
-function saniteerKanaalConfig(kanaal, cfg) {
+// `bestaand` = de al opgeslagen config van dit kanaal (ongeredigeerd, uit readInstellingen()) —
+// nodig om een leeg-gelaten geheim veld te kunnen laten staan i.p.v. per ongeluk te wissen
+function saniteerKanaalConfig(kanaal, cfg, bestaand) {
   const defaults = NOTIFICATIE_KANALEN_DEFAULT[kanaal];
   const bron = cfg || {};
   const schoon = { aan: !!bron.aan };
+  const geheimVeld = NOTIFICATIE_GEHEIM_VELD_PER_KANAAL[kanaal];
   Object.keys(defaults).forEach((key) => {
     if (key === 'aan') return;
+    if (key === geheimVeld) {
+      schoon[key] = saniteerGeheimVeld(bron[key], bestaand ? bestaand[key] : '');
+      return;
+    }
     schoon[key] = bron[key] != null ? String(bron[key]) : '';
   });
   return schoon;
 }
-function saniteerNotificaties(body) {
+function saniteerNotificaties(body, bestaandeNotificaties) {
   const result = {};
-  Object.keys(NOTIFICATIE_KANALEN_DEFAULT).forEach((kanaal) => { result[kanaal] = saniteerKanaalConfig(kanaal, (body || {})[kanaal]); });
+  Object.keys(NOTIFICATIE_KANALEN_DEFAULT).forEach((kanaal) => {
+    result[kanaal] = saniteerKanaalConfig(kanaal, (body || {})[kanaal], (bestaandeNotificaties || {})[kanaal]);
+  });
   return result;
 }
 
@@ -382,8 +426,9 @@ async function provisionGrafanaContactPoints(notificaties) {
 }
 
 app.put('/api/instellingen/notificaties', async (req, res) => {
-  const notificaties = saniteerNotificaties(req.body);
-  writeInstellingen({ ...readInstellingen(), notificaties });
+  const bestaande = readInstellingen();
+  const notificaties = saniteerNotificaties(req.body, bestaande.notificaties);
+  writeInstellingen({ ...bestaande, notificaties });
   let grafanaFout = null;
   try { await provisionGrafanaContactPoints(notificaties); }
   catch (e) { grafanaFout = e.message; console.error('Grafana-provisioning voor alert-notificaties mislukt:', e.message); }
@@ -393,7 +438,10 @@ app.put('/api/instellingen/notificaties', async (req, res) => {
 app.post('/api/instellingen/notificaties/test/:kanaal', async (req, res) => {
   const kanaal = req.params.kanaal;
   if (!NOTIFICATIE_KANALEN_DEFAULT[kanaal]) return res.status(404).json({ error: 'onbekend kanaal' });
-  const cfg = saniteerKanaalConfig(kanaal, req.body);
+  // val terug op het al opgeslagen geheim als het testformulier dat veld leeg liet (zie
+  // saniteerGeheimVeld) — zo kan een al ingesteld kanaal getest worden zonder het geheim opnieuw in
+  // te typen
+  const cfg = saniteerKanaalConfig(kanaal, req.body, readInstellingen().notificaties[kanaal]);
   try {
     await stuurNotificatie(kanaal, cfg, 'Stroom-Dashboard testbericht', 'Testbericht vanuit Stroom-Dashboard (' + new Date().toLocaleString('nl-NL') + ')');
     res.json({ ok: true });
@@ -1700,7 +1748,12 @@ const AUTOMATISCHE_BACKUP_DEFAULT = {
     s3: { aan: false, endpoint: '', bucket: '', access_key: '', secret_key: '', prefix: '', bewaarAantal: '30' },
   },
 };
-function saniteerAutomatischeBackup(body) {
+// zie NOTIFICATIE_GEHEIM_VELD_PER_KANAAL hierboven voor de uitleg — zelfde afscherming, nu voor de
+// automatische-back-up-bestemmingen (lokaal heeft geen geheim veld)
+const AUTOMATISCHE_BACKUP_GEHEIM_VELD_PER_BESTEMMING = { sftp: 'wachtwoord', s3: 'secret_key' };
+// `bestaand` = de al opgeslagen automatischeBackup-config (ongeredigeerd), zelfde reden als bij
+// saniteerKanaalConfig hierboven
+function saniteerAutomatischeBackup(body, bestaand) {
   const bron = body || {};
   const schoon = {
     aan: !!bron.aan,
@@ -1713,9 +1766,15 @@ function saniteerAutomatischeBackup(body) {
   Object.keys(AUTOMATISCHE_BACKUP_DEFAULT.bestemmingen).forEach((id) => {
     const defaults = AUTOMATISCHE_BACKUP_DEFAULT.bestemmingen[id];
     const bestemmingBron = (bron.bestemmingen || {})[id] || {};
+    const bestemmingBestaand = (bestaand && bestaand.bestemmingen && bestaand.bestemmingen[id]) || {};
     const schoneBestemming = { aan: !!bestemmingBron.aan };
+    const geheimVeld = AUTOMATISCHE_BACKUP_GEHEIM_VELD_PER_BESTEMMING[id];
     Object.keys(defaults).forEach((key) => {
       if (key === 'aan') return;
+      if (key === geheimVeld) {
+        schoneBestemming[key] = saniteerGeheimVeld(bestemmingBron[key], bestemmingBestaand[key]);
+        return;
+      }
       schoneBestemming[key] = bestemmingBron[key] != null ? String(bestemmingBron[key]) : defaults[key];
     });
     schoon.bestemmingen[id] = schoneBestemming;
@@ -1910,8 +1969,9 @@ setInterval(async () => {
 herbereikenAutoBackupSchema(); // pikt een al aangezette planning weer op bij webapp-herstart
 
 app.put('/api/instellingen/automatische-backup', (req, res) => {
-  const automatischeBackup = saniteerAutomatischeBackup(req.body);
-  writeInstellingen({ ...readInstellingen(), automatischeBackup });
+  const bestaande = readInstellingen();
+  const automatischeBackup = saniteerAutomatischeBackup(req.body, bestaande.automatischeBackup);
+  writeInstellingen({ ...bestaande, automatischeBackup });
   herbereikenAutoBackupSchema();
   res.json({ ok: true });
 });

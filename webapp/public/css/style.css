@@ -233,6 +233,12 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:0}
 .field label{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
 .field select, .field input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:12.5px;font-family:var(--sans)}
+.secretfield{position:relative}
+.secretfield input{color:var(--text3);font-style:italic;padding-right:52px}
+.secretfield input::placeholder{font-size:11px}
+.secretfield .wislink{position:absolute;right:8px;top:28px;font-size:10px;color:var(--text3);text-decoration:none;font-style:normal;cursor:pointer;display:none}
+.secretfield .wislink:hover{color:var(--red)}
+.secretfield.heeft-waarde .wislink{display:inline}
 
 .ksectie{margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ksectie-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel2);cursor:pointer}
