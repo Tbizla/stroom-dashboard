@@ -100,6 +100,7 @@ services:
       - GRAFANA_URL=http://grafana:3000
       - GRAFANA_DASHBOARD_UID=stroom-dashboard-overzicht
       - GRAFANA_REPORT_TOKEN=${GRAFANA_REPORT_TOKEN}
+      - GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
       - EVENT_NAME=${EVENT_NAME}
       - EVENT_EDITION=${EVENT_EDITION}
       - TELEGRAF_HERSTARTER_URL=http://telegraf-herstarter:8090

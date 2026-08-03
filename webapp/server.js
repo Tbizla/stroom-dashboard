@@ -24,6 +24,13 @@ const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
 // precies één actie aanbiedt: telegraf herstarten met nieuwe EVENT_NAME/EVENT_EDITION-waarden —
 // de webapp zelf heeft nooit Docker-toegang.
 const TELEGRAF_HERSTARTER_URL = process.env.TELEGRAF_HERSTARTER_URL;
+const GRAFANA_URL = process.env.GRAFANA_URL || 'http://grafana:3000';
+const GRAFANA_DASHBOARD_UID = process.env.GRAFANA_DASHBOARD_UID || 'stroom-dashboard-overzicht';
+const GRAFANA_REPORT_TOKEN = process.env.GRAFANA_REPORT_TOKEN;
+// admin-wachtwoord van de Grafana-instance zelf (zelfde GRAFANA_PASSWORD als de grafana-service
+// gebruikt) — nodig voor de contact-point-/notification-policy-provisioning-API, die een hogere
+// rol dan de Viewer-scoped GRAFANA_REPORT_TOKEN vereist (zie /api/instellingen/notificaties)
+const GRAFANA_ADMIN_PASSWORD = process.env.GRAFANA_PASSWORD;
 
 // staat testtopologie/simulator/meetdata-wissen toe. Geen aparte env-var om aan te zetten: de
 // `simulator`-service bestaat alleen op het docker-netwerk als de stack met `--profile test`
@@ -165,7 +172,19 @@ app.get('/api/topology', (req, res) => res.json(readTopo()));
 // ---------- instellingen: event_name/event_edition, bewerkbaar vanuit Beheer i.p.v. alleen via
 // .env — enige bron van waarheid aan de webapp-kant voor de editie/evenement-tags die
 // syncTopologyToInflux() (topology_edges) en het restore-endpoint (collision-check) gebruiken. ----------
-function readInstellingen() { return JSON.parse(fs.readFileSync(INSTELLINGEN_FILE, 'utf8')); }
+// oudere instellingen.json-bestanden (van vóór het notificatiekanaal-item) missen 'notificaties' nog
+// — read-time default, geen aparte migratiestap nodig (zelfde patroon als g.leden elders)
+const NOTIFICATIE_KANALEN_DEFAULT = {
+  telegram: { aan: false, bot_token: '', chat_id: '' },
+  pushover: { aan: false, user_key: '', api_token: '' },
+  ntfy: { aan: false, topic: '', server_url: '' },
+  email: { aan: false, ontvangers: '', smtp_host: '', smtp_poort: '', smtp_gebruiker: '', smtp_wachtwoord: '' },
+};
+function readInstellingen() {
+  const data = JSON.parse(fs.readFileSync(INSTELLINGEN_FILE, 'utf8'));
+  if (!data.notificaties) data.notificaties = JSON.parse(JSON.stringify(NOTIFICATIE_KANALEN_DEFAULT));
+  return data;
+}
 function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
 
 app.get('/api/instellingen', (req, res) => res.json(readInstellingen()));
@@ -174,7 +193,9 @@ app.put('/api/instellingen', (req, res) => {
   if (!veiligeTagWaarde(event_name) || !veiligeTagWaarde(event_edition)) {
     return res.status(400).json({ error: 'evenementnaam en editie zijn verplicht en mogen alleen letters, cijfers, "_" of "-" bevatten' });
   }
-  writeInstellingen({ event_name, event_edition });
+  // spread van de bestaande instellingen: dit endpoint gaat alleen over event_name/event_edition,
+  // een kale overwrite zou het notificaties-blok hieronder stilzwijgend wissen
+  writeInstellingen({ ...readInstellingen(), event_name, event_edition });
   res.json({ ok: true });
 });
 
@@ -213,6 +234,189 @@ app.post('/api/instellingen/telegraf-herstart', (req, res) => {
 });
 
 app.get('/api/instellingen/telegraf-herstart/status', (req, res) => res.json(telegrafHerstartJob));
+
+// ---------- Alert-notificaties: kanaal waarop de bestaande Grafana-alert-condities (90%-
+// belastingsdrempel per fase) een bericht sturen (zie specs/notificatiekanaal-plan.md). Twee
+// paden gebruiken dezelfde stuur*()-functies: de "Stuur testbericht"-knop (rechtstreeks, buiten
+// Grafana om) en de webhook die Grafana's eigen alerting aanroept via de hieronder geprovisioneerde
+// contact points (voor ntfy, dat geen native Grafana-contact-point-type heeft). ----------
+function saniteerKanaalConfig(kanaal, cfg) {
+  const defaults = NOTIFICATIE_KANALEN_DEFAULT[kanaal];
+  const bron = cfg || {};
+  const schoon = { aan: !!bron.aan };
+  Object.keys(defaults).forEach((key) => {
+    if (key === 'aan') return;
+    schoon[key] = bron[key] != null ? String(bron[key]) : '';
+  });
+  return schoon;
+}
+function saniteerNotificaties(body) {
+  const result = {};
+  Object.keys(NOTIFICATIE_KANALEN_DEFAULT).forEach((kanaal) => { result[kanaal] = saniteerKanaalConfig(kanaal, (body || {})[kanaal]); });
+  return result;
+}
+
+async function stuurTelegram(cfg, onderwerp, tekst) {
+  if (!cfg.bot_token || !cfg.chat_id) throw new Error('bot-token en chat-ID zijn verplicht');
+  const res = await fetch('https://api.telegram.org/bot' + cfg.bot_token + '/sendMessage', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: cfg.chat_id, text: onderwerp + '\n\n' + tekst }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.description || ('Telegram gaf ' + res.status));
+}
+async function stuurPushover(cfg, onderwerp, tekst) {
+  if (!cfg.user_key || !cfg.api_token) throw new Error('user key en API-token zijn verplicht');
+  const params = new URLSearchParams({ token: cfg.api_token, user: cfg.user_key, title: onderwerp, message: tekst });
+  const res = await fetch('https://api.pushover.net/1/messages.json', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.status !== 1) throw new Error((data.errors && data.errors.join(', ')) || ('Pushover gaf ' + res.status));
+}
+async function stuurNtfy(cfg, onderwerp, tekst) {
+  if (!cfg.topic) throw new Error('topic is verplicht');
+  const server = (cfg.server_url || 'https://ntfy.sh').replace(/\/+$/, '');
+  const res = await fetch(server + '/' + encodeURIComponent(cfg.topic), { method: 'POST', headers: { Title: onderwerp }, body: tekst });
+  if (!res.ok) throw new Error('ntfy gaf ' + res.status + ': ' + (await res.text()));
+}
+async function stuurEmail(cfg, onderwerp, tekst) {
+  if (!cfg.ontvangers || !cfg.smtp_host) throw new Error('ontvanger(s) en SMTP-host zijn verplicht');
+  const nodemailer = require('nodemailer');
+  const poort = cfg.smtp_poort ? Number(cfg.smtp_poort) : 587;
+  const transport = nodemailer.createTransport({
+    host: cfg.smtp_host, port: poort, secure: poort === 465,
+    auth: cfg.smtp_gebruiker ? { user: cfg.smtp_gebruiker, pass: cfg.smtp_wachtwoord } : undefined,
+  });
+  await transport.sendMail({ from: cfg.smtp_gebruiker || 'stroom-dashboard@localhost', to: cfg.ontvangers, subject: onderwerp, text: tekst });
+}
+async function stuurNotificatie(kanaal, cfg, onderwerp, tekst) {
+  if (kanaal === 'telegram') return stuurTelegram(cfg, onderwerp, tekst);
+  if (kanaal === 'pushover') return stuurPushover(cfg, onderwerp, tekst);
+  if (kanaal === 'ntfy') return stuurNtfy(cfg, onderwerp, tekst);
+  if (kanaal === 'email') return stuurEmail(cfg, onderwerp, tekst);
+  throw new Error('onbekend kanaal');
+}
+
+// Eén Grafana-contact-point "Stroomdashboard" met per aangezet kanaal een eigen integratie.
+// Telegram/Pushover/e-mail zijn Grafana-native contact-point-types; ntfy heeft er geen (Grafana's
+// generieke webhook-payload komt niet overeen met wat ntfy verwacht), dus dat kanaal loopt via een
+// webhook terug naar deze webapp (/api/notificaties/grafana-webhook hieronder), die 'm met
+// dezelfde stuurNtfy() als de testknop doorstuurt.
+const GRAFANA_CONTACTPOINT_NAAM = 'Stroomdashboard';
+const GRAFANA_DEFAULT_RECEIVER = 'grafana-default-email'; // Grafana's eigen ingebouwde standaard-ontvanger
+const GRAFANA_CONTACTPOINT_UIDS = { telegram: 'stroomdash-telegram', pushover: 'stroomdash-pushover', email: 'stroomdash-email', ntfy: 'stroomdash-ntfy-webhook' };
+
+function grafanaProvisioningHeaders() {
+  if (!GRAFANA_ADMIN_PASSWORD) throw new Error('GRAFANA_PASSWORD is niet ingesteld in .env');
+  return { Authorization: 'Basic ' + Buffer.from('admin:' + GRAFANA_ADMIN_PASSWORD).toString('base64'), 'Content-Type': 'application/json' };
+}
+function grafanaContactPointBody(kanaal, cfg) {
+  const uid = GRAFANA_CONTACTPOINT_UIDS[kanaal];
+  if (kanaal === 'telegram') return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'telegram', settings: { bottoken: cfg.bot_token, chatid: cfg.chat_id } };
+  if (kanaal === 'pushover') return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'pushover', settings: { apiToken: cfg.api_token, userKey: cfg.user_key } };
+  if (kanaal === 'email') return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'email', settings: { addresses: cfg.ontvangers.split(',').map((s) => s.trim()).filter(Boolean).join(';') } };
+  return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'webhook', settings: { url: 'http://webapp:8080/api/notificaties/grafana-webhook', httpMethod: 'POST' } };
+}
+
+// Best effort: als Grafana niet bereikbaar is of het admin-wachtwoord ontbreekt, faalt het
+// opslaan van de instellingen zelf niet mee (zelfde patroon als syncTopologyToInflux hierboven) —
+// de aanroeper (PUT /api/instellingen/notificaties) geeft de fout apart terug als waarschuwing.
+async function provisionGrafanaContactPoints(notificaties) {
+  const headers = grafanaProvisioningHeaders();
+  const fouten = [];
+
+  // fase 1: aangezette kanalen eerst aanmaken/bijwerken, elk in een eigen try/catch — een kanaal
+  // dat aanstaat maar nog onvolledig ingevuld is (bijv. net aangevinkt, velden nog leeg) mag de
+  // provisioning van de ANDERE, wél correcte kanalen niet blokkeren (vastgesteld tijdens testen:
+  // zonder deze isolatie gooide één lege config de hele lus om)
+  let aantalGeslaagd = 0;
+  for (const kanaal of Object.keys(GRAFANA_CONTACTPOINT_UIDS)) {
+    const cfg = notificaties[kanaal];
+    if (!cfg || !cfg.aan) continue;
+    const uid = GRAFANA_CONTACTPOINT_UIDS[kanaal];
+    try {
+      const body = grafanaContactPointBody(kanaal, cfg);
+      const putRes = await fetch(GRAFANA_URL + '/api/v1/provisioning/contact-points/' + uid, { method: 'PUT', headers, body: JSON.stringify(body) });
+      if (putRes.status === 404) {
+        const createRes = await fetch(GRAFANA_URL + '/api/v1/provisioning/contact-points', { method: 'POST', headers, body: JSON.stringify(body) });
+        if (!createRes.ok) throw new Error('aanmaken gaf ' + createRes.status + ': ' + (await createRes.text()));
+      } else if (!putRes.ok) {
+        throw new Error('bijwerken gaf ' + putRes.status + ': ' + (await putRes.text()));
+      }
+      aantalGeslaagd++;
+    } catch (e) {
+      fouten.push(kanaal + ': ' + e.message);
+    }
+  }
+
+  // fase 2: de policy bijwerken VÓÓR het verwijderen van uitgezette kanalen (fase 3) — anders
+  // weigert Grafana de laatste overgebleven integratie onder "Stroomdashboard" te verwijderen
+  // zodra de policy daar op dat moment nog naar wijst (referentie-integriteit, ontdekt tijdens
+  // testen: alles-tegelijk-uitzetten gaf een 500 "failed to delete contact point" op het laatst
+  // overgebleven kanaal, met de policy nog op de oude volgorde)
+  const receiver = aantalGeslaagd > 0 ? GRAFANA_CONTACTPOINT_NAAM : GRAFANA_DEFAULT_RECEIVER;
+  const policyRes = await fetch(GRAFANA_URL + '/api/v1/provisioning/policies', {
+    method: 'PUT', headers, body: JSON.stringify({ receiver, group_by: ['grafana_folder', 'alertname'] }),
+  });
+  if (!policyRes.ok) fouten.push('notification policy: bijwerken gaf ' + policyRes.status + ': ' + (await policyRes.text()));
+
+  // fase 3: nu pas de uitgezette kanalen verwijderen
+  for (const kanaal of Object.keys(GRAFANA_CONTACTPOINT_UIDS)) {
+    const cfg = notificaties[kanaal];
+    if (cfg && cfg.aan) continue;
+    const uid = GRAFANA_CONTACTPOINT_UIDS[kanaal];
+    try {
+      const delRes = await fetch(GRAFANA_URL + '/api/v1/provisioning/contact-points/' + uid, { method: 'DELETE', headers });
+      if (!delRes.ok) throw new Error('verwijderen gaf ' + delRes.status + ': ' + (await delRes.text()));
+    } catch (e) {
+      fouten.push(kanaal + ': ' + e.message);
+    }
+  }
+
+  if (fouten.length) throw new Error(fouten.join('; '));
+}
+
+app.put('/api/instellingen/notificaties', async (req, res) => {
+  const notificaties = saniteerNotificaties(req.body);
+  writeInstellingen({ ...readInstellingen(), notificaties });
+  let grafanaFout = null;
+  try { await provisionGrafanaContactPoints(notificaties); }
+  catch (e) { grafanaFout = e.message; console.error('Grafana-provisioning voor alert-notificaties mislukt:', e.message); }
+  res.json({ ok: true, grafanaFout });
+});
+
+app.post('/api/instellingen/notificaties/test/:kanaal', async (req, res) => {
+  const kanaal = req.params.kanaal;
+  if (!NOTIFICATIE_KANALEN_DEFAULT[kanaal]) return res.status(404).json({ error: 'onbekend kanaal' });
+  const cfg = saniteerKanaalConfig(kanaal, req.body);
+  try {
+    await stuurNotificatie(kanaal, cfg, 'Stroom-Dashboard testbericht', 'Testbericht vanuit Stroom-Dashboard (' + new Date().toLocaleString('nl-NL') + ')');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// vangt Grafana's alertmanager-webhook-payload op (geconfigureerd via het "ntfy"-contact-point
+// hierboven) en stuurt 'm door naar ntfy — alleen bereikbaar/zinvol als het ntfy-kanaal aanstaat
+app.post('/api/notificaties/grafana-webhook', async (req, res) => {
+  const { notificaties } = readInstellingen();
+  const ntfyCfg = notificaties && notificaties.ntfy;
+  if (!ntfyCfg || !ntfyCfg.aan) return res.status(404).json({ error: 'ntfy-kanaal is niet aangezet' });
+  const payload = req.body || {};
+  const status = payload.status === 'resolved' ? 'opgelost' : 'actief';
+  const alertnamen = Array.isArray(payload.alerts) && payload.alerts.length
+    ? payload.alerts.map((a) => (a.labels && a.labels.alertname) || '?').join(', ')
+    : (payload.commonLabels && payload.commonLabels.alertname) || 'Grafana-alert';
+  try {
+    await stuurNtfy(ntfyCfg, 'Stroom-Dashboard alert', 'Status: ' + status + '\n' + alertnamen);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('doorsturen Grafana-webhook naar ntfy mislukt:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
 
 // zodat de webapp-UI het Testdata-tabblad alleen toont als de bijbehorende endpoints ook echt werken
 app.get('/api/test-mode', async (req, res) => res.json({ testMode: await isTestMode() }));
@@ -667,9 +871,6 @@ app.post('/api/import', (req, res) => {
 });
 
 // ---------- rapport exporteren (PDF) ----------
-const GRAFANA_URL = process.env.GRAFANA_URL || 'http://grafana:3000';
-const GRAFANA_DASHBOARD_UID = process.env.GRAFANA_DASHBOARD_UID || 'stroom-dashboard-overzicht';
-const GRAFANA_REPORT_TOKEN = process.env.GRAFANA_REPORT_TOKEN;
 const RAPPORT_DIR = path.join(DATA_DIR, 'rapporten');
 if (!fs.existsSync(RAPPORT_DIR)) fs.mkdirSync(RAPPORT_DIR, { recursive: true });
 

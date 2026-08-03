@@ -207,6 +207,29 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .addform button{background:var(--accent);border:none;color:#0b1210;border-radius:6px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
 .err{color:var(--red);font-size:12px;margin-top:6px}
 
+.infobox{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.chancard{background:var(--panel2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.chancard-head{display:flex;align-items:center;gap:10px;padding:11px 13px}
+.chancard-naam{font-size:13px;font-weight:600;flex:1;color:var(--text)}
+.chancard-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px}
+.toggle{width:34px;height:19px;border-radius:10px;background:var(--border);position:relative;cursor:pointer;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle .knob{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s}
+.toggle.on .knob{left:17px;background:#0b1210}
+.chancard-body{padding:0 13px 13px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chancard-body.wide{grid-template-columns:1fr}
+.chancard.off .chancard-body{display:none}
+.chancard.off{opacity:.55}
+.chancard .field{display:flex;flex-direction:column;gap:4px}
+.chancard .field label{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.chancard .field input{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:12.5px;font-family:var(--mono)}
+.testrow{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:2px}
+.testrow button{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer}
+.testrow button:hover{border-color:var(--accent)}
+.testresult{font-size:11.5px;color:var(--text3)}
+.testresult.ok{color:var(--green)}
+.testresult.err{color:var(--red)}
+
 .ksectie{margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ksectie-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel2);cursor:pointer}
 .ksectie-head .chev{color:var(--accent)}

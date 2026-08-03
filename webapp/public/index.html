@@ -71,6 +71,90 @@
         <span id="instellingErrorInfo" style="color:var(--red)"></span>
       </div>
 
+      <h2 style="margin-top:22px" data-i18n="beheer.alertNotificaties">Alert-notificaties</h2>
+      <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="beheer.alertNotificatiesSubtitel">Kanaal waarop de bestaande Grafana-alert-condities (90%-belastingsdrempel per fase) een bericht sturen. De drempel-condities zelf stel je in Grafana in; hier kies je alleen waar het bericht heen gaat.</div>
+      <div class="infobox" data-i18n="beheer.alertNotificatiesInfobox">Meerdere kanalen tegelijk aan mag, bijv. Telegram én e-mail voor redundantie.</div>
+
+      <div class="chancard" id="notifTelegramCard" data-kanaal="telegram">
+        <div class="chancard-head">
+          <div class="toggle" id="notifTelegramToggle"><div class="knob"></div></div>
+          <div class="chancard-naam">Telegram</div>
+          <div class="chancard-status"><div class="dot" id="notifTelegramDot"></div><span id="notifTelegramStatusText" data-i18n="beheer.notifNogNietGetest">Nog niet getest</span></div>
+        </div>
+        <div class="chancard-body">
+          <div class="field"><label data-i18n="beheer.notifTelegramBotToken">Bot-token</label><input id="notifTelegramBotToken"></div>
+          <div class="field"><label data-i18n="beheer.notifTelegramChatId">Chat-ID</label><input id="notifTelegramChatId"></div>
+          <div class="testrow">
+            <button id="notifTelegramTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
+            <span class="testresult" id="notifTelegramTestResult"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chancard" id="notifPushoverCard" data-kanaal="pushover">
+        <div class="chancard-head">
+          <div class="toggle" id="notifPushoverToggle"><div class="knob"></div></div>
+          <div class="chancard-naam">Pushover</div>
+          <div class="chancard-status"><div class="dot" id="notifPushoverDot"></div><span id="notifPushoverStatusText" data-i18n="beheer.notifNogNietGetest">Nog niet getest</span></div>
+        </div>
+        <div class="chancard-body">
+          <div class="field"><label data-i18n="beheer.notifPushoverUserKey">User key</label><input id="notifPushoverUserKey"></div>
+          <div class="field"><label data-i18n="beheer.notifPushoverApiToken">API-token</label><input id="notifPushoverApiToken"></div>
+          <div class="testrow">
+            <button id="notifPushoverTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
+            <span class="testresult" id="notifPushoverTestResult"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chancard" id="notifNtfyCard" data-kanaal="ntfy">
+        <div class="chancard-head">
+          <div class="toggle" id="notifNtfyToggle"><div class="knob"></div></div>
+          <div class="chancard-naam">ntfy.sh</div>
+          <div class="chancard-status"><div class="dot" id="notifNtfyDot"></div><span id="notifNtfyStatusText" data-i18n="beheer.notifNogNietGetest">Nog niet getest</span></div>
+        </div>
+        <div class="chancard-body">
+          <div class="field"><label data-i18n="beheer.notifNtfyTopic">Topic</label><input id="notifNtfyTopic"></div>
+          <div class="field"><label data-i18n="beheer.notifNtfyServer">Server (optioneel, self-hosted)</label><input id="notifNtfyServer" placeholder="https://ntfy.sh"></div>
+          <div class="testrow">
+            <button id="notifNtfyTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
+            <span class="testresult" id="notifNtfyTestResult"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chancard" id="notifEmailCard" data-kanaal="email">
+        <div class="chancard-head">
+          <div class="toggle" id="notifEmailToggle"><div class="knob"></div></div>
+          <div class="chancard-naam" data-i18n="beheer.notifEmail">E-mail</div>
+          <div class="chancard-status"><div class="dot" id="notifEmailDot"></div><span id="notifEmailStatusText" data-i18n="beheer.notifNogNietGetest">Nog niet getest</span></div>
+        </div>
+        <div class="chancard-body wide">
+          <div class="field"><label data-i18n="beheer.notifEmailOntvangers">Ontvanger(s), komma-gescheiden</label><input id="notifEmailOntvangers"></div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px">
+            <div class="field"><label data-i18n="beheer.notifSmtpHost">SMTP-host</label><input id="notifEmailSmtpHost"></div>
+            <div class="field"><label data-i18n="beheer.notifSmtpPoort">Poort</label><input id="notifEmailSmtpPoort" type="number" value="587"></div>
+            <div class="field"><label data-i18n="beheer.notifSmtpGebruiker">Gebruiker</label><input id="notifEmailSmtpGebruiker"></div>
+            <div class="field"><label data-i18n="beheer.notifSmtpWachtwoord">Wachtwoord</label><input id="notifEmailSmtpWachtwoord" type="password"></div>
+          </div>
+          <div class="testrow">
+            <button id="notifEmailTestBtn" data-i18n="beheer.notifStuurTestbericht">Stuur testbericht</button>
+            <span class="testresult" id="notifEmailTestResult"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="addform" style="margin-top:4px">
+        <button id="notifOpslaanBtn" data-i18n="beheer.instellingenOpslaan">Wijzigingen doorvoeren</button>
+      </div>
+      <div id="notifResultCard" class="addform" style="display:none;margin-top:10px">
+        <div class="dot ok"></div>
+        <span id="notifResultInfo"></span>
+      </div>
+      <div id="notifErrorCard" class="addform" style="display:none;margin-top:10px">
+        <span id="notifErrorInfo" style="color:var(--red)"></span>
+      </div>
+
       <h2 style="margin-top:22px" data-i18n="beheer.generators">Generators</h2>
       <table class="btable" id="genTable"></table>
       <div class="addform">

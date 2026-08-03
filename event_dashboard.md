@@ -90,6 +90,18 @@ zetten zonder code aan te passen.
 - Elke wijziging in Beheer wordt automatisch als `topology_edges`-reeks naar InfluxDB gesynct
   (kast → parent/generator), zodat Grafana de actuele parent/child-structuur kan gebruiken
   zonder dat de Shelly's of MQTT-topics daarvoor aangepast hoeven te worden
+- **Alert-notificaties**: sectie naast Systeeminstellingen om het kanaal in te stellen waarop de
+  bestaande Grafana-alert-condities (90%-belastingsdrempel per fase) een bericht sturen — Telegram,
+  Pushover, ntfy.sh en/of e-mail, meerdere tegelijk aan mag. Elk kanaal een eigen kaart (aan/uit-
+  toggle, kanaalvelden, "Stuur testbericht"-knop met live status) en een gedeelde "Wijzigingen
+  doorvoeren"-knop die de instellingen opslaat (`PUT /api/instellingen/notificaties`) én Grafana's
+  contact-point-/notification-policy-provisioning-API bijwerkt (Telegram/Pushover/e-mail als
+  Grafana-native contact-point-types onder één gedeeld contact point "Stroomdashboard"; ntfy heeft
+  geen native Grafana-type en loopt via een webhook terug naar de webapp, die 'm doorstuurt). Het
+  testbericht gaat altijd rechtstreeks (buiten Grafana om), met dezelfde verstuurfunctie als de
+  webhook. Provisioning is best effort — mislukt die stap (Grafana onbereikbaar, onvolledig
+  ingevuld kanaal), dan blijven de al opgeslagen instellingen en de overige, wél correcte kanalen
+  gewoon staan; alleen het mislukte kanaal wordt gemeld
 
 **Plattegrond & kalibratie (Kalibreren-tabblad)**
 - Plattegrond (afbeelding) uploaden, of zonder plattegrond werken op een leeg, ruim canvas

@@ -39,12 +39,13 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       protocol uit te lezen zijn. Bevestigd: er zijn CAN-bus/J1939-generators in het park, maar
       **on hold** wegens drukte — geen vervolgstappen nu. Conceptspec geconsolideerd in
       [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 4.
-- [ ] **Notificatiekanaal voor alerting naar telefoon.** Alert-condities in Grafana kunnen al
-      aangemaakt worden; er moet nog gekozen worden welk kanaal het bericht ontvangt (opties:
-      Telegram, Pushover, ntfy.sh, e-mail). Zodra dit er is, kan de "Overschrijdingen & alarmen"-
-      sectie van het PDF-rapport ook echt gevuld worden i.p.v. de huidige placeholder-pagina. Hangt
-      ook samen met het uitgestelde "per-fase fout-/vlagindicatoren"-punt hierboven. Spec + mockup:
-      zie [specs/notificatiekanaal-plan.md](specs/notificatiekanaal-plan.md).
+- [x] **Notificatiekanaal voor alerting naar telefoon.** Afgerond — gebouwd conform
+      [specs/notificatiekanaal-plan.md](specs/notificatiekanaal-plan.md): "Alert-notificaties"-
+      sectie in Beheer (Telegram/Pushover/ntfy.sh/e-mail, meerdere tegelijk aan), met testbericht-
+      knop en Grafana-contact-point-/policy-provisioning. De "Overschrijdingen & alarmen"-sectie
+      van het PDF-rapport blijft vooralsnog de bestaande placeholder (apart stukje werk, niet
+      vanzelf meegekomen) en het uitgestelde "per-fase fout-/vlagindicatoren"-punt hieronder blijft
+      los staan. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
 - [x] **Lijnen tussen kasten aanpasbaar (bochten/knikpunten).** Afgerond — gebouwd conform
       [specs/lijnen-knikpunten-plan.md](specs/lijnen-knikpunten-plan.md): op Kalibreren een
       knikpunt toevoegen (dubbelklik op een lijnsegment of via het rechtsklik-menu), verslepen,
