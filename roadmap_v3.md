@@ -92,11 +92,15 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       bij metric energie via dezelfde `integral(unit: 1h)`-aanpak als Overzicht), aggregatie-
       knoppenrij (Periode-totaal alleen actief bij metric energie, valt anders terug op Piekwaarde),
       balken aflopend gesorteerd, kleur volgt groen/amber/rood-t.o.v.-rating bij metric stroom,
-      categorisch palet (zelfde als het lijndiagram) bij de overige metrics.
-      **Nog te bouwen**: Sankey-, taart- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI)
-      en de live-modus; meerdere-edities-vergelijking (Lijndiagram) wacht op de
-      tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md,
-      Grafieken-tabblad.
+      categorisch palet (zelfde als het lijndiagram) bij de overige metrics. **Taartdiagram**
+      ("vrijwel gratis bovenop Staaf", zelfde `/api/grafieken/aggregaat`-endpoint): metric ligt
+      vast op Energie en aggregatie op Periode-totaal zolang Taart actief is (beide knoppenrijen
+      zichtbaar-maar-vergrendeld, geen zinvolle "aandeel van het totaal" bij een piek/gemiddelde of
+      een niet-optelbare grootheid) — bij wegschakelen van Taart wordt de vorige metric-keuze
+      hersteld. Percentage + kWh per segment in de legenda.
+      **Nog te bouwen**: Sankey- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI) en de
+      live-modus; meerdere-edities-vergelijking (Lijndiagram) wacht op de tijd-sinds-start-
+      uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md, Grafieken-tabblad.
 - [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
       "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een
       "Alle QR-codes printen"-bulkknop, elk codeert `/?mode=live&kast=<id>`. Op een smal scherm

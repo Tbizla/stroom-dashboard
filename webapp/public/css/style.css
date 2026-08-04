@@ -335,6 +335,8 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .graftoolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 #grafTypeRow button:disabled{opacity:.4;cursor:not-allowed}
 #grafTypeRow button:disabled:hover{border-color:transparent}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.chip:disabled:hover{border-color:transparent}
 .grafacties{display:flex;gap:8px}
 .grafchartwrap{position:relative;flex:1;min-height:0;background:var(--panel);border:1px solid var(--border);
   border-radius:10px;padding:16px}

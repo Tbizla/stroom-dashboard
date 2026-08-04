@@ -243,16 +243,21 @@ zetten zonder code aan te passen.
   waarde. Kleur volgt de groen/amber/rood-belastingsconventie (t.o.v. rating) bij metric Stroom;
   bij de overige metrics (geen rating-vergelijking mogelijk in W/V/kWh) hetzelfde categorische
   palet als het lijndiagram
+- **Taartdiagram/donut** (gebouwd): aandeel van elke geselecteerde kast/generator in het totaal,
+  plat (geen boomstructuur, gewone checklist). Metric ligt hier vast op Energie (kWh) en aggregatie
+  op Periode-totaal — beide knoppenrijen blijven zichtbaar maar zijn vergrendeld zolang Taart actief
+  is (geen zinvol "aandeel" bij een piek/gemiddelde of een niet-optelbare grootheid), en de vorige
+  metric-keuze wordt automatisch hersteld zodra je naar een ander grafiektype wisselt. Legenda toont
+  percentage + kWh per segment
 - "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie inclusief grafiektype als
   leesbare query-string, `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in
   dezelfde staat, geen opslag/database erbij)
 - **Nog niet gebouwd** (staan als uitgeschakelde knoppen in de grafiektype-rij): Sankey
-  (energieverdeling vanaf één startpunt-generator), taartdiagram (aandeel per kast), belasting-
-  heatmap (patroon per uur), en een live-modus (schuifvenster 5/15/30/60 min, hergebruikt de
-  MQTT-verbinding van het Live-tabblad) — volgen in latere stappen, zie de spec voor het volledige
-  ontwerp. Meerdere-edities-vergelijking (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet
-  meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
-  voorspellende-piekbelasting-plan.md
+  (energieverdeling vanaf één startpunt-generator), belasting-heatmap (patroon per uur), en een
+  live-modus (schuifvenster 5/15/30/60 min, hergebruikt de MQTT-verbinding van het Live-tabblad) —
+  volgen in latere stappen, zie de spec voor het volledige ontwerp. Meerdere-edities-vergelijking
+  (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet meegenomen, dat volgt samen met de
+  tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (3 generators, 11 kasten, 3 niveaus) voor een

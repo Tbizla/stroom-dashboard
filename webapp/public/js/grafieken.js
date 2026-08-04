@@ -88,12 +88,37 @@ document.getElementById('grafZoek').addEventListener('input', (e)=>{
 });
 
 // ---------- grafiektype-knoppenrij ----------
+// metric vóór het (eventueel) locken bij Taart, zodat "vorige metric" hersteld kan worden zodra je
+// weer wegschakelt van Taart (spec §4: metric ligt bij Taart vast op Energie, elders vrij)
+let metricVoorTaart = null;
+function ververMetricLock(){
+  const locked = grafiekType==='taart';
+  document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.disabled = locked);
+  if(locked){
+    if(metricVoorTaart==null) metricVoorTaart = metric;
+    metric = 'energie';
+  } else if(metricVoorTaart!=null){
+    metric = metricVoorTaart;
+    metricVoorTaart = null;
+  }
+  document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
+}
 document.querySelectorAll('#grafTypeRow button:not([disabled])').forEach(btn=>{
   btn.onclick = ()=>{
     grafiekType = btn.dataset.type;
     document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b===btn));
-    // aggregatie-knoppenrij hoort bij Staaf/Taart/Heatmap (spec §2/4/5), niet bij Lijn/Sankey
+    ververMetricLock();
+    // aggregatie-knoppenrij hoort bij Staaf/Taart/Heatmap (spec §2/4/5), niet bij Lijn/Sankey; bij
+    // Taart ligt aggregatie zelf ook vast op Periode-totaal (een "aandeel van het totaal" heeft
+    // alleen bij een optelbare grootheid betekenis, niet bij een piek/gemiddelde)
     document.getElementById('grafAggregatieGroup').style.display = ['staaf','taart','heatmap'].includes(grafiekType) ? 'flex' : 'none';
+    if(grafiekType==='taart'){
+      aggregatie = 'totaal';
+      document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>{ c.classList.toggle('active', c.dataset.aggregatie==='totaal'); c.disabled = true; });
+    } else {
+      document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.disabled = false);
+      ververAggregatieBeschikbaarheid();
+    }
     verversGrafiek();
   };
 });
@@ -121,6 +146,7 @@ document.querySelectorAll('#grafAggregatieRow .chip').forEach(chip=>{
 // ---------- metric/fase-knoppenrijen ----------
 document.querySelectorAll('#grafMetricRow .chip').forEach(chip=>{
   chip.onclick = ()=>{
+    if(chip.disabled) return;
     metric = chip.dataset.metric;
     document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c===chip));
     ververAggregatieBeschikbaarheid();
@@ -244,6 +270,39 @@ function tekenStaafChart(waarden){
   });
 }
 
+function tekenTaartChart(waarden){
+  const totaal = waarden.reduce((s,w)=>s+w.waarde, 0);
+  const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
+  const labels = gesorteerd.map(w=>(nodeById(w.id)||{naam:w.id}).naam);
+  const kleuren = gesorteerd.map(w=>kleurVoorId(w.id));
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById('grafCanvas'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: gesorteerd.map(w=>w.waarde), backgroundColor: kleuren, borderColor: '#12151a', borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            color: KLEUR_TEXT2,
+            // percentage + kWh-waarde in de legenda, zie spec §4
+            generateLabels: (c)=> c.data.labels.map((label,i)=>{
+              const waarde = c.data.datasets[0].data[i];
+              const pct = totaal>0 ? Math.round((waarde/totaal)*100) : 0;
+              return { text: label+' — '+pct+'% ('+waarde.toFixed(1)+' kWh)', fillStyle: kleuren[i], strokeStyle: kleuren[i], index: i };
+            }),
+          },
+        },
+        tooltip: { callbacks: { label: (item)=>{
+          const pct = totaal>0 ? Math.round((item.parsed/totaal)*100) : 0;
+          return item.label+': '+pct+'% ('+item.parsed.toFixed(1)+' kWh)';
+        } } },
+      },
+    },
+  });
+}
+
 async function verversLijnGrafiek(van, tot, editie){
   const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie });
   let data;
@@ -272,6 +331,23 @@ async function verversStaafGrafiek(van, tot, editie){
   tekenStaafChart(data.waarden);
 }
 
+// hergebruikt dezelfde /api/grafieken/aggregaat-data als Staaf (metric/aggregatie liggen bij Taart
+// al vast op energie/totaal via ververMetricLock()) — "vrijwel gratis bovenop Staaf", zie de
+// bouwvolgorde-suggestie in de spec
+async function verversTaartGrafiek(van, tot, editie){
+  const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie, aggregatie });
+  let data;
+  try{ data = await apiCall('/api/grafieken/aggregaat?'+params.toString(), 'GET'); }
+  catch(e){ toonGrafState('fout', e.message); return; }
+  if(!data.waarden.length || !data.waarden.some(w=>w.waarde>0)){
+    if(chart){ chart.destroy(); chart = null; }
+    toonGrafState('leeg-data');
+    return;
+  }
+  toonGrafState('chart');
+  tekenTaartChart(data.waarden);
+}
+
 async function verversGrafiek(){
   if(!selectedIds.size){
     if(chart){ chart.destroy(); chart = null; }
@@ -284,6 +360,7 @@ async function verversGrafiek(){
   const editie = document.getElementById('grafEditieSelect').value;
 
   if(grafiekType==='staaf') return verversStaafGrafiek(van, tot, editie);
+  if(grafiekType==='taart') return verversTaartGrafiek(van, tot, editie);
   return verversLijnGrafiek(van, tot, editie);
 }
 document.getElementById('grafOpnieuwBtn').onclick = verversGrafiek;
@@ -346,14 +423,20 @@ function herstelVanUrl(){
   if(typeParam && document.querySelector('#grafTypeRow [data-type="'+typeParam+'"]:not([disabled])')) grafiekType = typeParam;
   if(params.get('aggregatie')) aggregatie = params.get('aggregatie');
 
-  document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
   document.querySelectorAll('#grafFaseRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.fase===fase));
   document.querySelectorAll('#grafPeriodeRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.periodechip===state.grafiekenPeriodeChip));
   document.getElementById('grafAangepastPeriode').style.display = state.grafiekenPeriodeChip==='aangepast' ? 'flex' : 'none';
   document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b.dataset.type===grafiekType));
   document.getElementById('grafAggregatieGroup').style.display = ['staaf','taart','heatmap'].includes(grafiekType) ? 'flex' : 'none';
-  document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.aggregatie===aggregatie));
-  ververAggregatieBeschikbaarheid();
+  if(grafiekType==='taart'){
+    ververMetricLock();
+    aggregatie = 'totaal';
+    document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>{ c.classList.toggle('active', c.dataset.aggregatie==='totaal'); c.disabled = true; });
+  } else {
+    document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
+    document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.disabled = false);
+    ververAggregatieBeschikbaarheid();
+  }
 }
 
 // aangeroepen vanuit modes.js zodra het Grafieken-tabblad getoond wordt
