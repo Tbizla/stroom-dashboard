@@ -9,8 +9,9 @@ Voor de rest van de projectcontext:
 - [event_dashboard.md](event_dashboard.md) — omschrijving en featurelijst (bijhouden bij elke
   feature-wijziging, door wie die ook doorvoert)
 - [roadmap.md](roadmap.md) — index naar de roadmap-bestanden per versie:
-  [roadmap_v2.md](roadmap_v2.md) (afgerond) en [roadmap_v3.md](roadmap_v3.md) (actief, incl.
-  ongefilterde ideeën) — bijhouden bij elke roadmap-wijziging, door wie die ook doorvoert
+  [roadmap_v2.md](roadmap_v2.md) (afgerond), [roadmap_v3.md](roadmap_v3.md) (actief, incl.
+  ongefilterde ideeën) en [roadmap_v4.md](roadmap_v4.md) (nog niet gestart) — bijhouden bij elke
+  roadmap-wijziging, door wie die ook doorvoert
 
 ## Rolverdeling
 
@@ -54,12 +55,12 @@ moet het herbouwd worden:
   (rapporten, exports, tijdelijke bestanden) horen in `.gitignore`, niet in een commit.
 - Wijzig je iets aan features, werk dan [event_dashboard.md](event_dashboard.md) bij; wijzig je
   iets aan de roadmap, werk dan het bijbehorende [roadmap_v2.md](roadmap_v2.md)/
-  [roadmap_v3.md](roadmap_v3.md) bij — allebei in dezelfde beurt als de wijziging zelf, dat zijn
-  de canonieke overzichten, niet dit bestand.
-- **Vanaf de v2-roadmap (zie roadmap_v2.md/roadmap_v3.md): eerst een uitgebreide spec/plan
-  uitwerken en afstemmen vóórdat er gebouwd wordt.** Geldt voor zowel Cowork- als Code-kant, niet
-  alleen voor UI-voorstellen — ook backend-/infra-werk op die roadmap start met een plan, niet met
-  code.
+  [roadmap_v3.md](roadmap_v3.md)/[roadmap_v4.md](roadmap_v4.md) bij — allebei in dezelfde beurt
+  als de wijziging zelf, dat zijn de canonieke overzichten, niet dit bestand.
+- **Vanaf de v2-roadmap (zie roadmap_v2.md/roadmap_v3.md/roadmap_v4.md): eerst een uitgebreide
+  spec/plan uitwerken en afstemmen vóórdat er gebouwd wordt.** Geldt voor zowel Cowork- als
+  Code-kant, niet alleen voor UI-voorstellen — ook backend-/infra-werk op die roadmap start met
+  een plan, niet met code.
 
 ## Versionering (tags & releases)
 
@@ -74,8 +75,9 @@ afspraak).
   roadmap-item — bijv. de knikpunten-feature: nieuw optioneel veld/endpoint, niets bestaands
   breekt).
 - **PATCH**: backwards-compatible bugfix, geen nieuwe functionaliteit.
-- Beoordeel dit **per wijziging**, niet per roadmap-bestand — roadmap_v2.md/roadmap_v3.md zijn een
-  planningsindeling, geen garantie dat alles daarin uiteindelijk onder dezelfde major uitkomt.
+- Beoordeel dit **per wijziging**, niet per roadmap-bestand — roadmap_v2.md/roadmap_v3.md/
+  roadmap_v4.md zijn een planningsindeling, geen garantie dat alles daarin uiteindelijk onder
+  dezelfde major uitkomt.
 
 **Branch**: één doorlopende `dev`-branch (geen versienummer in de naam — welk MAJOR/MINOR/PATCH-
 cijfer een release straks krijgt hangt af van wat er daadwerkelijk gebouwd wordt, niet vooraf vast
