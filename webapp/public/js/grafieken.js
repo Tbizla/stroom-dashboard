@@ -1,7 +1,6 @@
 // ---------- Grafieken-tabblad (specs/grafieken-tabblad-plan.md): vrije ad-hoc analyse ----------
-// Eerste bouwstap van dat item: alleen het lijndiagram, alleen historisch (geen live-modus,
-// zie de spec's eigen "Bouwvolgorde-suggestie" — Lijn eerst). Staaf/Sankey/Taart/Heatmap-knoppen
-// staan al in de markup maar zijn bewust disabled, geen dode illusie van functionaliteit.
+// Lijn/Staaf/Taart/Heatmap/Sankey zijn gebouwd, volgens de spec's eigen "Bouwvolgorde-suggestie".
+// Live-modus (nog niet gebouwd) is een aparte, latere stap.
 import { state } from './state.js';
 import { apiCall } from './api.js';
 import { t, huidigeLocale } from './i18n.js';
@@ -92,7 +91,7 @@ document.getElementById('grafZoek').addEventListener('input', (e)=>{
 // van een type met een vaste metric — Taart ligt vast op Energie (spec §4, een "aandeel van het
 // totaal" is alleen bij een optelbare grootheid zinvol), Heatmap op Stroom (spec §5: de groen/amber/
 // rood-celkleur ís "t.o.v. rating", net als bij Staaf — geen zinvolle rating-vergelijking voor W/V/kWh)
-const METRIC_LOCK = { taart: 'energie', heatmap: 'stroom' };
+const METRIC_LOCK = { taart: 'energie', heatmap: 'stroom', sankey: 'energie' };
 let metricVoorLock = null;
 function ververMetricLock(){
   const lock = METRIC_LOCK[grafiekType] || null;
@@ -106,11 +105,29 @@ function ververMetricLock(){
   }
   document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
 }
+// Sankey wisselt de linkerkolom om (startpunt-dropdown i.p.v. checklist) en laat Fase helemaal
+// verdwijnen (spec §3: "fase/aggregatie-keuzes zijn hier niet van toepassing") — de checklist-
+// selectie zelf blijft ondertussen intact (niet leegmaken), zie spec "Wat het niet is"/gemeenschap.
+function vulSankeyStartpuntSelect(){
+  const select = document.getElementById('grafSankeyStartpunt');
+  const huidige = select.value;
+  select.innerHTML = state.TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===huidige?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
+}
+function ververSankeyLinkerkolom(){
+  const isSankey = grafiekType==='sankey';
+  document.getElementById('grafChecklistWrap').style.display = isSankey ? 'none' : 'block';
+  document.getElementById('grafSankeyWrap').style.display = isSankey ? 'block' : 'none';
+  document.getElementById('grafFaseGroup').style.display = isSankey ? 'none' : 'flex';
+  if(isSankey) vulSankeyStartpuntSelect();
+}
+document.getElementById('grafSankeyStartpunt').addEventListener('change', verversGrafiek);
+
 document.querySelectorAll('#grafTypeRow button:not([disabled])').forEach(btn=>{
   btn.onclick = ()=>{
     grafiekType = btn.dataset.type;
     document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b===btn));
     ververMetricLock();
+    ververSankeyLinkerkolom();
     // aggregatie-knoppenrij hoort bij Staaf/Taart/Heatmap (spec §2/4/5), niet bij Lijn/Sankey; bij
     // Taart ligt aggregatie zelf ook vast op Periode-totaal (een "aandeel van het totaal" heeft
     // alleen bij een optelbare grootheid betekenis, niet bij een piek/gemiddelde)
@@ -209,11 +226,13 @@ document.getElementById('grafEditieSelect').addEventListener('change', verversGr
 
 // ---------- statusweergave (leeg/fout/chart) ----------
 function toonGrafState(status, foutmelding){
-  // Heatmap tekent op een eigen CSS-grid-div, geen Chart.js-canvas (spec §5: "puur SVG/CSS-grid,
-  // geen library nodig") — dus welk van de twee containers zichtbaar wordt hangt af van het type
-  const heatmapActief = grafiekType==='heatmap';
-  document.getElementById('grafCanvas').style.display = (status==='chart' && !heatmapActief) ? 'block' : 'none';
+  // Heatmap/Sankey tekenen op een eigen CSS-grid-div/SVG, geen Chart.js-canvas (spec §5: "puur
+  // SVG/CSS-grid, geen library nodig") — dus welke van de drie containers zichtbaar wordt hangt af
+  // van het actieve type
+  const heatmapActief = grafiekType==='heatmap', sankeyActief = grafiekType==='sankey';
+  document.getElementById('grafCanvas').style.display = (status==='chart' && !heatmapActief && !sankeyActief) ? 'block' : 'none';
   document.getElementById('grafHeatmap').style.display = (status==='chart' && heatmapActief) ? 'block' : 'none';
+  document.getElementById('grafSankeySvg').style.display = (status==='chart' && sankeyActief) ? 'block' : 'none';
   const leeg = document.getElementById('grafLeegState');
   leeg.style.display = (status==='leeg' || status==='leeg-data') ? 'flex' : 'none';
   leeg.textContent = status==='leeg-data' ? t('grafieken.geenDataInPeriode') : t('grafieken.leegState');
@@ -394,6 +413,113 @@ function tekenHeatmap(kolommen, rijen, venster){
   });
 }
 
+// zelfde node-type-kleurcodering als het Schema-tabblad (render-schema.js), voor herkenbaarheid
+// tussen de twee (spec §3)
+const SANKEY_KLEUR = { groep: '#b18cf0', batterij: '#5b8def', generator: '#4fd1c5' };
+function sankeyNodeKleur(type){ return SANKEY_KLEUR[type] || KLEUR_GRIJS; } // kast -> grijs
+
+function svgEl(tag, attrs){
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.entries(attrs||{}).forEach(([k,v])=>el.setAttribute(k,v));
+  return el;
+}
+
+// eenvoudige, zelfgetekende Sankey (geen library, spec-suggestie in het Technisch fundament): de
+// data is altijd een boom (elke kast heeft precies één ouder), dus een links-naar-rechts
+// lagen-layout met breedte-naar-waarde-proportionele "linten" volstaat — geen algemene DAG-
+// sankey-library nodig zoals d3-sankey zou vereisen
+function tekenSankeyChart(nodes, links){
+  const svg = document.getElementById('grafSankeySvg');
+  svg.innerHTML = '';
+  const W = Math.max(svg.clientWidth||900, 400), H = Math.max(svg.clientHeight||480, 300);
+  svg.setAttribute('viewBox', '0 0 '+W+' '+H);
+
+  const childrenOf = new Map(); // parentId -> [link, ...]
+  links.forEach(l=>{ if(!childrenOf.has(l.from)) childrenOf.set(l.from, []); childrenOf.get(l.from).push(l); });
+  const incomingWaarde = new Map(links.map(l=>[l.to, l.waarde]));
+
+  const waardeCache = new Map();
+  function waardeVan(id){
+    if(waardeCache.has(id)) return waardeCache.get(id);
+    const kids = (childrenOf.get(id)||[]).map(l=>l.to);
+    const v = kids.length ? kids.reduce((s,kid)=>s+waardeVan(kid),0) : (incomingWaarde.get(id)||0);
+    waardeCache.set(id, v);
+    return v;
+  }
+  const root = nodes[0];
+  const totaalWaarde = Math.max(waardeVan(root.id), 0.0001);
+
+  const level = new Map([[root.id, 0]]);
+  const volgorde = [root.id];
+  let qi = 0;
+  while(qi < volgorde.length){
+    const id = volgorde[qi++];
+    (childrenOf.get(id)||[]).forEach(l=>{ level.set(l.to, level.get(id)+1); volgorde.push(l.to); });
+  }
+  const maxLevel = Math.max(...level.values());
+  const RECT_W = 16, MARGE_X = 8, TOP = 24, BOTTOM = 24, GAP_Y = 8;
+  // begrensd i.p.v. altijd de volledige containerbreedte vullen — anders trekt een ondiepe keten
+  // (weinig niveaus) de kolommen ver uit elkaar met veel lege ruimte ertussen
+  const colGap = maxLevel>0 ? Math.min((W - MARGE_X*2 - RECT_W) / maxLevel, 240) : 0;
+  const xVan = (lvl)=> MARGE_X + lvl*colGap;
+  const schaal = (H - TOP - BOTTOM) / totaalWaarde; // px per kWh, gelijk over alle kolommen
+
+  // per ouder: kWh-offset van elk kind binnen de ouder (voor de linker-aanhechting van het lint)
+  childrenOf.forEach(lijst=>{ let acc=0; lijst.forEach(l=>{ l._offset = acc; acc += l.waarde; }); });
+
+  const pos = new Map(); // id -> {x,y,h,v}
+  for(let lvl=0; lvl<=maxLevel; lvl++){
+    const lijst = nodes.filter(n=>level.get(n.id)===lvl);
+    let y = TOP;
+    lijst.forEach(n=>{
+      const v = waardeVan(n.id);
+      const h = Math.max(v*schaal, 3);
+      pos.set(n.id, { x: xVan(lvl), y, h, v });
+      y += h + GAP_Y;
+    });
+  }
+
+  // linten eerst (onder de node-rechthoeken), van ouder naar kind
+  links.forEach(l=>{
+    const van = pos.get(l.from), naar = pos.get(l.to);
+    if(!van || !naar) return;
+    const x1 = van.x + RECT_W, y1 = van.y + l._offset*schaal, h1 = Math.max(l.waarde*schaal, 3);
+    const x2 = naar.x, y2 = naar.y, h2 = naar.h;
+    const midX = (x1+x2)/2;
+    const d = 'M'+x1+','+y1+' C'+midX+','+y1+' '+midX+','+y2+' '+x2+','+y2+
+      ' L'+x2+','+(y2+h2)+' C'+midX+','+(y2+h2)+' '+midX+','+(y1+h1)+' '+x1+','+(y1+h1)+' Z';
+    const path = svgEl('path', { d, fill: sankeyNodeKleur((nodeById(l.from)||{}).type), opacity: '0.35' });
+    svg.appendChild(path);
+  });
+
+  // dan de nodes zelf + labels
+  nodes.forEach(n=>{
+    const p = pos.get(n.id);
+    if(!p) return;
+    svg.appendChild(svgEl('rect', { x:p.x, y:p.y, width:RECT_W, height:p.h, rx:2, fill:sankeyNodeKleur(n.type) }));
+    const label = svgEl('text', { x: p.x+RECT_W+6, y: p.y+p.h/2, fill: KLEUR_TEXT2, 'font-size':'11', 'dominant-baseline':'middle' });
+    label.textContent = n.naam + (n.id!==root.id ? ' · '+p.v.toFixed(1)+' kWh' : ' · '+p.v.toFixed(1)+' kWh totaal');
+    svg.appendChild(label);
+  });
+}
+
+async function verversSankeyGrafiek(van, tot, editie){
+  if(chart){ chart.destroy(); chart = null; } // zie verversHeatmapGrafiek() voor de reden
+  const startpunt = document.getElementById('grafSankeyStartpunt').value;
+  if(!startpunt){ toonGrafState('leeg'); return; }
+  const params = new URLSearchParams({ startpunt, fase: 'totaal', van, tot, editie });
+  let data;
+  try{ data = await apiCall('/api/grafieken/sankey?'+params.toString(), 'GET'); }
+  catch(e){ toonGrafState('fout', e.message); return; }
+  if(!data.links.length){
+    document.getElementById('grafSankeySvg').innerHTML = '';
+    toonGrafState('leeg-data');
+    return;
+  }
+  toonGrafState('chart');
+  tekenSankeyChart(data.nodes, data.links);
+}
+
 async function verversHeatmapGrafiek(van, tot, editie){
   // geen Chart.js-instantie voor een heatmap (eigen CSS-grid) — een eventuele oude chart van vóór
   // het wisselen naar Heatmap opruimen, anders blijft "Downloaden als PNG" per ongeluk de vorige
@@ -413,7 +539,8 @@ async function verversHeatmapGrafiek(van, tot, editie){
 }
 
 async function verversGrafiek(){
-  if(!selectedIds.size){
+  // Sankey gebruikt geen kasten-checklist maar een startpunt-select, zie ververSankeyLinkerkolom()
+  if(grafiekType!=='sankey' && !selectedIds.size){
     if(chart){ chart.destroy(); chart = null; }
     toonGrafState('leeg');
     return;
@@ -426,6 +553,7 @@ async function verversGrafiek(){
   if(grafiekType==='staaf') return verversStaafGrafiek(van, tot, editie);
   if(grafiekType==='taart') return verversTaartGrafiek(van, tot, editie);
   if(grafiekType==='heatmap') return verversHeatmapGrafiek(van, tot, editie);
+  if(grafiekType==='sankey') return verversSankeyGrafiek(van, tot, editie);
   return verversLijnGrafiek(van, tot, editie);
 }
 document.getElementById('grafOpnieuwBtn').onclick = verversGrafiek;
@@ -449,6 +577,7 @@ function huidigeSelectieAlsParams(){
     editie: document.getElementById('grafEditieSelect').value,
   });
   if(['staaf','taart','heatmap'].includes(grafiekType)) params.set('aggregatie', aggregatie);
+  if(grafiekType==='sankey') params.set('startpunt', document.getElementById('grafSankeyStartpunt').value);
   if(state.grafiekenPeriodeChip==='aangepast'){
     params.set('van', document.getElementById('grafVanInput').value);
     params.set('tot', document.getElementById('grafTotInput').value);
@@ -494,6 +623,11 @@ function herstelVanUrl(){
   document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b.dataset.type===grafiekType));
   document.getElementById('grafAggregatieGroup').style.display = ['staaf','taart','heatmap'].includes(grafiekType) ? 'flex' : 'none';
   ververMetricLock();
+  ververSankeyLinkerkolom();
+  const startpuntParam = params.get('startpunt');
+  if(grafiekType==='sankey' && startpuntParam && document.querySelector('#grafSankeyStartpunt option[value="'+startpuntParam+'"]')){
+    document.getElementById('grafSankeyStartpunt').value = startpuntParam;
+  }
   if(grafiekType==='taart'){
     aggregatie = 'totaal';
     document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>{ c.classList.toggle('active', c.dataset.aggregatie==='totaal'); c.disabled = true; });

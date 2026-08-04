@@ -1234,6 +1234,25 @@ function grafiekenVermogenVeld(fase) {
   return fase === 'totaal' ? 'total_act_power' : fase + '_act_power';
 }
 
+// integral(unit: 1h) van het vermogensveld -> kWh over de gekozen periode voor één kast; gedeeld
+// door /api/grafieken/aggregaat (aggregatie=totaal) en /api/grafieken/sankey hieronder
+async function berekenEnergieKwh(id, veld, range, editieFilter) {
+  const flux =
+    'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+    '  |> ' + range + '\n' +
+    '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+    '  |> filter(fn: (r) => r._field == "' + veld + '")\n' +
+    '  |> filter(fn: (r) => r.kast == "' + id + '")\n' +
+    editieFilter +
+    '  |> group(columns: ["kast"])\n' +
+    '  |> sort(columns: ["_time"])\n' +
+    '  |> integral(unit: 1h)\n' +
+    '  |> keep(columns: ["_value"])';
+  const csv = await influxQueryPlatteCsv(flux);
+  const waarde = parseFloat(csvKolomWaarden(csv, '_value')[0]);
+  return isNaN(waarde) ? 0 : waarde / 1000;
+}
+
 // csv-kolommen kast,_field,_value (geen _time nodig na max()/mean(), dus geen pivot() — voorkomt
 // onduidelijk pivot-rowKey-gedrag op een al-gereduceerd resultaat). Middelt over meerdere velden
 // net als grafiekenCsvNaarSeries() (de spanning+totaal-uitzondering).
@@ -1282,22 +1301,7 @@ app.get('/api/grafieken/aggregaat', async (req, res) => {
   try {
     if (aggregatie === 'totaal') {
       const veld = grafiekenVermogenVeld(fase);
-      const resultaten = await Promise.all(idLijst.map(async (id) => {
-        const flux =
-          'from(bucket: "' + INFLUX_BUCKET + '")\n' +
-          '  |> ' + range + '\n' +
-          '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
-          '  |> filter(fn: (r) => r._field == "' + veld + '")\n' +
-          '  |> filter(fn: (r) => r.kast == "' + id + '")\n' +
-          editieFilter +
-          '  |> group(columns: ["kast"])\n' +
-          '  |> sort(columns: ["_time"])\n' +
-          '  |> integral(unit: 1h)\n' +
-          '  |> keep(columns: ["_value"])';
-        const csv = await influxQueryPlatteCsv(flux);
-        const waarde = parseFloat(csvKolomWaarden(csv, '_value')[0]);
-        return { id, waarde: isNaN(waarde) ? 0 : waarde / 1000 };
-      }));
+      const resultaten = await Promise.all(idLijst.map(async (id) => ({ id, waarde: await berekenEnergieKwh(id, veld, range, editieFilter) })));
       return res.json({ waarden: resultaten });
     }
 
@@ -1380,6 +1384,56 @@ app.get('/api/grafieken/heatmap', async (req, res) => {
       return { id: s.id, cellen: kolommen.map((t) => (perTijd.has(t) ? perTijd.get(t) : null)) };
     });
     res.json({ kolommen, rijen, venster });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// ---------- Sankey (zelfde roadmap-item, zie grafieken-tabblad-plan.md §3): energieverdeling vanaf
+// één gekozen startpunt-generator. De keten zelf komt rechtstreeks uit de topologie in-memory
+// (readTopo(), dezelfde bron als het Schema-tabblad z'n boomdiagram) i.p.v. de topology_edges-reeks
+// in InfluxDB (die is er specifiek voor Grafana) — voor dit ad-hoc-tabblad is de actuele topologie
+// zelf sowieso al beschikbaar, geen aparte Influx-round-trip nodig om de structuur te kennen. Alleen
+// de kWh-waarde per link komt uit InfluxDB, met dezelfde integral(unit: 1h)-aanpak als hierboven ----------
+app.get('/api/grafieken/sankey', async (req, res) => {
+  const { startpunt, fase, van, tot, editie } = req.query;
+  if (!startpunt || !veiligeTagWaarde(startpunt)) return res.status(400).json({ error: 'startpunt is verplicht' });
+  if (!['a', 'b', 'c', 'totaal'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
+    return res.status(400).json({ error: 'van en tot zijn verplicht en moeten geldige datums zijn' });
+  }
+  const data = readTopo();
+  const gen = data.generators.find((g) => g.id === startpunt);
+  if (!gen) return res.status(404).json({ error: 'onbekende generator/groep' });
+  let editieFilter = '';
+  if (editie && editie !== '__alle__') {
+    const veiligeEditie = veiligeTagWaarde(editie);
+    if (!veiligeEditie) return res.status(400).json({ error: 'ongeldige editie' });
+    editieFilter = '  |> filter(fn: (r) => r.editie == "' + veiligeEditie + '")\n';
+  }
+  const vanMs = new Date(van).getTime(), totMs = new Date(tot).getTime();
+  const range = 'range(start: ' + new Date(vanMs).toISOString() + ', stop: ' + new Date(totMs).toISOString() + ')';
+
+  // volledige onderliggende keten verzamelen, hoe diep ook (recursief via parent, net als
+  // listChildrenOf()/collectDescendantKasten() aan de clientkant voor het Schema-tabblad)
+  const nodes = [{ id: gen.id, naam: gen.naam, type: gen.type || 'generator', parent: null }];
+  function verzamel(parentId, isRoot) {
+    const kinderen = data.kasten.filter((k) => (isRoot ? k.generator === parentId && !k.parent : k.parent === parentId));
+    kinderen.forEach((k) => {
+      nodes.push({ id: k.id, naam: k.naam, type: k.type || 'kast', parent: parentId });
+      verzamel(k.id, false);
+    });
+  }
+  verzamel(gen.id, true);
+  const kastNodes = nodes.filter((n) => n.id !== gen.id);
+  if (!kastNodes.length) return res.json({ nodes, links: [] });
+
+  try {
+    const veld = grafiekenVermogenVeld(fase);
+    const links = await Promise.all(kastNodes.map(async (n) => ({
+      from: n.parent, to: n.id, waarde: await berekenEnergieKwh(n.id, veld, range, editieFilter),
+    })));
+    res.json({ nodes, links });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }

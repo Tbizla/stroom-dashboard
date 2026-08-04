@@ -22,6 +22,7 @@
   "grafieken.aggregatieTotaal": "Periode-totaal",
   "grafieken.aggregatieTotaalTitle": "Alleen beschikbaar bij metric Energie (kWh)",
   "grafieken.heatmapGeenData": "geen data",
+  "grafieken.startpuntLabel": "Startpunt",
   "grafieken.periodeLabel": "Periode",
   "grafieken.editieLabel": "Editie",
   "grafieken.typeLijn": "Lijndiagram",

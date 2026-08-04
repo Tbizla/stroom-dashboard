@@ -256,15 +256,23 @@ zetten zonder code aan te passen.
   rating", geen zinvolle vergelijking in W/V/kWh). Aggregatie per cel is Piekwaarde of Gemiddelde
   (Periode-totaal is geen zinvolle aggregatie binnen één tijdvak-cel). Een ontbrekende meting toont
   een lege cel, geen kunstmatige 0. Puur CSS-grid, geen chartlibrary nodig
+- **Sankey** (gebouwd, laatste van de vijf grafiektypes): energieverdeling vanaf één gekozen
+  startpunt-generator/-groep. De linkerkolom wisselt hier om naar een startpunt-dropdown (alleen
+  generators/groepen, bewust geen "Alles"-optie — een fictieve top-node bij meerdere onafhankelijke
+  generators zou verwarrend zijn) i.p.v. de gewone kasten-checklist; Fase verdwijnt volledig uit de
+  linkerkolom en metric ligt vast op Energie (kWh). De eerder gekozen kasten-checklist-selectie
+  blijft ondertussen intact en komt terug zodra je naar een ander grafiektype wisselt. Breedte van
+  elke stroom = kWh in de gekozen periode/editie; kleur per node-type (groep/generator/batterij/
+  kast), zelfde kleurcodering als het Schema-tabblad. Eigen, zelfgetekende SVG (geen d3-sankey- of
+  andere library nodig — de data is altijd een boom, geen algemene DAG)
 - "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie inclusief grafiektype als
   leesbare query-string, `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in
   dezelfde staat, geen opslag/database erbij)
-- **Nog niet gebouwd** (staat als uitgeschakelde knop in de grafiektype-rij): Sankey
-  (energieverdeling vanaf één startpunt-generator), en een live-modus (schuifvenster 5/15/30/60
-  min, hergebruikt de MQTT-verbinding van het Live-tabblad) — volgt in een latere stap, zie de spec
-  voor het volledige ontwerp. Meerdere-edities-vergelijking
-  (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet meegenomen, dat volgt samen met de
-  tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md
+- **Nog niet gebouwd**: een live-modus (schuifvenster 5/15/30/60 min, hergebruikt de MQTT-
+  verbinding van het Live-tabblad) — volgt in een latere stap, zie de spec voor het volledige
+  ontwerp. Meerdere-edities-vergelijking (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet
+  meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
+  voorspellende-piekbelasting-plan.md
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
 - Eén klik een voorbeeldtopologie laden: **eenvoudig** (3 generators, 11 kasten, 3 niveaus) voor een

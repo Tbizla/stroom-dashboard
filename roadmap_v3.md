@@ -103,9 +103,18 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       rood t.o.v. rating — metric ligt hier net als bij Taart vast (op Stroom i.p.v. Energie, om
       dezelfde reden: de celkleur ís "t.o.v. rating"), Periode-totaal is geen zinvolle aggregatie
       per cel dus alleen Piekwaarde/Gemiddelde beschikbaar. Puur CSS-grid, geen chartlibrary.
-      **Nog te bouwen**: Sankey-grafiektype (nu uitgeschakelde knop in de UI) en de live-modus;
-      meerdere-edities-vergelijking (Lijndiagram) wacht op de tijd-sinds-start-
-      uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md, Grafieken-tabblad.
+      **Sankey** (laatste van de vijf grafiektypes): nieuw `/api/grafieken/sankey`-endpoint — de
+      keten zelf komt rechtstreeks uit de in-memory topologie (zelfde bron als het Schema-tabblad,
+      geen aparte Influx-round-trip nodig), alleen de kWh-waarde per link komt uit InfluxDB via
+      dezelfde `integral(unit: 1h)`-aanpak als Periode-totaal. Linkerkolom wisselt om naar een
+      startpunt-dropdown (alleen generators/groepen, bewust geen "Alles"-optie); Fase verdwijnt
+      volledig uit de linkerkolom, metric ligt vast op Energie — de eerder gekozen kasten-
+      checklist-selectie blijft intact en komt terug zodra je naar een ander grafiektype wisselt.
+      Eigen, zelfgetekende SVG-Sankey (geen d3-sankey-library nodig: de data is altijd een boom,
+      geen algemene DAG) met dezelfde node-kleurcodering per type als het Schema-tabblad.
+      **Nog te bouwen**: de live-modus; meerdere-edities-vergelijking (Lijndiagram) wacht op de
+      tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md,
+      Grafieken-tabblad.
 - [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
       "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een
       "Alle QR-codes printen"-bulkknop, elk codeert `/?mode=live&kast=<id>`. Op een smal scherm

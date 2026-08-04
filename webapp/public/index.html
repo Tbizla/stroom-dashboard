@@ -531,12 +531,18 @@
 
   <div class="grafbody" id="grafiekenPanel" style="display:none">
     <div class="grafcol">
-      <div class="listhead" data-i18n="grafieken.selectieTitel">Kasten &amp; generators</div>
-      <div class="listtools">
-        <input type="text" id="grafZoek" data-i18n-placeholder="aside.zoekPlaceholder" placeholder="Zoek op naam of afkorting...">
+      <div id="grafChecklistWrap">
+        <div class="listhead" data-i18n="grafieken.selectieTitel">Kasten &amp; generators</div>
+        <div class="listtools">
+          <input type="text" id="grafZoek" data-i18n-placeholder="aside.zoekPlaceholder" placeholder="Zoek op naam of afkorting...">
+        </div>
+        <div class="list" id="grafList"></div>
+        <div class="graf-empty-selectie" id="grafGeenNodes" style="display:none" data-i18n="grafieken.geenKastenPlaceholder">Nog geen generators/kasten.</div>
       </div>
-      <div class="list" id="grafList"></div>
-      <div class="graf-empty-selectie" id="grafGeenNodes" style="display:none" data-i18n="grafieken.geenKastenPlaceholder">Nog geen generators/kasten.</div>
+      <div id="grafSankeyWrap" style="display:none;padding:0 14px">
+        <div class="listhead" style="padding:12px 0 8px" data-i18n="grafieken.startpuntLabel">Startpunt</div>
+        <select id="grafSankeyStartpunt" style="width:100%"></select>
+      </div>
 
       <div class="grafcontrols">
         <div class="grafctlgroup">
@@ -548,7 +554,7 @@
             <button class="chip" data-metric="energie" data-i18n="grafieken.metricEnergie">Energie (kWh)</button>
           </div>
         </div>
-        <div class="grafctlgroup">
+        <div class="grafctlgroup" id="grafFaseGroup">
           <div class="graflbl" data-i18n="grafieken.faseLabel">Fase</div>
           <div class="listfilters" id="grafFaseRow">
             <button class="chip" data-fase="a">A</button>
@@ -590,7 +596,7 @@
         <div class="modeswitch" id="grafTypeRow">
           <button class="active" data-type="lijn" data-i18n="grafieken.typeLijn">Lijndiagram</button>
           <button data-type="staaf" data-i18n="grafieken.typeStaaf">Staafdiagram</button>
-          <button data-type="sankey" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeSankey">Sankey</button>
+          <button data-type="sankey" data-i18n="grafieken.typeSankey">Sankey</button>
           <button data-type="taart" data-i18n="grafieken.typeTaart">Taart</button>
           <button data-type="heatmap" data-i18n="grafieken.typeHeatmap">Heatmap</button>
         </div>
@@ -602,6 +608,7 @@
       <div class="grafchartwrap" id="grafChartWrap">
         <canvas id="grafCanvas"></canvas>
         <div id="grafHeatmap" style="display:none;overflow:auto;height:100%"></div>
+        <svg id="grafSankeySvg" style="display:none;width:100%;height:100%"></svg>
         <div class="graf-status" id="grafLeegState" data-i18n="grafieken.leegState">Selecteer minstens één kast of generator links om een grafiek te zien.</div>
         <div class="graf-status" id="grafFoutState" style="display:none">
           <span id="grafFoutInfo" style="color:var(--red)"></span><br>
