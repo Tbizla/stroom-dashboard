@@ -12,7 +12,7 @@ const BASELINE_MIN_WAARDE = 0.5;         // negeer ruis rond 0A (bijv. "van 0.1A
 const AUTO_VERVAL_MS = 10 * 60000;       // badge verdwijnt vanzelf na 10 min als niemand 'm wegklikt
 
 const samples = new Map();  // nodeId -> [{waarde, ts}, ...] — alléén "normale" (niet-episode) samples
-const episodes = new Map(); // nodeId -> {baseline, tekst, ts, sindsTs, bevestigd}
+const episodes = new Map(); // nodeId -> {baseline, sec, tekst, sindsTs, bevestigd}
 
 function pruneSamples(arr, now){
   while(arr.length && now - arr[0].ts > VENSTER_MS) arr.shift();
@@ -39,10 +39,10 @@ export function verwerkAnomalyDetectie(nodeId, waarde){
   if(episode){
     const relatief = (waarde - episode.baseline) / episode.baseline;
     if(Math.abs(relatief) > SPRONG_DREMPEL){
-      if(!episode.bevestigd){
-        episode.tekst = bouwTekst(episode.baseline, waarde, Math.round((now-episode.sindsTs)/1000));
-        episode.ts = now;
-      }
+      // percentage/van/naar mogen meebewegen met de actuele waarde, maar de tijdsduur (sec) blijft
+      // vast op het triggermoment — anders groeit "sec" onbegrensd door zolang de storing aanhoudt
+      // (bugfix n.a.v. code-review, zie specs/vervolgticket-commit-cdcef83.md §2)
+      if(!episode.bevestigd) episode.tekst = bouwTekst(episode.baseline, waarde, episode.sec);
       return; // storing houdt aan: geen nieuwe baseline-sample bijhouden zolang dit zo is
     }
     episodes.delete(nodeId); // waarde is teruggekeerd richting de oorspronkelijke baseline: episode voorbij
@@ -60,11 +60,13 @@ export function verwerkAnomalyDetectie(nodeId, waarde){
 
   const relatief = (waarde - baseline) / baseline;
   if(Math.abs(relatief) > SPRONG_DREMPEL){
-    const sindsTs = now;
+    // sec ligt vast op het triggermoment (zie de lopende-episode-tak hierboven, die 'm hergebruikt
+    // i.p.v. herberekent) — alleen percentage/van/naar bewegen mee met latere, actuelere waarden
+    const sec = Math.round((now - baselineSamples[0].ts)/1000);
     episodes.set(nodeId, {
-      baseline,
-      tekst: bouwTekst(baseline, waarde, Math.round((now - baselineSamples[0].ts)/1000)),
-      ts: now, sindsTs, bevestigd: false,
+      baseline, sec,
+      tekst: bouwTekst(baseline, waarde, sec),
+      sindsTs: now, bevestigd: false,
     });
   }
 }
@@ -87,13 +89,16 @@ export function aantalActieveAnomalieen(){
   return n;
 }
 
-// periodieke opruiming van verlopen (niet-weggeklikte) episodes — los van binnenkomende MQTT-data,
-// anders blijft een badge onterecht staan zodra een kast stil valt i.p.v. herstelt
+// periodieke opruiming van verlopen episodes — los van binnenkomende MQTT-data, anders blijft een
+// badge onterecht staan zodra een kast stil valt i.p.v. herstelt. Toetst op sindsTs (vastgezet bij
+// de trigger) i.p.v. een steeds ververst tijdstip, en geldt voor ALLE episodes, ook weggeklikte —
+// anders blokkeert een bevestigde episode tijdens een aanhoudende storing voorgoed nieuwe detectie
+// op diezelfde node (bugfix n.a.v. code-review, zie specs/vervolgticket-commit-cdcef83.md §1 + §3)
 export function initAnomalyOpruiming(onGewijzigd){
   setInterval(()=>{
     const now = Date.now();
     let gewijzigd = false;
-    episodes.forEach((e, id)=>{ if(!e.bevestigd && now-e.ts > AUTO_VERVAL_MS){ episodes.delete(id); gewijzigd = true; } });
+    episodes.forEach((e, id)=>{ if(now-e.sindsTs > AUTO_VERVAL_MS){ episodes.delete(id); gewijzigd = true; } });
     if(gewijzigd) onGewijzigd();
   }, 30000);
 }

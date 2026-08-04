@@ -128,6 +128,17 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       sectie onderaan de Beheer-kolom, ná Kasten; Rapportages-subnav geslonken naar
       Overzicht/PDF-rapport). Zie [specs/vervolgticket-commit-37d57ff.md]
       (specs/vervolgticket-commit-37d57ff.md), event_dashboard.md (Topologiebeheer-sectie).
+- [x] **Vervolgticket op commit cdcef83 (anomaly-detectie-episode-logica).** Afgerond — alle drie
+      neveneffecten van de baseline-bevries-fix opgelost, puur binnen `anomaly.js`: de opruimer
+      toetst nu op `episode.sindsTs` (vastgezet bij de trigger) i.p.v. een steeds ververst
+      tijdstip, en geldt voortaan voor alle episodes, ook weggeklikte — dus het 10-minuten-verval
+      werkt weer tijdens een aanhoudende storing én een weggeklikte melding blokkeert een node niet
+      langer permanent. De `sec`-waarde in de badgetekst ligt nu vast op het triggermoment
+      (percentage/van/naar bewegen nog wel mee). Geverifieerd met een strak gesynchroniseerde
+      live MQTT-test (publiceren en checken in hetzelfde script, geen cross-process timing-ruis):
+      badge bleef exact dezelfde tekst tonen over meerdere checks, verviel correct tijdens een
+      aanhoudende storing, en een nieuwe sprong ná verval werd weer als verse episode gedetecteerd.
+      Zie [specs/vervolgticket-commit-cdcef83.md](specs/vervolgticket-commit-cdcef83.md).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
