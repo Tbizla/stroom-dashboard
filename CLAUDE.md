@@ -61,6 +61,11 @@ moet het herbouwd worden:
   spec/plan uitwerken en afstemmen vóórdat er gebouwd wordt.** Geldt voor zowel Cowork- als
   Code-kant, niet alleen voor UI-voorstellen — ook backend-/infra-werk op die roadmap start met
   een plan, niet met code.
+- **Een roadmap-item pas als `[x]` aanvinken als het écht helemaal af is — niet bij een deel-
+  oplevering.** Is een item gedeeltelijk gebouwd (bijv. één grafiektype van de vijf, of één
+  bouwstap van een groter item), dan blijft het `[ ]` en beschrijft de tekst duidelijk wat al
+  gebouwd is en wat nog niet — geen `[x]` met een "nog te bouwen"-lijstje erachteraan. Geldt voor
+  wie de roadmap ook bijwerkt (Cowork of Code).
 
 ## Versionering (tags & releases)
 

@@ -21,6 +21,17 @@ let fase = 'totaal';
 let zoekQuery = '';
 let chart = null;
 let eersteKeerGetoond = true;
+let grafiekType = 'lijn';
+let aggregatie = 'piek';
+
+// mirrort --green/--amber/--red uit style.css, zelfde 70/90%-conventie als overal elders in de
+// app (kastpopup.js/render-detail.js) — Chart.js tekent op canvas, kan geen CSS-variabelen lezen
+const KLEUR_GROEN = '#3ecf6a', KLEUR_AMBER = '#f5a623', KLEUR_ROOD = '#e5484d', KLEUR_GRIJS = '#4a5160';
+function statusKleur(waarde, ratingA){
+  if(ratingA==null) return KLEUR_GRIJS;
+  const pct = (waarde/ratingA)*100;
+  return pct>=90 ? KLEUR_ROOD : pct>=70 ? KLEUR_AMBER : KLEUR_GROEN;
+}
 
 function kleurVoorId(id){
   const idx = Array.from(selectedIds).indexOf(id);
@@ -76,11 +87,43 @@ document.getElementById('grafZoek').addEventListener('input', (e)=>{
   renderChecklist();
 });
 
+// ---------- grafiektype-knoppenrij ----------
+document.querySelectorAll('#grafTypeRow button:not([disabled])').forEach(btn=>{
+  btn.onclick = ()=>{
+    grafiekType = btn.dataset.type;
+    document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b===btn));
+    // aggregatie-knoppenrij hoort bij Staaf/Taart/Heatmap (spec §2/4/5), niet bij Lijn/Sankey
+    document.getElementById('grafAggregatieGroup').style.display = ['staaf','taart','heatmap'].includes(grafiekType) ? 'flex' : 'none';
+    verversGrafiek();
+  };
+});
+
+// ---------- aggregatie-knoppenrij (Staaf/Taart/Heatmap) — "Periode-totaal" alleen zinvol/
+// beschikbaar bij metric Energie, zie spec §2 ----------
+function ververAggregatieBeschikbaarheid(){
+  const totaalBtn = document.querySelector('#grafAggregatieRow [data-aggregatie="totaal"]');
+  const beschikbaar = metric === 'energie';
+  totaalBtn.disabled = !beschikbaar;
+  if(!beschikbaar && aggregatie==='totaal'){
+    aggregatie = 'piek';
+    document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.aggregatie==='piek'));
+  }
+}
+document.querySelectorAll('#grafAggregatieRow .chip').forEach(chip=>{
+  chip.onclick = ()=>{
+    if(chip.disabled) return;
+    aggregatie = chip.dataset.aggregatie;
+    document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.classList.toggle('active', c===chip));
+    verversGrafiek();
+  };
+});
+
 // ---------- metric/fase-knoppenrijen ----------
 document.querySelectorAll('#grafMetricRow .chip').forEach(chip=>{
   chip.onclick = ()=>{
     metric = chip.dataset.metric;
     document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c===chip));
+    ververAggregatieBeschikbaarheid();
     verversGrafiek();
   };
 });
@@ -174,6 +217,61 @@ function tekenChart(series){
   });
 }
 
+function tekenStaafChart(waarden){
+  // groen/amber/rood-conventie past hier alleen rechtstreeks bij metric "stroom" (dat ís letterlijk
+  // "t.o.v. rating", zie spec §2) — bij de andere metrics (geen rating-drempel in Ampère
+  // vergelijkbaar met W/V/kWh) valt dit terug op hetzelfde categorische palet als het lijndiagram
+  const eenheid = { stroom:'A', spanning:'V', vermogen:'W', energie:'kWh' }[metric];
+  const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
+  const labels = gesorteerd.map(w=>(nodeById(w.id)||{naam:w.id}).naam);
+  const kleuren = gesorteerd.map(w=>{
+    if(metric!=='stroom') return kleurVoorId(w.id);
+    const node = nodeById(w.id);
+    return statusKleur(w.waarde, node ? node.rating_a : null);
+  });
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById('grafCanvas'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: gesorteerd.map(w=>w.waarde), backgroundColor: kleuren }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        x: { ticks: { color: KLEUR_TEXT2 }, grid: { display: false } },
+        y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2 }, ticks: { color: KLEUR_TEXT2 }, grid: { color: KLEUR_BORDER } },
+      },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+async function verversLijnGrafiek(van, tot, editie){
+  const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie });
+  let data;
+  try{ data = await apiCall('/api/grafieken/tijdreeks?'+params.toString(), 'GET'); }
+  catch(e){ toonGrafState('fout', e.message); return; }
+  if(!data.series.length || data.series.every(s=>!s.punten.length)){
+    if(chart){ chart.destroy(); chart = null; }
+    toonGrafState('leeg-data');
+    return;
+  }
+  toonGrafState('chart');
+  tekenChart(data.series);
+}
+
+async function verversStaafGrafiek(van, tot, editie){
+  const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie, aggregatie });
+  let data;
+  try{ data = await apiCall('/api/grafieken/aggregaat?'+params.toString(), 'GET'); }
+  catch(e){ toonGrafState('fout', e.message); return; }
+  if(!data.waarden.length){
+    if(chart){ chart.destroy(); chart = null; }
+    toonGrafState('leeg-data');
+    return;
+  }
+  toonGrafState('chart');
+  tekenStaafChart(data.waarden);
+}
+
 async function verversGrafiek(){
   if(!selectedIds.size){
     if(chart){ chart.destroy(); chart = null; }
@@ -183,20 +281,10 @@ async function verversGrafiek(){
   let van, tot;
   try{ ({ van, tot } = await bepaalGrafiekenPeriode()); }
   catch(e){ toonGrafState('fout', e.message); return; }
-
   const editie = document.getElementById('grafEditieSelect').value;
-  const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie });
-  let data;
-  try{ data = await apiCall('/api/grafieken/tijdreeks?'+params.toString(), 'GET'); }
-  catch(e){ toonGrafState('fout', e.message); return; }
 
-  if(!data.series.length || data.series.every(s=>!s.punten.length)){
-    if(chart){ chart.destroy(); chart = null; }
-    toonGrafState('leeg-data');
-    return;
-  }
-  toonGrafState('chart');
-  tekenChart(data.series);
+  if(grafiekType==='staaf') return verversStaafGrafiek(van, tot, editie);
+  return verversLijnGrafiek(van, tot, editie);
 }
 document.getElementById('grafOpnieuwBtn').onclick = verversGrafiek;
 
@@ -213,11 +301,12 @@ document.getElementById('grafPngBtn').onclick = ()=>{
 // (zie "Wat het niet is" in de spec) ----------
 function huidigeSelectieAlsParams(){
   const params = new URLSearchParams({
-    mode: 'grafieken', type: 'lijn',
+    mode: 'grafieken', type: grafiekType,
     ids: Array.from(selectedIds).join(','), metric, fase,
     periode: state.grafiekenPeriodeChip,
     editie: document.getElementById('grafEditieSelect').value,
   });
+  if(['staaf','taart','heatmap'].includes(grafiekType)) params.set('aggregatie', aggregatie);
   if(state.grafiekenPeriodeChip==='aangepast'){
     params.set('van', document.getElementById('grafVanInput').value);
     params.set('tot', document.getElementById('grafTotInput').value);
@@ -253,11 +342,18 @@ function herstelVanUrl(){
   if(params.get('periode')) state.grafiekenPeriodeChip = params.get('periode');
   if(params.get('van')) document.getElementById('grafVanInput').value = params.get('van');
   if(params.get('tot')) document.getElementById('grafTotInput').value = params.get('tot');
+  const typeParam = params.get('type');
+  if(typeParam && document.querySelector('#grafTypeRow [data-type="'+typeParam+'"]:not([disabled])')) grafiekType = typeParam;
+  if(params.get('aggregatie')) aggregatie = params.get('aggregatie');
 
   document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
   document.querySelectorAll('#grafFaseRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.fase===fase));
   document.querySelectorAll('#grafPeriodeRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.periodechip===state.grafiekenPeriodeChip));
   document.getElementById('grafAangepastPeriode').style.display = state.grafiekenPeriodeChip==='aangepast' ? 'flex' : 'none';
+  document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b.dataset.type===grafiekType));
+  document.getElementById('grafAggregatieGroup').style.display = ['staaf','taart','heatmap'].includes(grafiekType) ? 'flex' : 'none';
+  document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.aggregatie===aggregatie));
+  ververAggregatieBeschikbaarheid();
 }
 
 // aangeroepen vanuit modes.js zodra het Grafieken-tabblad getoond wordt

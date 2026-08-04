@@ -557,6 +557,14 @@
             <button class="chip active" data-fase="totaal" data-i18n="grafieken.faseTotaal">Totaal</button>
           </div>
         </div>
+        <div class="grafctlgroup" id="grafAggregatieGroup" style="display:none">
+          <div class="graflbl" data-i18n="grafieken.aggregatieLabel">Aggregatie</div>
+          <div class="listfilters" id="grafAggregatieRow">
+            <button class="chip active" data-aggregatie="piek" data-i18n="grafieken.aggregatiePiek">Piekwaarde</button>
+            <button class="chip" data-aggregatie="gemiddelde" data-i18n="grafieken.aggregatieGemiddelde">Gemiddelde</button>
+            <button class="chip" data-aggregatie="totaal" data-i18n="grafieken.aggregatieTotaal" data-i18n-title="grafieken.aggregatieTotaalTitle">Periode-totaal</button>
+          </div>
+        </div>
         <div class="grafctlgroup">
           <div class="graflbl" data-i18n="grafieken.periodeLabel">Periode</div>
           <div class="listfilters" id="grafPeriodeRow">
@@ -581,7 +589,7 @@
       <div class="graftoolbar">
         <div class="modeswitch" id="grafTypeRow">
           <button class="active" data-type="lijn" data-i18n="grafieken.typeLijn">Lijndiagram</button>
-          <button data-type="staaf" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeStaaf">Staafdiagram</button>
+          <button data-type="staaf" data-i18n="grafieken.typeStaaf">Staafdiagram</button>
           <button data-type="sankey" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeSankey">Sankey</button>
           <button data-type="taart" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeTaart">Taart</button>
           <button data-type="heatmap" disabled data-i18n-title="grafieken.typeNogNietBeschikbaar" data-i18n="grafieken.typeHeatmap">Heatmap</button>

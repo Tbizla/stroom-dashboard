@@ -228,21 +228,30 @@ zetten zonder code aan te passen.
 
 **Grafieken-tabblad (vrije ad-hoc analyse)** — *werk in uitvoering, zie specs/grafieken-tabblad-plan.md*
 - Zesde hoofdtabblad, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators,
-  metric en fase kiezen en in een lijndiagram zetten, zonder naar Grafana te hoeven wisselen voor
-  een snelle ad-hoc vraag ("hoe deed kast 12 het gisteren t.o.v. kast 13?")
+  metric/fase/periode/editie kiezen en in een grafiek zetten, zonder naar Grafana te hoeven
+  wisselen voor een snelle ad-hoc vraag ("hoe deed kast 12 het gisteren t.o.v. kast 13?")
 - Linkerkolom: doorzoekbare, aan-/uitvinkbare boomlijst van generators/kasten (meerdere tegelijk),
   metric (Stroom A / Spanning V / Vermogen W / Energie kWh), fase (A/B/C/Totaal — bij Spanning+
   Totaal het gemiddelde van de drie fasen, er is geen fysiek `total_voltage`-veld), periode (hele
   evenement/laatste 24u/aangepast) en editie (één, of "alle edities")
-- Server-side downsampling (InfluxDB `aggregateWindow`, venstergrootte berekend uit de
-  periodelengte) — bij "hele evenement" komt nooit de ruwe ~1s-puntenreeks naar de browser
-- "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie als leesbare query-string,
-  `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in dezelfde staat, geen
-  opslag/database erbij)
-- **Nog niet gebouwd** (staan als uitgeschakelde knoppen in de grafiektype-rij): staafdiagram,
-  Sankey, taartdiagram, heatmap, en een live-modus voor het lijndiagram — volgen in latere stappen,
-  zie de spec voor het volledige ontwerp. Meerdere-edities-vergelijking (jaar-op-jaar) is ook nog
-  niet meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
+- **Lijndiagram** (gebouwd): tijdreeks, één lijn per geselecteerde kast/generator. Server-side
+  downsampling (InfluxDB `aggregateWindow`, venstergrootte berekend uit de periodelengte) — bij
+  "hele evenement" komt nooit de ruwe ~1s-puntenreeks naar de browser
+- **Staafdiagram** (gebouwd): één balk per geselecteerde kast/generator over de gekozen periode,
+  met een aggregatie-keuze (Piekwaarde/Gemiddelde/Periode-totaal — periode-totaal alleen actief bij
+  metric Energie, elders uitgeschakeld en valt terug op Piekwaarde). Balken aflopend gesorteerd op
+  waarde. Kleur volgt de groen/amber/rood-belastingsconventie (t.o.v. rating) bij metric Stroom;
+  bij de overige metrics (geen rating-vergelijking mogelijk in W/V/kWh) hetzelfde categorische
+  palet als het lijndiagram
+- "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie inclusief grafiektype als
+  leesbare query-string, `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in
+  dezelfde staat, geen opslag/database erbij)
+- **Nog niet gebouwd** (staan als uitgeschakelde knoppen in de grafiektype-rij): Sankey
+  (energieverdeling vanaf één startpunt-generator), taartdiagram (aandeel per kast), belasting-
+  heatmap (patroon per uur), en een live-modus (schuifvenster 5/15/30/60 min, hergebruikt de
+  MQTT-verbinding van het Live-tabblad) — volgen in latere stappen, zie de spec voor het volledige
+  ontwerp. Meerdere-edities-vergelijking (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet
+  meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
   voorspellende-piekbelasting-plan.md
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
@@ -342,23 +351,3 @@ Grafana:
   vlak met icoon i.p.v. de vorige kale tekstregel). Rapport volgt standaard de UI-taal, met een
   eigen schuifknop (los van de header-taalkeuze) om de rapporttaal per generatie op NL of EN te
   zetten. Logo-embedding werkt alleen met een PNG-logo (BMP/SVG worden overgeslagen)
-
-**Grafieken-tabblad** (zesde tab in de mode-switch, naast Beheer/Kalibreren/Schema/Live/
-Rapportages) — vrije ad-hoc analyse zonder naar Grafana te hoeven wisselen:
-- Linkerkolom met dataselectie: kasten/generators (doorzoekbare, aan-/uitvinkbare lijst, meerdere
-  tegelijk), metric (stroom/spanning/vermogen/energie), fase (A/B/C/totaal), periode (hele
-  evenement/laatste 24u/aangepast/live) en editie(s) — bij meerdere edities schakelt de x-as om
-  naar tijd-sinds-start-van-de-editie zodat de curves over elkaar te leggen zijn
-- Vijf grafiektypes via een knoppenrij boven de grafiek: lijndiagram (tijdreeks), staafdiagram
-  (aggregatie piek/gemiddelde/periode-totaal, kleur volgt de groen/amber/rood-belastingsconventie),
-  Sankey (energieverdeling vanaf één gekozen startpunt-generator, linkerkolom wisselt dan naar een
-  startpunt-dropdown), taartdiagram (aandeel per kast in het totaal) en een belasting-heatmap
-  (patroon per uur, groen/amber/rood per cel)
-- **Live-modus**: vierde periode-optie met een schuifvenster (5/15/30/60 min) dat continu meeschuift,
-  hergebruikt dezelfde MQTT-websocketverbinding als het Live-tabblad, met een pulserende
-  LIVE-indicator en een pauzeknop. Sankey/taart tonen in live-modus vermogen (kW) i.p.v. energie
-  (kWh); de heatmap heeft geen live-modus
-- "Kopieer link"-knop codeert de huidige selectie (kasten/metric/fase/periode/editie/grafiektype)
-  als deelbare URL — geen opgeslagen/benoemde weergaven, puur een stateless snapshot-link
-- "Downloaden als PNG"-knop, en dezelfde status-/foutkaart-aanpak ("Opnieuw proberen") als de
-  PDF-rapport-/back-upflows bij een mislukte historische data-ophaal

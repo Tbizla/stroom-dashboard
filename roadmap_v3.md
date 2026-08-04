@@ -74,19 +74,29 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       herkenbaar grijs "geen sensor"-label op de vier plekken die voorheen stil niets toonden
       (Live-zijlijst, aside-detail, schema-tabblad, kastpopup-ledentabel). Zie event_dashboard.md,
       Topologiebeheer (Beheer-tabblad).
-- [x] **Grafieken-tabblad (vrije ad-hoc analyse).** Afgerond en geïmplementeerd. Zesde
-      hoofdtabblad in de mode-switch, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf
-      kasten/generators, metric (stroom/spanning/vermogen/energie), fase en periode/editie
-      selecteren, zonder naar Grafana te hoeven wisselen voor een snelle ad-hoc vraag. Vijf
-      grafiektypes (lijn, staaf, Sankey, taart, heatmap) plus een live-modus met schuifvenster.
-      Spec + mockup (voor het historisch overzicht): zie
-      [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md).
-      **Eerste bouwstap afgerond**: het tabblad zelf, checklist/metric/fase/periode/editie-
-      selectie, het lijndiagram (historisch, server-side downsampling), PNG-download en de
-      deelbare link — volgens de "Lijn eerst"-bouwvolgorde uit de spec. Nog te bouwen: staaf-,
-      Sankey-, taart- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI) en de live-modus;
-      meerdere-edities-vergelijking wacht op de tijd-sinds-start-uitlijning uit
-      voorspellende-piekbelasting-plan.md. Zie event_dashboard.md, Grafieken-tabblad.
+- [ ] **Grafieken-tabblad (vrije ad-hoc analyse).** Gedeeltelijk gebouwd — niet als afgerond
+      aanvinken zolang dit zo is (zie de nieuwe afspraak hierover in CLAUDE.md). Zesde hoofdtabblad
+      in de mode-switch, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators,
+      metric (stroom/spanning/vermogen/energie), fase en periode/editie selecteren, zonder naar
+      Grafana te hoeven wisselen voor een snelle ad-hoc vraag. Vijf grafiektypes (lijn, staaf,
+      Sankey, taart, heatmap) plus een live-modus met schuifvenster. Spec + mockup: zie
+      [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md) — **v4 van die spec (4
+      augustus 2026)**: drie gaten gedicht die pas zichtbaar werden bij het doorrekenen van alle
+      vijf typen samen (multi-editie-selectie beperkt tot Lijndiagram, expliciete Periode-terugval
+      bij wisselen naar Heatmap vanuit Live, technologie-onafhankelijke PNG-export-eis), spec is nu
+      klaar voor de resterende bouwstappen.
+      **Gebouwd**: het tabblad zelf, checklist/metric/fase/periode/editie-selectie, het lijndiagram
+      (historisch, server-side downsampling), PNG-download en de deelbare link — volgens de "Lijn
+      eerst"-bouwvolgorde uit de spec. **Staafdiagram** (volgende bouwstap): nieuw generiek
+      `/api/grafieken/aggregaat`-endpoint (piek/gemiddelde via Flux `max()`/`mean()`, periode-totaal
+      bij metric energie via dezelfde `integral(unit: 1h)`-aanpak als Overzicht), aggregatie-
+      knoppenrij (Periode-totaal alleen actief bij metric energie, valt anders terug op Piekwaarde),
+      balken aflopend gesorteerd, kleur volgt groen/amber/rood-t.o.v.-rating bij metric stroom,
+      categorisch palet (zelfde als het lijndiagram) bij de overige metrics.
+      **Nog te bouwen**: Sankey-, taart- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI)
+      en de live-modus; meerdere-edities-vergelijking (Lijndiagram) wacht op de
+      tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md,
+      Grafieken-tabblad.
 - [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
       "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een
       "Alle QR-codes printen"-bulkknop, elk codeert `/?mode=live&kast=<id>`. Op een smal scherm

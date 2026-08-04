@@ -1224,6 +1224,104 @@ app.get('/api/grafieken/tijdreeks', async (req, res) => {
   }
 });
 
+// ---------- Staafdiagram/taart/heatmap (zelfde roadmap-item, zie grafieken-tabblad-plan.md §2/4/5):
+// één geaggregeerde waarde per kast/generator over de gekozen periode i.p.v. een tijdreeks.
+// "Piekwaarde"/"Gemiddelde" werken op het rauwe veld (zelfde veldkeuze als het lijndiagram
+// hierboven); "Periode-totaal" is alleen zinvol/beschikbaar bij metric "energie" en hergebruikt
+// dezelfde integral(unit: 1h)-aanpak als /api/overzicht/energie (optellen van vermogen over tijd
+// i.p.v. de rauwe cumulatieve teller aflezen — consistenter bij tellerresets/gaten) ----------
+function grafiekenVermogenVeld(fase) {
+  return fase === 'totaal' ? 'total_act_power' : fase + '_act_power';
+}
+
+// csv-kolommen kast,_field,_value (geen _time nodig na max()/mean(), dus geen pivot() — voorkomt
+// onduidelijk pivot-rowKey-gedrag op een al-gereduceerd resultaat). Middelt over meerdere velden
+// net als grafiekenCsvNaarSeries() (de spanning+totaal-uitzondering).
+function grafiekenAggregaatCsvNaarWaarden(csv, velden) {
+  const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
+  if (regels.length < 2) return [];
+  const kolommen = regels[0].split(',');
+  const kastIdx = kolommen.indexOf('kast');
+  const veldIdx = kolommen.indexOf('_field');
+  const waardeIdx = kolommen.indexOf('_value');
+  if (kastIdx === -1 || veldIdx === -1 || waardeIdx === -1) return [];
+  const perKast = new Map();
+  regels.slice(1).forEach((regel) => {
+    const cellen = regel.split(',');
+    const id = cellen[kastIdx];
+    const veld = cellen[veldIdx];
+    const waarde = parseFloat(cellen[waardeIdx]);
+    if (!id || !velden.includes(veld) || isNaN(waarde)) return;
+    if (!perKast.has(id)) perKast.set(id, []);
+    perKast.get(id).push(waarde);
+  });
+  return Array.from(perKast, ([id, waarden]) => ({ id, waarde: waarden.reduce((a, b) => a + b, 0) / waarden.length }));
+}
+
+app.get('/api/grafieken/aggregaat', async (req, res) => {
+  const { ids, metric, fase, van, tot, editie, aggregatie } = req.query;
+  const idLijst = (ids || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!idLijst.length) return res.status(400).json({ error: 'ids is verplicht (komma-gescheiden)' });
+  if (!idLijst.every(veiligeTagWaarde)) return res.status(400).json({ error: 'ongeldig id in ids' });
+  if (!['a', 'b', 'c', 'totaal'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  if (!['piek', 'gemiddelde', 'totaal'].includes(aggregatie)) return res.status(400).json({ error: 'ongeldige aggregatie' });
+  if (aggregatie === 'totaal' && metric !== 'energie') return res.status(400).json({ error: 'periode-totaal is alleen beschikbaar bij metric energie' });
+  if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
+    return res.status(400).json({ error: 'van en tot zijn verplicht en moeten geldige datums zijn' });
+  }
+  let editieFilter = '';
+  if (editie && editie !== '__alle__') {
+    const veiligeEditie = veiligeTagWaarde(editie);
+    if (!veiligeEditie) return res.status(400).json({ error: 'ongeldige editie' });
+    editieFilter = '  |> filter(fn: (r) => r.editie == "' + veiligeEditie + '")\n';
+  }
+  const vanMs = new Date(van).getTime(), totMs = new Date(tot).getTime();
+  const range = 'range(start: ' + new Date(vanMs).toISOString() + ', stop: ' + new Date(totMs).toISOString() + ')';
+  const kastFilter = idLijst.map((id) => 'r.kast == "' + id + '"').join(' or ');
+
+  try {
+    if (aggregatie === 'totaal') {
+      const veld = grafiekenVermogenVeld(fase);
+      const resultaten = await Promise.all(idLijst.map(async (id) => {
+        const flux =
+          'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+          '  |> ' + range + '\n' +
+          '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+          '  |> filter(fn: (r) => r._field == "' + veld + '")\n' +
+          '  |> filter(fn: (r) => r.kast == "' + id + '")\n' +
+          editieFilter +
+          '  |> group(columns: ["kast"])\n' +
+          '  |> sort(columns: ["_time"])\n' +
+          '  |> integral(unit: 1h)\n' +
+          '  |> keep(columns: ["_value"])';
+        const csv = await influxQueryPlatteCsv(flux);
+        const waarde = parseFloat(csvKolomWaarden(csv, '_value')[0]);
+        return { id, waarde: isNaN(waarde) ? 0 : waarde / 1000 };
+      }));
+      return res.json({ waarden: resultaten });
+    }
+
+    const veldinfo = grafiekenVeldenVoorMetric(metric, fase);
+    if (!veldinfo) return res.status(400).json({ error: 'ongeldige metric' });
+    const veldFilter = veldinfo.velden.map((v) => 'r._field == "' + v + '"').join(' or ');
+    const fn = aggregatie === 'piek' ? 'max' : 'mean';
+    const flux =
+      'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+      '  |> ' + range + '\n' +
+      '  |> filter(fn: (r) => r._measurement == "' + veldinfo.measurement + '")\n' +
+      '  |> filter(fn: (r) => ' + veldFilter + ')\n' +
+      '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+      editieFilter +
+      '  |> group(columns: ["kast", "_field"])\n' +
+      '  |> ' + fn + '()\n' +
+      '  |> keep(columns: ["kast", "_field", "_value"])';
+    const csv = await influxQueryPlatteCsv(flux);
+    res.json({ waarden: grafiekenAggregaatCsvNaarWaarden(csv, veldinfo.velden) });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 // haalt één paneel als PDF op bij Grafana's eigen /render-endpoint (via grafana-image-renderer) —
 // ondanks een misleidende "image/png"-Content-Type-header staat er een echte PDF in de body
 // (geverifieerd op byte-niveau tijdens implementatie)
