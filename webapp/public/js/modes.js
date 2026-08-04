@@ -95,18 +95,16 @@ document.getElementById('modeTest').onclick = ()=>{
 };
 
 // ---------- Rapportages-tab: vijfde modeswitch-knop + altijd-zichtbare subnav (Overzicht/PDF-
-// rapport/Back-up) ----------
+// rapport) — Back-up verhuisde naar Beheer, zie specs/vervolgticket-commit-37d57ff.md §2 ----------
 function toonRapportSubnav(naam){
   state.rapportSubnav = naam;
-  ['subnavOverzicht','subnavPdf','subnavBackup'].forEach(id=>document.getElementById(id).classList.toggle('active', id==='subnav'+naam.charAt(0).toUpperCase()+naam.slice(1)));
+  ['subnavOverzicht','subnavPdf'].forEach(id=>document.getElementById(id).classList.toggle('active', id==='subnav'+naam.charAt(0).toUpperCase()+naam.slice(1)));
   document.getElementById('overzichtPanel').style.display = naam==='overzicht' ? 'flex' : 'none';
   document.getElementById('pdfRapportPanel').style.display = naam==='pdf' ? 'flex' : 'none';
-  document.getElementById('backupPanel').style.display = naam==='backup' ? 'flex' : 'none';
   if(naam==='overzicht') toonOverzicht();
 }
 document.getElementById('subnavOverzicht').onclick = ()=>toonRapportSubnav('overzicht');
 document.getElementById('subnavPdf').onclick = ()=>toonRapportSubnav('pdf');
-document.getElementById('subnavBackup').onclick = ()=>toonRapportSubnav('backup');
 
 document.getElementById('modeRapportages').onclick = ()=>{
   state.mode='rapportages';

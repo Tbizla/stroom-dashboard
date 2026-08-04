@@ -57,3 +57,9 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
 - [ ] **Brandstofkosten/CO2 in het PDF-rapport.** Logische aanvulling op de bestaande
       generator-energietotalen. Spec + mockup: zie
       [specs/brandstofkosten-co2-plan.md](specs/brandstofkosten-co2-plan.md).
+- [ ] **QR-code voor generators/batterijen.** Bewust uitgesteld (4 augustus 2026) tijdens het
+      afhandelen van [specs/vervolgticket-commit-37d57ff.md](specs/vervolgticket-commit-37d57ff.md)
+      — de v3-implementatie van "QR-code per kast" ([specs/qr-code-plan.md](specs/qr-code-plan.md))
+      sluit generators/batterijen bewust uit (geen mockup/ontwerp voor die variant). Dit item is
+      de losse vervolgstap om die uitbreiding alsnog te ontwerpen, mocht daar behoefte aan blijken
+      — geen spec/mockup nu.

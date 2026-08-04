@@ -8,15 +8,22 @@ import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js
 // ongewijzigd). Een lid zonder eigen rating_a heeft
 // geen self-meter en toont dus bewust geen stip/waarde (zelfde graceful fallback als generators
 // zonder rating_a elders in de app), geen verplichte migratie-actie voor bestaande leden.
+// klein "Open Shelly"-icoontje voor in een compacte lid-rij/-cel — zelfde link als kastpopup.js/
+// de bredere aside-detail-variant, alleen dan icoon-only i.v.m. de beperkte ruimte per lid
+function lidShellyLink(lid){
+  if(!lid.shelly_ip) return '';
+  return '<a class="lidrow-shelly" href="http://'+lid.shelly_ip+'" target="_blank" rel="noopener" title="'+t('common.openShelly')+' — '+t('common.shellyNetnote')+'">🔗</a>';
+}
+
 function ledenblokHtml(gen){
   if(gen.type!=='groep' || !gen.leden || !gen.leden.length) return '';
   const rijen = gen.leden.map(lid=>{
     if(lid.rating_a==null){
-      return '<div class="lidrow"><span class="dot2"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val geen-sensor-label">'+t('common.geenSensor')+'</span></div>';
+      return '<div class="lidrow"><span class="dot2"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val geen-sensor-label">'+t('common.geenSensor')+'</span>'+lidShellyLink(lid)+'</div>';
     }
     const maxFase = maxFaseStroom(liveData[lid.id]);
     const waarde = maxFase!=null ? maxFase.toFixed(2)+' A · '+Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
-    return '<div class="lidrow"><span class="dot2 '+statusClass(lid)+'"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val">'+waarde+'</span></div>';
+    return '<div class="lidrow"><span class="dot2 '+statusClass(lid)+'"></span><span class="naam">'+typeIcon(lid)+' '+lid.naam+'</span><span class="val">'+waarde+'</span>'+lidShellyLink(lid)+'</div>';
   }).join('');
   return '<div class="ledenblok"><div class="ledenblok-head">'+t('detail.ledenblokHead', {n: gen.leden.length})+'</div>'+rijen+'</div>';
 }

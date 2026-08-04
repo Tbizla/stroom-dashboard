@@ -1,12 +1,22 @@
 // ---------- QR-code per kast: overlay met QR + downloaden/printen, en bulk-printvel voor alle
-// kasten tegelijk (zie specs/qr-code-plan.md). QRCode is de globale klasse van de qrcodejs-CDN-
-// library (index.html), zelfde CDN-aanpak als mqtt.js/chart.js elders in deze app; rendert
+// kasten tegelijk (zie specs/qr-code-plan.md). QRCode is de globale klasse van de lokaal
+// gebundelde qrcodejs-library (webapp/public/js/vendor/qrcode.min.js, zie index.html); rendert
 // synchroon een <canvas> in het opgegeven containerelement.
 import { state } from './state.js';
 import { t } from './i18n.js';
 
+// basispad afleiden van location.pathname i.p.v. een hardgecodeerde root ('/') — anders wijst een
+// geprinte QR-sticker naar de verkeerde plek zodra de instance ooit achter een reverse-proxy op
+// een subpad draait (zie specs/vervolgticket-commit-37d57ff.md §1c). origin blijft nodig: een
+// QR-code moet een volwaardige, scanbare absolute URL bevatten, geen documentrelatieve link.
+function basisPad(){
+  let pad = location.pathname;
+  if(pad.endsWith('index.html')) pad = pad.slice(0, -'index.html'.length);
+  if(!pad.endsWith('/')) pad += '/';
+  return pad;
+}
 function deepLink(kastId){
-  return location.origin + '/?mode=live&kast=' + encodeURIComponent(kastId);
+  return location.origin + basisPad() + '?mode=live&kast=' + encodeURIComponent(kastId);
 }
 
 function overlayEl(){ return document.getElementById('qrOverlay'); }
@@ -63,7 +73,9 @@ export function initQrCodes(){
   document.getElementById('qrOverlayClose').onclick = ()=>{ overlayEl().style.display = 'none'; };
   overlayEl().addEventListener('click', (e)=>{ if(e.target === overlayEl()) overlayEl().style.display = 'none'; });
   document.getElementById('qrAllBtn').onclick = ()=>{
-    if(!state.TOPO.kasten.length) return alert(t('beheer.qrGeenKasten'));
-    printKasten(state.TOPO.kasten);
+    // geen QR-codes voor batterijen (net als generators) — zie specs/qr-code-plan.md
+    const kasten = state.TOPO.kasten.filter(k => k.type !== 'batterij');
+    if(!kasten.length) return alert(t('beheer.qrGeenKasten'));
+    printKasten(kasten);
   };
 }

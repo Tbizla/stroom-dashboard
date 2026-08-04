@@ -79,16 +79,21 @@ export function renderKastPopup(){
     // eigen Shelly) — compacte per-lid-tabel i.p.v. de A/B/C-fasetabel, zie §3 van de rework-spec
     const tabel = document.createElement('table');
     tabel.className = 'lidtabel';
+    // laatste kolom: klein "Open Shelly"-icoontje per lid, alleen als dat lid een shelly_ip heeft
+    // (zelfde link als de bredere kastpopup/aside-detail-footer, hier icoon-only i.v.m. de ruimte)
+    const lidShelly = lid => lid.shelly_ip
+      ? '<a class="lidrow-shelly" href="http://'+lid.shelly_ip+'" target="_blank" rel="noopener" title="'+t('common.openShelly')+' — '+t('common.shellyNetnote')+'">🔗</a>'
+      : '';
     tabel.innerHTML =
-      '<tr><th></th><th>'+t('kastpopup.stroom')+'</th><th>'+t('kastpopup.belasting')+'</th></tr>' +
+      '<tr><th></th><th>'+t('kastpopup.stroom')+'</th><th>'+t('kastpopup.belasting')+'</th><th></th></tr>' +
       k.leden.map(lid=>{
         if(lid.rating_a==null){
-          return '<tr><td><span class="dot2" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td colspan="2" class="geen-sensor-label">'+t('common.geenSensor')+'</td></tr>';
+          return '<tr><td><span class="dot2" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td colspan="2" class="geen-sensor-label">'+t('common.geenSensor')+'</td><td>'+lidShelly(lid)+'</td></tr>';
         }
         const maxFase = maxFaseStroom(liveData[lid.id]);
         const stroom = maxFase!=null ? fmtVeld(maxFase,'A') : '—';
         const belasting = maxFase!=null ? Math.round(Math.min(999,(maxFase/lid.rating_a)*100))+'%' : '—';
-        return '<tr><td><span class="dot2 '+statusClass(lid)+'" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td>'+stroom+'</td><td>'+belasting+'</td></tr>';
+        return '<tr><td><span class="dot2 '+statusClass(lid)+'" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td>'+stroom+'</td><td>'+belasting+'</td><td>'+lidShelly(lid)+'</td></tr>';
       }).join('');
     el.appendChild(tabel);
   } else if(!d){

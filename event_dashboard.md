@@ -81,7 +81,7 @@ zetten zonder code aan te passen.
 - **Systeeminstellingen**: evenementnaam en editie zijn nu bewerkbaar vanuit Beheer i.p.v. alleen
   via `.env` bij het opstarten (`GET`/`PUT /api/instellingen`, opgeslagen in `instellingen.json`) —
   gebruikt voor de `editie`/`evenement`-tags op meetdata en de naamsbotsing-check bij een
-  back-up-herstel (zie Back-up-subtab). Omdat Telegraf zijn tags alleen bij het *aanmaken* van
+  back-up-herstel (zie de Back-up-sectie hieronder). Omdat Telegraf zijn tags alleen bij het *aanmaken* van
   z'n container inleest (niet bij een kale restart), herstart "Wijzigingen doorvoeren" Telegraf op
   de achtergrond via een klein, doelbewust beperkt `telegraf-herstarter`-servicetje dat de
   Docker-socket heeft maar naar buiten toe maar precies één actie aanbiedt — de webapp zelf krijgt
@@ -110,20 +110,52 @@ zetten zonder code aan te passen.
   enz.) blijven gewoon zichtbaar/bewerkbaar
 - **Shelly-koppeling**: optioneel "Shelly IP"-veld per kast en per generator/lid-met-sensor (alleen
   invulbaar/getoond als "Heeft sensor" aan staat), naast de bestaande `mqtt_topic_prefix`. Overal
-  waar de live status van een kast/generator getoond wordt (kastpopup, aside-detail, de mobiele
-  QR-statuspagina) verschijnt een "Open Shelly ↗"-link die de lokale Shelly-webinterface in een
-  nieuw tabblad opent (alleen bruikbaar op het evenement-netwerk) — geen link zichtbaar als het veld
-  leeg is
-- **QR-code per kast**: "QR-code"-knop per rij in de kasten-tabel (overlay met QR, naam/afkorting,
-  downloaden als PNG of printen) en een "Alle QR-codes printen"-knop die in één keer een
-  printvriendelijk stickervel voor alle kasten opent. Elke QR codeert een vaste deep-link
-  (`/?mode=live&kast=<id>`); op een breed scherm (desktop/tablet) opent die gewoon de bestaande
-  Live-modus met de databallon van die kast open. Op een smal scherm (telefoon) opent in plaats
-  daarvan een eigen lichte, responsive statuspagina (geen zij-lijst/plattegrond/pan-zoom-chrome,
-  waar de bestaande Live-modus niet geschikt voor is op een klein scherm) met dezelfde live
-  meetwaarden, de "Open Shelly"-knop, en een "Bekijk op plattegrond →"-link naar de volledige
-  Live-modus. Een verwijderde kast toont een duidelijke "bestaat niet meer"-melding i.p.v. een kale
-  foutmelding
+  waar de live status van een kast/generator/groepslid getoond wordt (kastpopup — incl. de compacte
+  per-lid-tabel van een groep, aside-detail — incl. het ledenblok, de mobiele QR-statuspagina)
+  verschijnt een "Open Shelly ↗"-link die de lokale Shelly-webinterface in een nieuw tabblad opent
+  (alleen bruikbaar op het evenement-netwerk) — geen link zichtbaar als het veld leeg is
+- **QR-code per kast** (niet voor generators/batterijen): "QR-code"-knop per rij in de kasten-tabel
+  (overlay met QR, naam/afkorting, downloaden als PNG of printen) en een "Alle QR-codes
+  printen"-knop die in één keer een printvriendelijk stickervel voor alle kasten opent. Elke QR
+  codeert een deep-link (`?mode=live&kast=<id>`, t.o.v. het huidige basispad — blijft dus ook
+  kloppen als de instance ooit achter een reverse-proxy op een subpad draait); op een breed scherm
+  (desktop/tablet) opent die gewoon de bestaande Live-modus met de databallon van die kast open. Op
+  een smal scherm (telefoon) opent in plaats daarvan een eigen lichte, responsive statuspagina (geen
+  zij-lijst/plattegrond/pan-zoom-chrome, waar de bestaande Live-modus niet geschikt voor is op een
+  klein scherm) met dezelfde live meetwaarden, de "Open Shelly"-knop, en een "Bekijk op
+  plattegrond →"-link naar de volledige Live-modus. Een verwijderde kast toont een duidelijke
+  "bestaat niet meer"-melding i.p.v. een kale foutmelding. QR-generatie gebeurt met een lokaal
+  meegeleverde library (`webapp/public/js/vendor/qrcode.min.js`, geen CDN) — werkt dus ook zonder
+  internet op locatie
+- **Back-up** (eigen sectie onderaan de Beheer-kolom, ná Kasten — verhuisd vanuit de
+  Rapportages-tab, puur een locatiewijziging): één zip-bestand voor een volledige restore op een
+  andere instance. Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te
+  zetten); meetdata (InfluxDB-dump) is een losse optie met dezelfde periode-keuze als het
+  PDF-rapport, i.v.m. bestandsgrootte. Bij meetdata zit ook een `topology_edges`-snapshot (huidige
+  editie/evenement) en een `meetdata.lp`-bestand (InfluxDB line-protocol) naast de bestaande
+  leesbare `meetdata.csv` — nodig om de "Back-up herstellen"-sectie hieronder te voeden. Zelfde
+  status/resultaat/foutkaart-patroon als de PDF-rapportflow ("Opnieuw proberen" bij een mislukte
+  poging), gebouwd met de `archiver`-library
+  - **Back-up herstellen** (restore, tegenhanger van bovenstaande): een eerder gemaakte back-up-zip
+    terugzetten, in twee modi — **volledige restore** (topologie + media + meetdata, voor een
+    verse/lege instance na bijv. een hardwarewissel, geen nieuwe editie maar een voortzetting) of
+    **editie toevoegen aan archief** (alleen de meetdata, topologie/media blijven ongemoeid, voor
+    het naast elkaar zetten van meerdere jaargangen). Geblokkeerd met een duidelijke melding bij
+    een editie/evenement-naamsbotsing in de doelinstance, nooit stil overschreven/vermengd. Zip
+    wordt serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
+    (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
+    `topology_edges` en de naamsbotsing-check)
+  - **Automatische back-up**: geplande, onbeheerde variant tussen "Back-up maken" en "Back-up
+    herstellen" — aan/uit-toggle, frequentie (elk uur/dagelijks/wekelijks + tijdstip), optioneel
+    meetdata meenemen, en één of meer bestemmingen tegelijk (lokaal pad op de server, extern via
+    SFTP, extern via een S3-compatible endpoint — MinIO/Backblaze B2/Wasabi enz.), elk met een
+    eigen bewaartermijn ("bewaar laatste N"). Rotatie gebeurt altijd pas ná een bevestigd geslaagde
+    nieuwe back-up (nooit oudere back-ups wissen vóór de nieuwe veilig staat) en een geplande run
+    wacht op een eventuele handmatige back-up-/restore-/PDF-rapportflow i.p.v. er gelijktijdig mee
+    te draaien. Statusregel toont de laatste run (geslaagd/deels mislukt/mislukt, per bestemming)
+    en de eerstvolgende geplande run. Bij een mislukte of deels mislukte run gaat er, als het
+    Alert-notificatiekanaal geconfigureerd is, een bericht naar alle aangezette kanalen — zonder
+    kanaal blijft het bij de statusregel
 
 **Plattegrond & kalibratie (Kalibreren-tabblad)**
 - Plattegrond (afbeelding) uploaden, of zonder plattegrond werken op een leeg, ruim canvas
@@ -275,10 +307,11 @@ zetten zonder code aan te passen.
   hierboven, dus automatisch actueel zodra de topologie in de webapp wijzigt. `topology_edges`
   wordt nu per `editie`+`evenement` getagd en de sync wist bij een Beheer-wijziging alleen de
   huidige editie/evenement (i.p.v. de hele reeks) — oudere edities' edges blijven dus los bewaard,
-  zodat de Sankey ook historisch (via een teruggezette editie, zie Back-up-subtab) blijft kloppen
+  zodat de Sankey ook historisch (via een teruggezette editie, zie de Back-up-sectie in
+  Topologiebeheer hierboven) blijft kloppen
 
 **Rapportages-tabblad** (vijfde tab in de mode-switch, met een altijd-zichtbare subnav:
-Overzicht/PDF-rapport/Back-up)
+Overzicht/PDF-rapport — Back-up verhuisde naar Beheer, zie Topologiebeheer hierboven)
 
 *Overzicht-subtab* — eigen hoofddashboard binnen de webapp zelf, i.p.v. te moeten wisselen naar
 Grafana:
@@ -309,35 +342,6 @@ Grafana:
   vlak met icoon i.p.v. de vorige kale tekstregel). Rapport volgt standaard de UI-taal, met een
   eigen schuifknop (los van de header-taalkeuze) om de rapporttaal per generatie op NL of EN te
   zetten. Logo-embedding werkt alleen met een PNG-logo (BMP/SVG worden overgeslagen)
-
-*Back-up-subtab* — één zip-bestand voor een volledige restore op een andere instance:
-- Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te zetten); meetdata
-  (InfluxDB-dump) is een losse optie met dezelfde periode-keuze als het PDF-rapport, i.v.m.
-  bestandsgrootte. Bij meetdata zit sinds kort ook een `topology_edges`-snapshot (huidige
-  editie/evenement) en een `meetdata.lp`-bestand (InfluxDB line-protocol) naast de bestaande
-  leesbare `meetdata.csv` — nodig om de nieuwe "Back-up herstellen"-sectie hieronder te voeden
-- Zelfde status/resultaat/foutkaart-patroon als de PDF-rapportflow ("Opnieuw proberen" bij een
-  mislukte poging), gebouwd met de `archiver`-library
-- **Back-up herstellen** (restore, tegenhanger van bovenstaande): een eerder gemaakte back-up-zip
-  terugzetten, in twee modi — **volledige restore** (topologie + media + meetdata, voor een
-  verse/lege instance na bijv. een hardwarewissel, geen nieuwe editie maar een voortzetting) of
-  **editie toevoegen aan archief** (alleen de meetdata, topologie/media blijven ongemoeid, voor het
-  naast elkaar zetten van meerdere jaargangen). Geblokkeerd met een duidelijke melding bij een
-  editie/evenement-naamsbotsing in de doelinstance, nooit stil overschreven/vermengd. Zip wordt
-  serverside herkend/uitgepakt met `adm-zip`; leesbaar via `GET /api/instellingen`
-  (`event_name`/`event_edition`, opgeslagen in `instellingen.json`, gebruikt voor de tags op
-  `topology_edges` en de naamsbotsing-check)
-- **Automatische back-up**: geplande, onbeheerde variant tussen "Back-up maken" en "Back-up
-  herstellen" — aan/uit-toggle, frequentie (elk uur/dagelijks/wekelijks + tijdstip), optioneel
-  meetdata meenemen, en één of meer bestemmingen tegelijk (lokaal pad op de server, extern via
-  SFTP, extern via een S3-compatible endpoint — MinIO/Backblaze B2/Wasabi enz.), elk met een eigen
-  bewaartermijn ("bewaar laatste N"). Rotatie gebeurt altijd pas ná een bevestigd geslaagde nieuwe
-  back-up (nooit oudere back-ups wissen vóór de nieuwe veilig staat) en een geplande run wacht op
-  een eventuele handmatige back-up-/restore-/PDF-rapportflow i.p.v. er gelijktijdig mee te draaien.
-  Statusregel toont de laatste run (geslaagd/deels mislukt/mislukt, per bestemming) en de
-  eerstvolgende geplande run. Bij een mislukte of deels mislukte run gaat er, als het
-  Alert-notificatiekanaal geconfigureerd is, een bericht naar alle aangezette kanalen — zonder
-  kanaal blijft het bij de statusregel
 
 **Grafieken-tabblad** (zesde tab in de mode-switch, naast Beheer/Kalibreren/Schema/Live/
 Rapportages) — vrije ad-hoc analyse zonder naar Grafana te hoeven wisselen:

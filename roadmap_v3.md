@@ -111,10 +111,23 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
 - [ ] **Rolverdeling/rechten.** Geaccordeerd (3 augustus 2026, vanuit de "Ideeën van Claude"-
       sectie gehaald) — daarmee is de "Ideeën van Claude"-sectie leeg. Nu heeft iedereen die de
       webapp-URL heeft volledige Beheer-rechten; dit voegt een viewer/editor-onderscheid toe
-      (viewer ziet alleen Schema/Live/Rapportages, geen Back-up-subtab). **Bouwt inhoudelijk voort
-      op de accounts-/login-fundering uit "Toegang van buitenaf" hierboven** — kan pas na die
-      basis gebouwd worden, niet onafhankelijk daarvan. Spec + mockup: zie
+      (viewer ziet alleen Schema/Live/Rapportages, geen Back-up-sectie in Beheer). **Bouwt
+      inhoudelijk voort op de accounts-/login-fundering uit "Toegang van buitenaf" hierboven** —
+      kan pas na die basis gebouwd worden, niet onafhankelijk daarvan. Spec + mockup: zie
       [specs/rolverdeling-plan.md](specs/rolverdeling-plan.md).
+- [x] **Vervolgticket op commit 37d57ff (logo/Shelly/QR-code/anomaly-detectie).** Afgerond — alle
+      zes bugfixes uit de code-review doorgevoerd: anomaly-detectie-badge blijft nu correct
+      zichtbaar tijdens een aanhoudende storing (de baseline wordt bij het triggermoment bevroren
+      i.p.v. continu herberekend — geverifieerd met een 2 minuten volgehouden gesimuleerde
+      MQTT-storing, badge bleef staan voorbij het oude ~60-90s zelf-heel-venster), QR-library lokaal
+      gebundeld (`webapp/public/js/vendor/qrcode.min.js`, geen CDN meer), QR-deep-link t.o.v. het
+      basispad i.p.v. hardcoded root, "Open Shelly"-link toegevoegd voor groepsleden
+      (kastpopup-lidtabel + aside-detail-ledenblok), QR-codes uitgesloten voor kast-type "batterij"
+      conform de oorspronkelijke spec (uitbreiding naar generators/batterijen bewust uitgesteld,
+      zie roadmap_v4.md). Plus deel 2: **Back-up verplaatst van Rapportages naar Beheer** (eigen
+      sectie onderaan de Beheer-kolom, ná Kasten; Rapportages-subnav geslonken naar
+      Overzicht/PDF-rapport). Zie [specs/vervolgticket-commit-37d57ff.md]
+      (specs/vervolgticket-commit-37d57ff.md), event_dashboard.md (Topologiebeheer-sectie).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

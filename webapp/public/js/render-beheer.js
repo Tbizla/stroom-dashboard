@@ -140,10 +140,13 @@ export function renderKastSecties(){
 
     const actieWrap = document.createElement('div');
     actieWrap.style.cssText = 'display:flex;gap:4px';
-    const qrBtn = document.createElement('button');
-    qrBtn.textContent = t('beheer.qrKnop');
-    qrBtn.onclick = ()=> openQrOverlay(k);
-    actieWrap.appendChild(qrBtn);
+    if(!isBatterij){
+      // geen QR-codes voor batterijen (net als generators) — zie specs/qr-code-plan.md
+      const qrBtn = document.createElement('button');
+      qrBtn.textContent = t('beheer.qrKnop');
+      qrBtn.onclick = ()=> openQrOverlay(k);
+      actieWrap.appendChild(qrBtn);
+    }
     const delBtn = document.createElement('button');
     delBtn.className = 'danger';
     delBtn.textContent = t('common.verwijderen');

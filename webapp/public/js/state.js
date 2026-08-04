@@ -14,7 +14,7 @@ export const state = {
   kastTypeFilter: 'alles',
   rapportPeriodeChip: 'alles',
   rapportPollHandle: null, // los van de globale 5s-poll (die slaat Beheer expliciet over) — alleen actief zolang een generatie loopt
-  rapportSubnav: 'overzicht', // welke subtab van de Rapportages-tab actief is: 'overzicht' | 'pdf' | 'backup'
+  rapportSubnav: 'overzicht', // welke subtab van de Rapportages-tab actief is: 'overzicht' | 'pdf'
   overzichtPeriodeChip: '24u',
   overzichtGeneratorFilter: null, // id van de generator waarop de staven/boom in Overzicht gefilterd zijn (drill-down), null = geen filter
   backupPeriodeChip: 'alles',

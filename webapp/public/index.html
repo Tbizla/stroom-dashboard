@@ -193,6 +193,209 @@
       <div style="margin-top:24px">
         <button id="resetAllBtn" style="border-color:var(--red);color:var(--red)" data-i18n="beheer.allesWissen">Alles wissen</button>
       </div>
+      <div id="backupPanel">
+      <h2 style="margin-top:22px" data-i18n="backup.titel">Back-up</h2>
+      <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.subtitel">Eén bestand voor een volledige restore op een andere instance.</div>
+
+      <div class="optionrow locked">
+        <input type="checkbox" checked disabled>
+        <div>
+          <div class="lbl"><span data-i18n="backup.topologieLbl">Topologie</span> <span class="always" data-i18n="backup.altijdInbegrepen">altijd inbegrepen</span></div>
+          <div class="desc" data-i18n="backup.topologieDesc">Generators, groepen, kasten, koppelingen, ratings — de bestaande export-JSON.</div>
+        </div>
+      </div>
+      <div class="optionrow locked">
+        <input type="checkbox" checked disabled>
+        <div>
+          <div class="lbl"><span data-i18n="backup.plattegrondLogoLbl">Plattegrond &amp; logo</span> <span class="always" data-i18n="backup.altijdInbegrepen">altijd inbegrepen</span></div>
+          <div class="desc" data-i18n="backup.plattegrondLogoDesc">Geüploade plattegrondafbeelding en evenementlogo.</div>
+        </div>
+      </div>
+      <div class="optionrow">
+        <input type="checkbox" id="backupMeetdataCb">
+        <div style="flex:1">
+          <div class="lbl" data-i18n="backup.meetdataLbl">Meetdata (InfluxDB-dump)</div>
+          <div class="desc" data-i18n="backup.meetdataDesc">Historische stroom-/spanningsdata als CSV. Kan groot worden — kies een periode.</div>
+          <div class="periodchips">
+            <button class="chip active" data-backupperiode="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
+            <button class="chip" data-backupperiode="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
+            <button class="chip" data-backupperiode="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
+          </div>
+          <div class="addform" id="backupAangepastPeriode" style="display:none;margin-top:8px">
+            <input type="datetime-local" id="backupVanInput">
+            <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
+            <input type="datetime-local" id="backupTotInput">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button id="backupGenereerBtn" data-i18n="backup.maakBackup">Volledige back-up maken</button>
+        <span style="font-size:12px;color:var(--text3)" data-i18n="backup.duurHint">Kan even duren bij meetdata over een lange periode.</span>
+      </div>
+      <div id="backupStatusCard" class="addform" style="display:none;margin-top:10px">
+        <div class="dot busy"></div>
+        <span data-i18n="backup.bezig">Back-up wordt samengesteld...</span>
+      </div>
+      <div id="backupResultCard" class="addform" style="display:none;margin-top:10px">
+        <span id="backupResultInfo"></span>
+        <button id="backupDownloadBtn" data-i18n="common.download">Download</button>
+      </div>
+      <div id="backupErrorCard" class="addform" style="display:none;margin-top:10px">
+        <span id="backupErrorInfo" style="color:var(--red)"></span>
+        <button id="backupOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+      </div>
+
+      <hr class="sectiescheiding">
+      <h2 style="margin-top:22px" data-i18n="backup.autoTitel">Automatische back-up</h2>
+      <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="backup.autoSubtitel">Geplande, onbeheerde back-up — zelfde inhoud als "Back-up maken" hierboven, automatisch getriggerd.</div>
+
+      <div class="toprow" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div class="toggle" id="autoBackupToggle"><div class="knob"></div></div>
+        <div style="font-size:13px;font-weight:600" data-i18n="backup.autoIngeschakeld">Automatische back-up ingeschakeld</div>
+      </div>
+
+      <div id="autoBackupBody">
+        <div class="field-inline" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap">
+          <div class="field"><label data-i18n="backup.autoFrequentie">Frequentie</label>
+            <select id="autoBackupFrequentie">
+              <option value="elk_uur" data-i18n="backup.autoElkUur">Elk uur</option>
+              <option value="dagelijks" data-i18n="backup.autoDagelijks">Dagelijks</option>
+              <option value="wekelijks" data-i18n="backup.autoWekelijks">Wekelijks</option>
+            </select>
+          </div>
+          <div class="field" id="autoBackupDagWrap"><label data-i18n="backup.autoDag">Dag</label>
+            <select id="autoBackupDag">
+              <option value="maandag" data-i18n="backup.dagMaandag">Maandag</option>
+              <option value="dinsdag" data-i18n="backup.dagDinsdag">Dinsdag</option>
+              <option value="woensdag" data-i18n="backup.dagWoensdag">Woensdag</option>
+              <option value="donderdag" data-i18n="backup.dagDonderdag">Donderdag</option>
+              <option value="vrijdag" data-i18n="backup.dagVrijdag">Vrijdag</option>
+              <option value="zaterdag" data-i18n="backup.dagZaterdag">Zaterdag</option>
+              <option value="zondag" data-i18n="backup.dagZondag">Zondag</option>
+            </select>
+          </div>
+          <div class="field" id="autoBackupTijdstipWrap"><label data-i18n="backup.autoTijdstip">Tijdstip</label>
+            <input type="time" id="autoBackupTijdstip" value="03:00">
+          </div>
+          <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:2px">
+            <input type="checkbox" id="autoBackupMeetdataCb" checked>
+            <label for="autoBackupMeetdataCb" style="text-transform:none;font-size:12px;color:var(--text2)" data-i18n="backup.autoMeetdataMeenemen">Meetdata meenemen</label>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:8px"><label data-i18n="backup.autoBestemmingen">Bestemming(en)</label></div>
+
+        <div class="chancard" id="autoDestLokaalCard">
+          <div class="chancard-head">
+            <div class="toggle" id="autoDestLokaalToggle"><div class="knob"></div></div>
+            <div class="chancard-naam" data-i18n="backup.autoLokaal">Lokaal</div>
+          </div>
+          <div class="chancard-body">
+            <div class="field"><label data-i18n="backup.autoLokaalPad">Pad op server</label><input id="autoDestLokaalPad" placeholder="/data/auto-backups"></div>
+            <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestLokaalBewaar" type="number" value="14"></div>
+          </div>
+        </div>
+
+        <div class="chancard" id="autoDestSftpCard">
+          <div class="chancard-head">
+            <div class="toggle" id="autoDestSftpToggle"><div class="knob"></div></div>
+            <div class="chancard-naam" data-i18n="backup.autoSftp">Extern — SFTP</div>
+          </div>
+          <div class="chancard-body">
+            <div class="field"><label data-i18n="backup.autoSftpHost">Host</label><input id="autoDestSftpHost"></div>
+            <div class="field"><label data-i18n="backup.autoSftpPoort">Poort</label><input id="autoDestSftpPoort" type="number" value="22"></div>
+            <div class="field"><label data-i18n="backup.autoSftpGebruiker">Gebruiker</label><input id="autoDestSftpGebruiker"></div>
+            <div class="field secretfield"><label data-i18n="backup.autoSftpWachtwoord">Wachtwoord</label><input id="autoDestSftpWachtwoord" type="password"><a class="wislink" id="autoDestSftpWachtwoordWis" data-i18n="beheer.notifWissen">Wissen</a></div>
+            <div class="field"><label data-i18n="backup.autoSftpDoelmap">Doelmap</label><input id="autoDestSftpDoelmap"></div>
+            <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestSftpBewaar" type="number" value="30"></div>
+          </div>
+        </div>
+
+        <div class="chancard" id="autoDestS3Card">
+          <div class="chancard-head">
+            <div class="toggle" id="autoDestS3Toggle"><div class="knob"></div></div>
+            <div class="chancard-naam" data-i18n="backup.autoS3">Extern — S3-compatible</div>
+          </div>
+          <div class="chancard-body">
+            <div class="field"><label data-i18n="backup.autoS3Endpoint">Endpoint</label><input id="autoDestS3Endpoint" placeholder="s3.eu-central-1.wasabisys.com"></div>
+            <div class="field"><label data-i18n="backup.autoS3Bucket">Bucket</label><input id="autoDestS3Bucket"></div>
+            <div class="field"><label data-i18n="backup.autoS3AccessKey">Access key</label><input id="autoDestS3AccessKey"></div>
+            <div class="field secretfield"><label data-i18n="backup.autoS3SecretKey">Secret key</label><input id="autoDestS3SecretKey" type="password"><a class="wislink" id="autoDestS3SecretKeyWis" data-i18n="beheer.notifWissen">Wissen</a></div>
+            <div class="field"><label data-i18n="backup.autoS3Prefix">Prefix/map</label><input id="autoDestS3Prefix"></div>
+            <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestS3Bewaar" type="number" value="30"></div>
+          </div>
+        </div>
+
+        <div class="statusbox" id="autoBackupStatusBox" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:8px;font-size:12.5px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px"><div class="dot" id="autoBackupStatusDot"></div><span id="autoBackupStatusTekst" data-i18n="backup.autoNogNooitGedraaid">Nog niet eerder automatisch gedraaid.</span></div>
+          <div style="color:var(--text3)" id="autoBackupVolgendeTekst"></div>
+          <div style="color:var(--text3);font-size:11px" data-i18n="backup.autoMislukMelding">Bij mislukken: melding via het geconfigureerde alert-notificatiekanaal, indien ingesteld.</div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button id="autoBackupOpslaanBtn" data-i18n="beheer.instellingenOpslaan">Wijzigingen doorvoeren</button>
+        </div>
+        <div id="autoBackupResultCard" class="addform" style="display:none;margin-top:10px">
+          <div class="dot ok"></div>
+          <span id="autoBackupResultInfo"></span>
+        </div>
+        <div id="autoBackupErrorCard" class="addform" style="display:none;margin-top:10px">
+          <span id="autoBackupErrorInfo" style="color:var(--red)"></span>
+        </div>
+      </div>
+
+      <hr class="sectiescheiding">
+      <h2 style="margin-top:22px" data-i18n="backup.herstelTitel">Back-up herstellen</h2>
+      <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.herstelSubtitel">Zet een eerder gemaakte back-up (zip) terug, of voeg 'm toe als editie aan een archief.</div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <label class="uploadbtn"><span data-i18n="backup.herstelKiesBestand">Back-up-bestand kiezen</span><input type="file" id="herstelBestand" accept=".zip" style="display:none"></label>
+        <span id="herstelBestandsnaam" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+      </div>
+
+      <div class="modechoice">
+        <div class="modecard active" data-herstelmodus="volledig">
+          <div class="lbl" data-i18n="backup.herstelVolledigLbl">Volledige restore</div>
+          <div class="desc" data-i18n="backup.herstelVolledigDesc">Voor een verse/lege instance — bijv. na een hardwarewissel op een locatie. Zet topologie, media en meetdata terug, met dezelfde editie. Geen nieuwe editie, een voortzetting.</div>
+        </div>
+        <div class="modecard" data-herstelmodus="editie_toevoegen">
+          <div class="lbl" data-i18n="backup.herstelToevoegenLbl">Editie toevoegen aan archief</div>
+          <div class="desc" data-i18n="backup.herstelToevoegenDesc">Voor het vergelijken van meerdere jaargangen — voegt alléén de meetdata van deze back-up toe als nieuwe editie naast wat er al staat. Topologie/media blijven ongemoeid.</div>
+        </div>
+      </div>
+
+      <div class="optionrow" id="herstelTopologieRow">
+        <input type="checkbox" checked disabled>
+        <div><div class="lbl" data-i18n="backup.topologieLbl">Topologie</div><div class="desc" id="herstelTopologieDesc"></div></div>
+      </div>
+      <div class="optionrow" id="herstelMediaRow">
+        <input type="checkbox" checked disabled>
+        <div><div class="lbl" data-i18n="backup.plattegrondLogoLbl">Plattegrond &amp; logo</div><div class="desc" id="herstelMediaDesc"></div></div>
+      </div>
+      <div class="optionrow">
+        <input type="checkbox" checked disabled>
+        <div><div class="lbl" data-i18n="backup.meetdataLbl">Meetdata (InfluxDB-dump)</div><div class="desc" id="herstelMeetdataDesc"></div></div>
+      </div>
+
+      <div class="warnbox" id="herstelWaarschuwing" style="display:none"></div>
+
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button id="herstelStartBtn" data-i18n="backup.herstelStartBtn">Start herstel</button>
+      </div>
+      <div id="herstelStatusCard" class="addform" style="display:none;margin-top:10px">
+        <div class="dot busy"></div>
+        <span data-i18n="backup.herstelBezig">Herstel wordt uitgevoerd...</span>
+      </div>
+      <div id="herstelResultCard" class="addform" style="display:none;margin-top:10px">
+        <div class="dot ok"></div>
+        <span id="herstelResultInfo"></span>
+      </div>
+      <div id="herstelErrorCard" class="addform" style="display:none;margin-top:10px">
+        <span id="herstelErrorInfo" style="color:var(--red)"></span>
+        <button id="herstelOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+      </div>
+      </div>
     </div>
   </div>
 
@@ -245,7 +448,6 @@
     <div class="subnav" id="rapportSubnav">
       <button class="active" id="subnavOverzicht" data-i18n="subnav.overzicht">Overzicht</button>
       <button id="subnavPdf" data-i18n="subnav.pdfRapport">PDF-rapport</button>
-      <button id="subnavBackup" data-i18n="subnav.backup">Back-up</button>
     </div>
 
     <div class="beheer" id="overzichtPanel" style="display:flex">
@@ -325,211 +527,6 @@
       </div>
     </div>
 
-    <div class="beheer" id="backupPanel" style="display:none">
-      <div class="beheercol">
-        <h2 data-i18n="backup.titel">Back-up</h2>
-        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.subtitel">Eén bestand voor een volledige restore op een andere instance.</div>
-
-        <div class="optionrow locked">
-          <input type="checkbox" checked disabled>
-          <div>
-            <div class="lbl"><span data-i18n="backup.topologieLbl">Topologie</span> <span class="always" data-i18n="backup.altijdInbegrepen">altijd inbegrepen</span></div>
-            <div class="desc" data-i18n="backup.topologieDesc">Generators, groepen, kasten, koppelingen, ratings — de bestaande export-JSON.</div>
-          </div>
-        </div>
-        <div class="optionrow locked">
-          <input type="checkbox" checked disabled>
-          <div>
-            <div class="lbl"><span data-i18n="backup.plattegrondLogoLbl">Plattegrond &amp; logo</span> <span class="always" data-i18n="backup.altijdInbegrepen">altijd inbegrepen</span></div>
-            <div class="desc" data-i18n="backup.plattegrondLogoDesc">Geüploade plattegrondafbeelding en evenementlogo.</div>
-          </div>
-        </div>
-        <div class="optionrow">
-          <input type="checkbox" id="backupMeetdataCb">
-          <div style="flex:1">
-            <div class="lbl" data-i18n="backup.meetdataLbl">Meetdata (InfluxDB-dump)</div>
-            <div class="desc" data-i18n="backup.meetdataDesc">Historische stroom-/spanningsdata als CSV. Kan groot worden — kies een periode.</div>
-            <div class="periodchips">
-              <button class="chip active" data-backupperiode="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
-              <button class="chip" data-backupperiode="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
-              <button class="chip" data-backupperiode="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
-            </div>
-            <div class="addform" id="backupAangepastPeriode" style="display:none;margin-top:8px">
-              <input type="datetime-local" id="backupVanInput">
-              <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
-              <input type="datetime-local" id="backupTotInput">
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <button id="backupGenereerBtn" data-i18n="backup.maakBackup">Volledige back-up maken</button>
-          <span style="font-size:12px;color:var(--text3)" data-i18n="backup.duurHint">Kan even duren bij meetdata over een lange periode.</span>
-        </div>
-        <div id="backupStatusCard" class="addform" style="display:none;margin-top:10px">
-          <div class="dot busy"></div>
-          <span data-i18n="backup.bezig">Back-up wordt samengesteld...</span>
-        </div>
-        <div id="backupResultCard" class="addform" style="display:none;margin-top:10px">
-          <span id="backupResultInfo"></span>
-          <button id="backupDownloadBtn" data-i18n="common.download">Download</button>
-        </div>
-        <div id="backupErrorCard" class="addform" style="display:none;margin-top:10px">
-          <span id="backupErrorInfo" style="color:var(--red)"></span>
-          <button id="backupOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
-        </div>
-
-        <hr class="sectiescheiding">
-        <h2 style="margin-top:22px" data-i18n="backup.autoTitel">Automatische back-up</h2>
-        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="backup.autoSubtitel">Geplande, onbeheerde back-up — zelfde inhoud als "Back-up maken" hierboven, automatisch getriggerd.</div>
-
-        <div class="toprow" style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div class="toggle" id="autoBackupToggle"><div class="knob"></div></div>
-          <div style="font-size:13px;font-weight:600" data-i18n="backup.autoIngeschakeld">Automatische back-up ingeschakeld</div>
-        </div>
-
-        <div id="autoBackupBody">
-          <div class="field-inline" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap">
-            <div class="field"><label data-i18n="backup.autoFrequentie">Frequentie</label>
-              <select id="autoBackupFrequentie">
-                <option value="elk_uur" data-i18n="backup.autoElkUur">Elk uur</option>
-                <option value="dagelijks" data-i18n="backup.autoDagelijks">Dagelijks</option>
-                <option value="wekelijks" data-i18n="backup.autoWekelijks">Wekelijks</option>
-              </select>
-            </div>
-            <div class="field" id="autoBackupDagWrap"><label data-i18n="backup.autoDag">Dag</label>
-              <select id="autoBackupDag">
-                <option value="maandag" data-i18n="backup.dagMaandag">Maandag</option>
-                <option value="dinsdag" data-i18n="backup.dagDinsdag">Dinsdag</option>
-                <option value="woensdag" data-i18n="backup.dagWoensdag">Woensdag</option>
-                <option value="donderdag" data-i18n="backup.dagDonderdag">Donderdag</option>
-                <option value="vrijdag" data-i18n="backup.dagVrijdag">Vrijdag</option>
-                <option value="zaterdag" data-i18n="backup.dagZaterdag">Zaterdag</option>
-                <option value="zondag" data-i18n="backup.dagZondag">Zondag</option>
-              </select>
-            </div>
-            <div class="field" id="autoBackupTijdstipWrap"><label data-i18n="backup.autoTijdstip">Tijdstip</label>
-              <input type="time" id="autoBackupTijdstip" value="03:00">
-            </div>
-            <div class="field" style="flex-direction:row;align-items:center;gap:6px;margin-bottom:2px">
-              <input type="checkbox" id="autoBackupMeetdataCb" checked>
-              <label for="autoBackupMeetdataCb" style="text-transform:none;font-size:12px;color:var(--text2)" data-i18n="backup.autoMeetdataMeenemen">Meetdata meenemen</label>
-            </div>
-          </div>
-
-          <div class="field" style="margin-bottom:8px"><label data-i18n="backup.autoBestemmingen">Bestemming(en)</label></div>
-
-          <div class="chancard" id="autoDestLokaalCard">
-            <div class="chancard-head">
-              <div class="toggle" id="autoDestLokaalToggle"><div class="knob"></div></div>
-              <div class="chancard-naam" data-i18n="backup.autoLokaal">Lokaal</div>
-            </div>
-            <div class="chancard-body">
-              <div class="field"><label data-i18n="backup.autoLokaalPad">Pad op server</label><input id="autoDestLokaalPad" placeholder="/data/auto-backups"></div>
-              <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestLokaalBewaar" type="number" value="14"></div>
-            </div>
-          </div>
-
-          <div class="chancard" id="autoDestSftpCard">
-            <div class="chancard-head">
-              <div class="toggle" id="autoDestSftpToggle"><div class="knob"></div></div>
-              <div class="chancard-naam" data-i18n="backup.autoSftp">Extern — SFTP</div>
-            </div>
-            <div class="chancard-body">
-              <div class="field"><label data-i18n="backup.autoSftpHost">Host</label><input id="autoDestSftpHost"></div>
-              <div class="field"><label data-i18n="backup.autoSftpPoort">Poort</label><input id="autoDestSftpPoort" type="number" value="22"></div>
-              <div class="field"><label data-i18n="backup.autoSftpGebruiker">Gebruiker</label><input id="autoDestSftpGebruiker"></div>
-              <div class="field secretfield"><label data-i18n="backup.autoSftpWachtwoord">Wachtwoord</label><input id="autoDestSftpWachtwoord" type="password"><a class="wislink" id="autoDestSftpWachtwoordWis" data-i18n="beheer.notifWissen">Wissen</a></div>
-              <div class="field"><label data-i18n="backup.autoSftpDoelmap">Doelmap</label><input id="autoDestSftpDoelmap"></div>
-              <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestSftpBewaar" type="number" value="30"></div>
-            </div>
-          </div>
-
-          <div class="chancard" id="autoDestS3Card">
-            <div class="chancard-head">
-              <div class="toggle" id="autoDestS3Toggle"><div class="knob"></div></div>
-              <div class="chancard-naam" data-i18n="backup.autoS3">Extern — S3-compatible</div>
-            </div>
-            <div class="chancard-body">
-              <div class="field"><label data-i18n="backup.autoS3Endpoint">Endpoint</label><input id="autoDestS3Endpoint" placeholder="s3.eu-central-1.wasabisys.com"></div>
-              <div class="field"><label data-i18n="backup.autoS3Bucket">Bucket</label><input id="autoDestS3Bucket"></div>
-              <div class="field"><label data-i18n="backup.autoS3AccessKey">Access key</label><input id="autoDestS3AccessKey"></div>
-              <div class="field secretfield"><label data-i18n="backup.autoS3SecretKey">Secret key</label><input id="autoDestS3SecretKey" type="password"><a class="wislink" id="autoDestS3SecretKeyWis" data-i18n="beheer.notifWissen">Wissen</a></div>
-              <div class="field"><label data-i18n="backup.autoS3Prefix">Prefix/map</label><input id="autoDestS3Prefix"></div>
-              <div class="field"><label data-i18n="backup.autoBewaarN">Bewaar laatste N</label><input id="autoDestS3Bewaar" type="number" value="30"></div>
-            </div>
-          </div>
-
-          <div class="statusbox" id="autoBackupStatusBox" style="background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:8px;font-size:12.5px;display:flex;flex-direction:column;gap:6px">
-            <div style="display:flex;align-items:center;gap:8px"><div class="dot" id="autoBackupStatusDot"></div><span id="autoBackupStatusTekst" data-i18n="backup.autoNogNooitGedraaid">Nog niet eerder automatisch gedraaid.</span></div>
-            <div style="color:var(--text3)" id="autoBackupVolgendeTekst"></div>
-            <div style="color:var(--text3);font-size:11px" data-i18n="backup.autoMislukMelding">Bij mislukken: melding via het geconfigureerde alert-notificatiekanaal, indien ingesteld.</div>
-          </div>
-
-          <div style="margin-top:12px">
-            <button id="autoBackupOpslaanBtn" data-i18n="beheer.instellingenOpslaan">Wijzigingen doorvoeren</button>
-          </div>
-          <div id="autoBackupResultCard" class="addform" style="display:none;margin-top:10px">
-            <div class="dot ok"></div>
-            <span id="autoBackupResultInfo"></span>
-          </div>
-          <div id="autoBackupErrorCard" class="addform" style="display:none;margin-top:10px">
-            <span id="autoBackupErrorInfo" style="color:var(--red)"></span>
-          </div>
-        </div>
-
-        <hr class="sectiescheiding">
-        <h2 style="margin-top:22px" data-i18n="backup.herstelTitel">Back-up herstellen</h2>
-        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.herstelSubtitel">Zet een eerder gemaakte back-up (zip) terug, of voeg 'm toe als editie aan een archief.</div>
-
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-          <label class="uploadbtn"><span data-i18n="backup.herstelKiesBestand">Back-up-bestand kiezen</span><input type="file" id="herstelBestand" accept=".zip" style="display:none"></label>
-          <span id="herstelBestandsnaam" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
-        </div>
-
-        <div class="modechoice">
-          <div class="modecard active" data-herstelmodus="volledig">
-            <div class="lbl" data-i18n="backup.herstelVolledigLbl">Volledige restore</div>
-            <div class="desc" data-i18n="backup.herstelVolledigDesc">Voor een verse/lege instance — bijv. na een hardwarewissel op een locatie. Zet topologie, media en meetdata terug, met dezelfde editie. Geen nieuwe editie, een voortzetting.</div>
-          </div>
-          <div class="modecard" data-herstelmodus="editie_toevoegen">
-            <div class="lbl" data-i18n="backup.herstelToevoegenLbl">Editie toevoegen aan archief</div>
-            <div class="desc" data-i18n="backup.herstelToevoegenDesc">Voor het vergelijken van meerdere jaargangen — voegt alléén de meetdata van deze back-up toe als nieuwe editie naast wat er al staat. Topologie/media blijven ongemoeid.</div>
-          </div>
-        </div>
-
-        <div class="optionrow" id="herstelTopologieRow">
-          <input type="checkbox" checked disabled>
-          <div><div class="lbl" data-i18n="backup.topologieLbl">Topologie</div><div class="desc" id="herstelTopologieDesc"></div></div>
-        </div>
-        <div class="optionrow" id="herstelMediaRow">
-          <input type="checkbox" checked disabled>
-          <div><div class="lbl" data-i18n="backup.plattegrondLogoLbl">Plattegrond &amp; logo</div><div class="desc" id="herstelMediaDesc"></div></div>
-        </div>
-        <div class="optionrow">
-          <input type="checkbox" checked disabled>
-          <div><div class="lbl" data-i18n="backup.meetdataLbl">Meetdata (InfluxDB-dump)</div><div class="desc" id="herstelMeetdataDesc"></div></div>
-        </div>
-
-        <div class="warnbox" id="herstelWaarschuwing" style="display:none"></div>
-
-        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <button id="herstelStartBtn" data-i18n="backup.herstelStartBtn">Start herstel</button>
-        </div>
-        <div id="herstelStatusCard" class="addform" style="display:none;margin-top:10px">
-          <div class="dot busy"></div>
-          <span data-i18n="backup.herstelBezig">Herstel wordt uitgevoerd...</span>
-        </div>
-        <div id="herstelResultCard" class="addform" style="display:none;margin-top:10px">
-          <div class="dot ok"></div>
-          <span id="herstelResultInfo"></span>
-        </div>
-        <div id="herstelErrorCard" class="addform" style="display:none;margin-top:10px">
-          <span id="herstelErrorInfo" style="color:var(--red)"></span>
-          <button id="herstelOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="grafbody" id="grafiekenPanel" style="display:none">
@@ -659,7 +656,7 @@
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="js/vendor/qrcode.min.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
