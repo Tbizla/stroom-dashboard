@@ -21,6 +21,11 @@ import './mqtt.js';
 import { refreshSimStatusIfTest } from './modes.js';
 import { renderPins } from './render-pins.js';
 import { t } from './i18n.js';
+import { initQrCodes } from './qrcodes.js';
+import { initKastStatusRoute } from './kaststatus.js';
+import { initAnomalyOpruiming } from './anomaly.js';
+import { renderDetail } from './render-detail.js';
+import { renderList } from './render-list.js';
 
 // ---------- plattegrond uploaden ----------
 document.getElementById('mapFile').onchange = async (ev)=>{
@@ -82,6 +87,12 @@ initBackup();
 initAutomatischeBackup();
 initInstellingen();
 initNotificaties();
+initQrCodes();
+initAnomalyOpruiming(()=>{
+  renderList(); renderPins();
+  if(state.selectedId) renderDetail();
+  ververOverzichtLiveWeergave();
+});
 
 // ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
 // niet op het Beheer-tabblad: daar ben je zelf de enige die bewerkt, en een tussentijdse herbouw van de
@@ -102,6 +113,9 @@ loadTopology().then(()=>{
   // automatisch — geen algemene router, alleen deze ene deeplink (zie grafieken.js
   // herstelVanUrl()); pas ná loadTopology() zodat de checklist niet leeg begint
   if(new URLSearchParams(location.search).get('mode') === 'grafieken') document.getElementById('modeGrafieken').click();
+  // QR-code-deeplink (?mode=live&kast=<id>) — zie kaststatus.js: smal scherm krijgt de lichte
+  // mobiele statuspagina, breed scherm het bestaande drill-down-gedrag naar Live-modus
+  initKastStatusRoute();
 });
 loadLogo();
 // het Testdata-tabblad (en de bijbehorende endpoints) bestaat alleen als de stack met

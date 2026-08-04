@@ -1,14 +1,14 @@
-# Event Stroom-Dashboard — roadmap v3 (nog niet gestart)
+# Event Stroom-Dashboard — roadmap v3 (actief)
 
 > Voor omschrijving en featurelijst: zie [event_dashboard.md](event_dashboard.md). Voor de
 > afgeronde v2-roadmap: zie [roadmap_v2.md](roadmap_v2.md). Overzicht van alle roadmap-bestanden:
 > [roadmap.md](roadmap.md).
 
-## Roadmap v3 (nog niet gestart)
+## Roadmap v3 (actief)
 
-Bewust nog niet oppakken — komt aan de beurt ná de huidige v2-roadmap. Volgt dezelfde
-werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
-[CLAUDE.md](CLAUDE.md)) zodra dat zover is.
+v2 is afgerond, dit is de actieve roadmap — een deel van onderstaande punten is al gebouwd (zie de
+`[x]`-items). Volgt dezelfde werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige
+afspraken" in [CLAUDE.md](CLAUDE.md)).
 
 > "v3" is hier een roadmap-generatienaam, geen belofte dat deze items als `v3.0.0` uitkomen: sinds
 > de overstap naar echte [semantic versioning](CLAUDE.md) (§ Versionering) bepaalt de aard van elke
@@ -16,36 +16,18 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
 > bevat. Zo werd het eerste afgeronde item hieronder (knikpunten) een MINOR-release (`v2.1.0`),
 > geen `v3.0.0`.
 
-- [ ] **Per-fase fout-/vlagindicatoren + neutrale stroom** (`a_errors`/`a_flags`/`b_*`/`c_*`/
-      `n_current`/`n_errors`/component-brede `errors`) — uit de Shelly-audit. Waardevol (directe
-      device-eigen overvoltage/overcurrent/overpower/bekabelingsfout-detectie). **Telegraf-
-      verificatie afgerond (24 juli 2026)**: bevestigd dat de array-velden stilzwijgend verdwijnen
-      met de huidige `json`-parser-config — een `json_v2`-parser-wissel + een omzetting naar
-      losse boolean-/string-velden is nodig (InfluxDB kent geen array-veldtype). Hangt bovendien
-      samen met het nog openstaande "Notificatiekanaal voor alerting"-item hierboven — niet in
-      isolatie oppakken. Korte spec (geen mockup, backend-first): zie
-      [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 1.
-- [ ] **`EMData`-component-brede `errors`** (`database_error`/`ct_type_not_set`) — zelfde
-      array-kanttekening als hierboven, ook geverifieerd (zelfde bevinding), device-zelfdiagnose,
-      lage prioriteit. Korte spec: [specs/backend-only-specs.md](specs/backend-only-specs.md),
-      sectie 2.
-- [ ] **Interval-aggregaten** (`EMData.GetRecords`/`GetData`/`GetNetEnergies`: min/max/gemiddelde
-      per fase, reactief vermogen) — komen niet binnen via de huidige MQTT-architectuur, vereisen
-      een fundamenteel andere ophaalmethode (HTTP-polling of een Shelly Script). Alleen oppakken bij
-      concrete behoefte, bijv. vanuit een rijker PDF-rapport. Korte spec:
-      [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 3.
-- [ ] **Generator-EM-rework-vervolg: native telemetrie-protocolintegratie.** Bewust uitgesteld
-      tijdens de Generator-EM-rework — generators die niet via Shelly+CT-klem maar via een eigen
-      protocol uit te lezen zijn. Bevestigd: er zijn CAN-bus/J1939-generators in het park, maar
-      **on hold** wegens drukte — geen vervolgstappen nu. Conceptspec geconsolideerd in
-      [specs/backend-only-specs.md](specs/backend-only-specs.md), sectie 4.
+> **3 augustus 2026**: vier punten die hier stonden (per-fase-fout-/vlagindicatoren, `EMData`-
+> component-brede errors, interval-aggregaten, generator-EM-rework-vervolg/CAN-bus) zijn met Mike
+> geprioriteerd naar [roadmap_v4.md](roadmap_v4.md), samen met vier punten uit de toenmalige
+> "Ideeën van Claude"-sectie hieronder. Zie dat bestand voor de volledige items.
+
 - [x] **Notificatiekanaal voor alerting naar telefoon.** Afgerond — gebouwd conform
       [specs/notificatiekanaal-plan.md](specs/notificatiekanaal-plan.md): "Alert-notificaties"-
       sectie in Beheer (Telegram/Pushover/ntfy.sh/e-mail, meerdere tegelijk aan), met testbericht-
       knop en Grafana-contact-point-/policy-provisioning. De "Overschrijdingen & alarmen"-sectie
       van het PDF-rapport blijft vooralsnog de bestaande placeholder (apart stukje werk, niet
-      vanzelf meegekomen) en het uitgestelde "per-fase fout-/vlagindicatoren"-punt hieronder blijft
-      los staan. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
+      vanzelf meegekomen) en het uitgestelde "per-fase fout-/vlagindicatoren"-punt (nu op
+      roadmap_v4.md) blijft los staan. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
 - [x] **Lijnen tussen kasten aanpasbaar (bochten/knikpunten).** Afgerond — gebouwd conform
       [specs/lijnen-knikpunten-plan.md](specs/lijnen-knikpunten-plan.md): op Kalibreren een
       knikpunt toevoegen (dubbelklik op een lijnsegment of via het rechtsklik-menu), verslepen,
@@ -69,15 +51,22 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       leeg opslaan → daadwerkelijk weg na Wissen). Nog steeds onafhankelijk van, en niet opgelost
       door, de login-laag van "Toegang van buitenaf" hieronder. Zie event_dashboard.md,
       Topologiebeheer (Beheer-tabblad).
-- [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond en besluiten met Mike bevestigd
-      (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst).
-      Drie mockups (login-scherm, HQ-locatiesoverzicht, accounts-beheerscherm) plus een technisch-
-      fundament-sectie staan klaar. **Belangrijke bevinding (3 augustus 2026)**: naast de
-      login-laag (bevinding #1) is er een tweede blokkerende voorwaarde ontdekt — het
+- [x] **Evenementlogo in de header is te klein (tweak, geen spec nodig).** Afgerond — `#headerLogo`
+      (`webapp/public/index.html`) van `height:26px` naar `height:42px` (binnen de gevraagde
+      ~40-44px-marge), verder geen gedragswijziging. Geverifieerd met het ontvangen
+      voorbeeldlogo ([specs/assets/captain-power-logo-voorbeeld.svg]
+      (specs/assets/captain-power-logo-voorbeeld.svg)): past nog prima naast de modeswitch, geen
+      omslag van de header-rij.
+- [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond, besluiten met Mike bevestigd
+      (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst)
+      en **akkoord op de drie mockups ontvangen (3 augustus 2026)** — login-scherm,
+      HQ-locatiesoverzicht, accounts-beheerscherm, plus het technisch-fundament-sectie, staan nu
+      klaar voor Code, geen openstaande vraag meer. **Belangrijke bevinding (3 augustus 2026)**:
+      naast de login-laag (bevinding #1) is er een tweede blokkerende voorwaarde ontdekt — het
       Live-tabblad gebruikt een apart, volledig onbeveiligd MQTT-websocketkanaal
       (`allow_anonymous true`, geen auto-adresdetectie) dat een reverse-proxy naar de webapp
       alleen niet afdekt. Groter technisch werk dan aanvankelijk gedacht, geen kleinste stapje
-      meer op de bouwvolgorde-lijst. Wacht op jouw akkoord op de mockups vóór het naar Code gaat.
+      meer op de bouwvolgorde-lijst.
       Zie [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md).
 - [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete
@@ -98,46 +87,36 @@ werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
       Sankey-, taart- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI) en de live-modus;
       meerdere-edities-vergelijking wacht op de tijd-sinds-start-uitlijning uit
       voorspellende-piekbelasting-plan.md. Zie event_dashboard.md, Grafieken-tabblad.
+- [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
+      "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een
+      "Alle QR-codes printen"-bulkknop, elk codeert `/?mode=live&kast=<id>`. Op een smal scherm
+      opent die deep-link de nieuwe, lichte mobiele statuspagina i.p.v. de volledige Live-modus
+      (bevestigde bevinding: vaste 320px-zijlijst, geen responsive CSS, geen touch-events); op een
+      breed scherm het bestaande drill-down-gedrag naar Live-modus. Zie event_dashboard.md,
+      Topologiebeheer (Beheer-tabblad).
+- [x] **Anomaly-detectie los van de vaste 90%-drempel.** Afgerond — gebouwd conform
+      [specs/anomaly-detectie-plan.md](specs/anomaly-detectie-plan.md): client-side op de bestaande
+      MQTT-stream (rollend venster + sprong-drempel >50%, geen nieuwe databron), eigen pulserend
+      ⚡-badge (in `--accent`) naast de status-stip in zij-lijst/aside-detail/plattegrond-pin,
+      bevestigen/wegklikken + auto-verval na 10 min, en een "N anomalieën actief"-telkaartje op de
+      Overzicht-subtab. Geverifieerd met een live gesimuleerde 82%-dip via MQTT (inclusief een
+      pin-badge-opruimbug gevonden en gefixt tijdens het testen). Zie event_dashboard.md,
+      Live-monitoring (Live-tabblad).
+- [x] **Shelly-koppeling: "Open Shelly"-knop.** Afgerond — gebouwd conform
+      [specs/shelly-ip-koppeling-plan.md](specs/shelly-ip-koppeling-plan.md): `shelly_ip` nu
+      bewerkbaar in Beheer voor kasten én generators/leden-met-sensor, "Open Shelly ↗"-link in
+      kastpopup/aside-detail/QR-statuspagina (alleen zichtbaar als het veld ingevuld is), met een
+      tekstnoot dat dit alleen op het evenement-netwerk werkt. Zie event_dashboard.md,
+      Topologiebeheer (Beheer-tabblad).
+- [ ] **Rolverdeling/rechten.** Geaccordeerd (3 augustus 2026, vanuit de "Ideeën van Claude"-
+      sectie gehaald) — daarmee is de "Ideeën van Claude"-sectie leeg. Nu heeft iedereen die de
+      webapp-URL heeft volledige Beheer-rechten; dit voegt een viewer/editor-onderscheid toe
+      (viewer ziet alleen Schema/Live/Rapportages, geen Back-up-subtab). **Bouwt inhoudelijk voort
+      op de accounts-/login-fundering uit "Toegang van buitenaf" hierboven** — kan pas na die
+      basis gebouwd worden, niet onafhankelijk daarvan. Spec + mockup: zie
+      [specs/rolverdeling-plan.md](specs/rolverdeling-plan.md).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
-> Onderstaande punten zijn door Claude voorgesteld tijdens een brainstormsessie, niet door Mike
-> bedacht of al geaccordeerd. Volgen dezelfde werkafspraak (spec/plan eerst, zie "Overige
-> afspraken" in [CLAUDE.md](CLAUDE.md)) zodra iets hiervan opgepakt wordt — en moeten eerst nog
-> besproken/geprioriteerd worden voordat ze als "echt" roadmap-item gelden.
-
-- [ ] **Brandstof-/onderhoudstracking per generator.** Draaiuren, brandstofniveau, laatste
-      onderhoud, met een refuel-alert. Sluit aan bij de bestaande generator-rating-structuur. Voor
-      generators met CAN-bus (J1939) zit deze data er mogelijk al in — zie de conceptspec bij
-      "Generator-EM-rework-vervolg" hierboven. Spec + mockup: zie
-      [specs/brandstof-onderhoud-plan.md](specs/brandstof-onderhoud-plan.md).
-- [ ] **Batterij state-of-charge.** Voor losse batterijen/piekscheerders is nu alleen stroom/
-      belasting zichtbaar, niet hoeveel capaciteit er nog in zit. Spec + mockup: zie
-      [specs/batterij-soc-plan.md](specs/batterij-soc-plan.md).
-- [ ] **Voorspellende piekbelasting.** Op basis van historische data van vorige edities (zelfde
-      editie-tag) een verwacht piekmoment tonen, bijv. "foodtrucks pieken meestal rond 18:00".
-      Spec + mockup: zie
-      [specs/voorspellende-piekbelasting-plan.md](specs/voorspellende-piekbelasting-plan.md).
-- [ ] **Anomaly-detectie los van de vaste 90%-drempel.** Een plotselinge stroom-dip (kabel
-      losgetrokken, generator uitgevallen) is heel iets anders dan een langzame stijging naar de
-      rating, maar krijgt nu dezelfde amber/rood-behandeling. Spec + mockup: zie
-      [specs/anomaly-detectie-plan.md](specs/anomaly-detectie-plan.md).
-- [ ] **QR-code per kast.** Sticker op de kast zelf, scannen opent direct de status van precies
-      die kast. Onderweg bleek de oorspronkelijke aanname ("Live-modus werkt al op mobiel") niet
-      te kloppen (geverifieerd in de code: vaste 320px-zijlijst, geen responsive CSS, geen
-      touch-events) — daarom nu een eigen lichte mobiele statuspagina i.p.v. de volledige
-      Live-modus opendraaien op een klein scherm. Spec + mockup: zie
-      [specs/qr-code-plan.md](specs/qr-code-plan.md).
-- [ ] **Shelly-koppeling: "Open Shelly"-knop.** Aangedragen tijdens het uitwerken van QR-code per
-      kast — een knop bij de kast-/generatorstatus (kastpopup, aside-detail, QR-statuspagina) die
-      direct naar de lokale webinterface van de bijbehorende Shelly linkt. Het `shelly_ip`-veld
-      bestaat al in het datamodel voor kasten maar is nergens bewerkbaar/zichtbaar; voor
-      generators is het nieuw. Spec + mockup: zie
-      [specs/shelly-ip-koppeling-plan.md](specs/shelly-ip-koppeling-plan.md).
-- [ ] **Rolverdeling/rechten.** Nu heeft iedereen die de webapp-URL heeft blijkbaar volledige
-      Beheer-rechten. Voor een HQ- of multi-persoon-scenario (zie ook het "toegang van
-      buitenaf"-punt) is een viewer/editor-onderscheid relevant. Spec + mockup: zie
-      [specs/rolverdeling-plan.md](specs/rolverdeling-plan.md).
-- [ ] **Brandstofkosten/CO2 in het PDF-rapport.** Logische aanvulling op de bestaande
-      generator-energietotalen. Spec + mockup: zie
-      [specs/brandstofkosten-co2-plan.md](specs/brandstofkosten-co2-plan.md).
+> Deze sectie is momenteel leeg — alle eerder voorgestelde ideeën zijn inmiddels met Mike
+> geprioriteerd (zie de items hierboven en in [roadmap_v4.md](roadmap_v4.md)).

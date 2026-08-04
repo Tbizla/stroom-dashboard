@@ -9,7 +9,7 @@
 <body>
 <div class="app">
   <header>
-    <h1><img id="headerLogo" alt="logo" style="display:none;height:26px;vertical-align:middle;margin-right:10px;border-radius:4px"><span>Stroom-Dashboard</span></h1>
+    <h1><img id="headerLogo" alt="logo" style="display:none;height:42px;vertical-align:middle;margin-right:10px;border-radius:4px"><span>Stroom-Dashboard</span></h1>
     <div class="modeswitch">
       <button id="modeBeheer" class="active" data-i18n="mode.beheer">Beheer</button>
       <button id="modeCal" data-i18n="mode.kalibreren">Kalibreren</button>
@@ -166,7 +166,10 @@
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
         <h2 style="margin:0" data-i18n="beheer.kasten">Kasten</h2>
-        <button class="collapseall" id="kastToggleAllBtn" data-i18n="common.allesInklappen">Alles inklappen</button>
+        <div style="display:flex;gap:8px">
+          <button class="collapseall" id="qrAllBtn" data-i18n="beheer.alleQrPrinten">Alle QR-codes printen</button>
+          <button class="collapseall" id="kastToggleAllBtn" data-i18n="common.allesInklappen">Alles inklappen</button>
+        </div>
       </div>
       <div class="listtools" style="padding:8px 0">
         <input type="text" id="kastZoek" data-i18n-placeholder="beheer.zoekPlaceholder" placeholder="Zoek op naam, afkorting of stroombron...">
@@ -639,8 +642,24 @@
   </div>
 </div>
 
+<div class="qroverlay" id="qrOverlay" style="display:none">
+  <div class="qroverlay-panel">
+    <div class="qroverlay-close" id="qrOverlayClose">✕</div>
+    <div id="qrOverlayBox" class="qroverlay-box"></div>
+    <div class="qroverlay-nm" id="qrOverlayNaam"></div>
+    <div class="qroverlay-afk" id="qrOverlayAfk"></div>
+    <div class="qroverlay-btns">
+      <button id="qrOverlayDownload" data-i18n="beheer.qrDownloaden">Downloaden (PNG)</button>
+      <button id="qrOverlayPrint" data-i18n="beheer.qrPrinten">Printen</button>
+    </div>
+  </div>
+</div>
+
+<div id="kastStatusPagina" class="kaststatus" style="display:none"></div>
+
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

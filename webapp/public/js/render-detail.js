@@ -2,6 +2,7 @@ import { state, detailEl, liveData } from './state.js';
 import { nodeById, isGen, genNaam, typeIcon, maxFaseStroom, statusClass } from './topology.js';
 import { t, huidigeLocale } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
+import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
 
 // per-lid live rijen onder de bestaande ledenlijst van een groep (naam/kVA/soort blijft
 // ongewijzigd). Een lid zonder eigen rating_a heeft
@@ -51,6 +52,10 @@ export function renderDetail(){
   if(!n){ detailEl.innerHTML = '<div class="empty">'+t('aside.detailLeeg')+'</div>'; return; }
   const d = liveData[n.id];
   let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+'</h2>';
+  if(heeftActieveAnomaly(n.id)){
+    html += '<div class="metric anomaly-row" id="detailAnomalyRow"><span class="k">⚡ '+t('anomaly.badgeTitel')+'</span></div>'+
+      '<div class="anomaly-detail">'+anomalyTekst(n.id)+'</div>';
+  }
   if(!isGen(n)){
     html += '<div class="sub">'+(n.type==='batterij'?t('detail.batterijPrefix'):'')+genNaam(n.generator)+' · '+t('detail.ratingSuffix', {rating: n.rating_a})+(n.opmerking?(' · '+n.opmerking):'')+'</div>';
     if(n.type==='batterij' && n.heeft_bypass){
@@ -69,5 +74,11 @@ export function renderDetail(){
     html += ledenblokHtml(n);
   }
   html += '<div class="metric" style="margin-top:10px"><span class="k">'+t('detail.positie')+'</span><span>'+(n.positie && n.positie.x_pct!=null? n.positie.x_pct.toFixed(1)+'%, '+n.positie.y_pct.toFixed(1)+'%' : t('detail.nogNietGeplaatst'))+'</span></div>';
+  if(n.shelly_ip){
+    html += '<a class="shellylink" href="http://'+n.shelly_ip+'" target="_blank" rel="noopener" style="margin-top:10px">'+t('common.openShelly')+'</a>';
+    html += '<div class="netnote">'+t('common.shellyNetnote')+'</div>';
+  }
   detailEl.innerHTML = html;
+  const anomalyRow = document.getElementById('detailAnomalyRow');
+  if(anomalyRow) anomalyRow.onclick = ()=>{ bevestigAnomaly(n.id); renderDetail(); };
 }

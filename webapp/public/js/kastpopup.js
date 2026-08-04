@@ -140,6 +140,20 @@ export function renderKastPopup(){
   laatste.textContent = d ? t('kastpopup.laatsteUpdate', {n: Math.max(0, Math.round((Date.now()-d.ts)/1000))}) : t('kastpopup.laatsteGeen');
   el.appendChild(laatste);
 
+  if(k.shelly_ip){
+    const shellyLink = document.createElement('a');
+    shellyLink.className = 'shellylink';
+    shellyLink.href = 'http://' + k.shelly_ip;
+    shellyLink.target = '_blank';
+    shellyLink.rel = 'noopener';
+    shellyLink.textContent = t('common.openShelly');
+    el.appendChild(shellyLink);
+    const netnote = document.createElement('div');
+    netnote.className = 'netnote';
+    netnote.textContent = t('common.shellyNetnote');
+    el.appendChild(netnote);
+  }
+
   // positioneren t.o.v. de pin, boven met pijl naar beneden — of eronder/horizontaal verschoven
   // als de ballon anders buiten #mapwrap zou uitsteken, of over de zoom-knoppen (#zoomCtl, een
   // los overlay-element linksboven in #mainBody, geen onderdeel van mapwrap's scroll-inhoud) heen

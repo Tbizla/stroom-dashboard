@@ -10,6 +10,7 @@ import { t } from './i18n.js';
 import { renderPins } from './render-pins.js';
 import { renderDetail } from './render-detail.js';
 import { renderKastPopup } from './kastpopup.js';
+import { aantalActieveAnomalieen } from './anomaly.js';
 
 const STATUS_KLEUR = { green: 'var(--green)', amber: 'var(--amber)', red: 'var(--red)' };
 
@@ -72,6 +73,18 @@ function renderOverzichtCards(){
   totaalCard.querySelector('.lbl').textContent = t('overzicht.kastenTotaal');
   totaalCard.querySelector('.subtext').textContent = t('overzicht.bovenNegentig', {n: boven90});
   container.appendChild(totaalCard);
+
+  // anomalieën-telbadge: los van de groen/amber/rood-conventie, zie specs/anomaly-detectie-plan.md
+  const aantalAnomalieen = aantalActieveAnomalieen();
+  const anomalyCard = document.createElement('div');
+  anomalyCard.className = 'card';
+  anomalyCard.style.cursor = 'default';
+  anomalyCard.innerHTML =
+    '<div class="lbl"></div><div class="val">'+aantalAnomalieen+'</div>'+
+    '<div class="sub"><span class="dotstatus" style="background:'+(aantalAnomalieen>0?'var(--accent)':'var(--grey)')+'"></span><span class="subtext"></span></div>';
+  anomalyCard.querySelector('.lbl').textContent = '⚡ '+t('overzicht.anomalieenLabel');
+  anomalyCard.querySelector('.subtext').textContent = t('overzicht.anomalieenActief', {n: aantalAnomalieen});
+  container.appendChild(anomalyCard);
 }
 
 // welke kasten meetellen voor de staven/boom, rekening houdend met het drill-down-filter (klik op

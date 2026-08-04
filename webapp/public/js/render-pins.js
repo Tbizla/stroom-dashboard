@@ -4,6 +4,7 @@ import { renderList } from './render-list.js';
 import { renderDetail } from './render-detail.js';
 import { renderKastPopup } from './kastpopup.js';
 import { t } from './i18n.js';
+import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
 
 // ---------- rechtsklik-mini-menu (knikpunten toevoegen/resetten) — enige contextmenu-gebruiker in
 // de app, dus geen apart module nodig; sluit op klik erbuiten of Escape ----------
@@ -61,7 +62,7 @@ function resetLijn(k){
 }
 
 export function renderPins(){
-  mapinner.querySelectorAll('.pin,.pinlabel,.knik').forEach(e=>e.remove());
+  mapinner.querySelectorAll('.pin,.pinlabel,.knik,.pin-anomaly').forEach(e=>e.remove());
   const surface = getSurfaceEl();
   const w = surface.clientWidth, h = surface.clientHeight;
   if(!w || !h) return;
@@ -186,6 +187,17 @@ export function renderPins(){
       document.addEventListener('mouseup', up);
     };
     mapinner.appendChild(pin);
+
+    if(heeftActieveAnomaly(n.id)){
+      const anomalyBadge = document.createElement('div');
+      anomalyBadge.className = 'pin-anomaly';
+      anomalyBadge.textContent = '⚡';
+      anomalyBadge.style.left = (n.positie.x_pct/100*w)+'px';
+      anomalyBadge.style.top = (n.positie.y_pct/100*h)+'px';
+      anomalyBadge.title = t('anomaly.badgeTitel') + ' — ' + anomalyTekst(n.id);
+      anomalyBadge.onmousedown = (ev)=>{ ev.stopPropagation(); bevestigAnomaly(n.id); renderPins(); };
+      mapinner.appendChild(anomalyBadge);
+    }
 
     const label = document.createElement('div');
     label.className = 'pinlabel';

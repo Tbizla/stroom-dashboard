@@ -4,6 +4,17 @@ import { liveData } from './state.js';
 import { renderDetail } from './render-detail.js';
 import { renderPins } from './render-pins.js';
 import { t } from './i18n.js';
+import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
+
+function anomalyBadge(nodeId){
+  if(!heeftActieveAnomaly(nodeId)) return null;
+  const b = document.createElement('span');
+  b.className = 'anomaly-badge';
+  b.textContent = '⚡';
+  b.title = t('anomaly.badgeTitel') + ' — ' + anomalyTekst(nodeId);
+  b.onclick = (e)=>{ e.stopPropagation(); bevestigAnomaly(nodeId); renderList(); };
+  return b;
+}
 
 function makeBadge(kind, n){
   const b = document.createElement('span');
@@ -77,7 +88,10 @@ export function renderList(){
       const name = document.createElement('div');
       name.className = 'name';
       name.textContent = (k.type==='batterij'?'🔋 ':'') + k.naam + (k.afkorting ? ' (' + k.afkorting + ')' : '');
-      row.appendChild(dot); row.appendChild(name);
+      row.appendChild(dot);
+      const kBadge = anomalyBadge(k.id);
+      if(kBadge) row.appendChild(kBadge);
+      row.appendChild(name);
 
       if(heeftKinderen){
         const sub = document.createElement('div');
@@ -129,6 +143,8 @@ export function renderList(){
       const dot = document.createElement('div');
       dot.className = 'dot2 ' + statusClass(gen);
       top.appendChild(dot);
+      const gBadge = anomalyBadge(gen.id);
+      if(gBadge) top.appendChild(gBadge);
     }
 
     const genName = document.createElement('div');

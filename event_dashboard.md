@@ -108,6 +108,22 @@ zetten zonder code aan te passen.
   geheim veld bij het opslaan laat de bestaande waarde ongewijzigd; een expliciete "Wissen"-link per
   veld verwijdert 'm. Niet-geheime velden (chat-ID, ntfy-topic, SFTP-host/gebruiker, S3-access-key,
   enz.) blijven gewoon zichtbaar/bewerkbaar
+- **Shelly-koppeling**: optioneel "Shelly IP"-veld per kast en per generator/lid-met-sensor (alleen
+  invulbaar/getoond als "Heeft sensor" aan staat), naast de bestaande `mqtt_topic_prefix`. Overal
+  waar de live status van een kast/generator getoond wordt (kastpopup, aside-detail, de mobiele
+  QR-statuspagina) verschijnt een "Open Shelly ↗"-link die de lokale Shelly-webinterface in een
+  nieuw tabblad opent (alleen bruikbaar op het evenement-netwerk) — geen link zichtbaar als het veld
+  leeg is
+- **QR-code per kast**: "QR-code"-knop per rij in de kasten-tabel (overlay met QR, naam/afkorting,
+  downloaden als PNG of printen) en een "Alle QR-codes printen"-knop die in één keer een
+  printvriendelijk stickervel voor alle kasten opent. Elke QR codeert een vaste deep-link
+  (`/?mode=live&kast=<id>`); op een breed scherm (desktop/tablet) opent die gewoon de bestaande
+  Live-modus met de databallon van die kast open. Op een smal scherm (telefoon) opent in plaats
+  daarvan een eigen lichte, responsive statuspagina (geen zij-lijst/plattegrond/pan-zoom-chrome,
+  waar de bestaande Live-modus niet geschikt voor is op een klein scherm) met dezelfde live
+  meetwaarden, de "Open Shelly"-knop, en een "Bekijk op plattegrond →"-link naar de volledige
+  Live-modus. Een verwijderde kast toont een duidelijke "bestaat niet meer"-melding i.p.v. een kale
+  foutmelding
 
 **Plattegrond & kalibratie (Kalibreren-tabblad)**
 - Plattegrond (afbeelding) uploaden, of zonder plattegrond werken op een leeg, ruim canvas
@@ -168,6 +184,15 @@ zetten zonder code aan te passen.
   `--fase3`) vóór het fase-label in de kastpopup-tabelkop (A/B/C) en de aside-detail (Fase A/B/C-
   rijen) — losstaand naast de bestaande groen/amber/rood-statuskleur, geen samensmelting van de
   twee conventies
+- **Anomaly-detectie**: eigen, pulserend ⚡-badge (in `--accent`, geen vierde statuskleur) naast de
+  status-stip in de zij-lijst, aside-detail en op de plattegrond-pin, onafhankelijk van de vaste
+  90%-rating-drempel. Client-side op de al binnenkomende MQTT-stream: een relatieve sprong van meer
+  dan 50% t.o.v. een kort voortschrijdend gemiddelde (rollend venster van laatste ~20-60 sec)
+  triggert de badge, zowel bij een plotselinge dip (kabel los, generator uit) als een abnormaal
+  snelle stijging — een kast kan dus tegelijk "groen" staan én een anomalie tonen. Hover/klik toont
+  de tekst (bijv. "Stroom daalde 82% in 33 sec (van 14.0A naar 2.5A)"); klik bevestigt/verbergt 'm,
+  en verdwijnt vanzelf na 10 minuten als niemand dat doet. Overzicht-subtab heeft een eigen
+  "N anomalieën actief"-telkaartje, naast de bestaande generator-/kasten-kaarten
 
 **Grafieken-tabblad (vrije ad-hoc analyse)** — *werk in uitvoering, zie specs/grafieken-tabblad-plan.md*
 - Zesde hoofdtabblad, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators,

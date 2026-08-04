@@ -4,6 +4,7 @@ import { listChildrenOf, collectDescendantKasten, genNaam, typeIcon } from './to
 import { apiCall } from './api.js';
 import { loadTopology } from './topology.js';
 import { t } from './i18n.js';
+import { openQrOverlay } from './qrcodes.js';
 
 export function vulGenSelect(select, geselecteerd){
   select.innerHTML = state.TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
@@ -117,6 +118,13 @@ export function renderKastSecties(){
     bypassInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {heeft_bypass: bypassInput.checked}); await loadTopology(); } catch(e){ alert(e.message); } };
     kastVeld(tr, bypassInput, {style:'min-width:90px;text-align:center'});
 
+    const shellyInput = document.createElement('input');
+    shellyInput.value = k.shelly_ip || '';
+    shellyInput.placeholder = t('beheer.shellyIpPlaceholder');
+    shellyInput.title = t('beheer.shellyIpTitle');
+    shellyInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {shelly_ip: shellyInput.value.trim() || null}); await loadTopology(); } catch(e){ alert(e.message); } };
+    kastVeld(tr, shellyInput, {style:'min-width:120px'});
+
     const genSel = document.createElement('select');
     vulGenSelect(genSel, k.generator);
     const parentSel = document.createElement('select');
@@ -130,6 +138,12 @@ export function renderKastSecties(){
     kastVeld(tr, genSel, {style:'min-width:150px'});
     kastVeld(tr, parentSel, {style:'min-width:190px'});
 
+    const actieWrap = document.createElement('div');
+    actieWrap.style.cssText = 'display:flex;gap:4px';
+    const qrBtn = document.createElement('button');
+    qrBtn.textContent = t('beheer.qrKnop');
+    qrBtn.onclick = ()=> openQrOverlay(k);
+    actieWrap.appendChild(qrBtn);
     const delBtn = document.createElement('button');
     delBtn.className = 'danger';
     delBtn.textContent = t('common.verwijderen');
@@ -138,7 +152,8 @@ export function renderKastSecties(){
       try{ await apiCall('/api/kasten/'+k.id, 'DELETE'); await loadTopology(); }
       catch(e){ alert(e.message); }
     };
-    kastVeld(tr, delBtn, {style:'min-width:80px'});
+    actieWrap.appendChild(delBtn);
+    kastVeld(tr, actieWrap, {style:'min-width:170px'});
 
     tbody.appendChild(tr);
     if(heeftKinderen && open){
@@ -186,7 +201,7 @@ export function renderKastSecties(){
       const tabel = document.createElement('table');
       tabel.className = 'btable';
       tabel.innerHTML = '<tr><th>'+t('beheer.thNaam')+'</th><th style="min-width:80px">'+t('beheer.thAfk')+'</th><th style="min-width:70px">'+t('beheer.thA')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th>'+
-        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:80px"></th></tr>';
+        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:120px">'+t('beheer.thShellyIp')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
       listChildrenOf(gen).forEach(k=>{
         if(searching && !subtreeMatches(k)) return;
         kastRij(tabel, k, 0);
@@ -255,6 +270,7 @@ export function renderBeheer(){
   // generators-tabel
   const genTable = document.getElementById('genTable');
   let gh = '<tr><th>'+t('beheer.thNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:80px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th>'+
+    '<th style="min-width:120px">'+t('beheer.thShellyIp')+'</th>'+
     '<th style="min-width:70px">'+t('beheer.thAantalKasten')+'</th><th style="min-width:140px">'+t('beheer.thSoortKoppeling')+'</th><th style="min-width:110px">'+t('beheer.thLeden')+'</th><th style="min-width:80px"></th></tr>';
   state.TOPO.generators.forEach(g=>{
     const aantal = state.TOPO.kasten.filter(k=>k.generator===g.id).length;
@@ -271,6 +287,7 @@ export function renderBeheer(){
       '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
       '<td class="rating-cell"><input type="checkbox" data-gen-heeft-sensor="'+g.id+'" '+(g.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
         '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
+      '<td><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
       '<td>'+aantal+'</td>'+
       '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+'>'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>'+t('beheer.soortLeeg')+'</option>'+
@@ -282,8 +299,8 @@ export function renderBeheer(){
       '<td><button data-gen-del="'+g.id+'" class="danger">'+t('common.verwijderen')+'</button></td>'+
       '</tr>';
     if(isGroep && expandedGroepen.has(g.id)){
-      gh += '<tr class="ledenrow"><td colspan="8"><table class="btable ledentable">'+
-        '<tr><th>'+t('beheer.ledenTableThNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:90px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th><th style="min-width:70px"></th></tr>'+
+      gh += '<tr class="ledenrow"><td colspan="9"><table class="btable ledentable">'+
+        '<tr><th>'+t('beheer.ledenTableThNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:90px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th><th style="min-width:120px">'+t('beheer.thShellyIp')+'</th><th style="min-width:70px"></th></tr>'+
         g.leden.map((l,i)=>
           '<tr>'+
             '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
@@ -291,6 +308,7 @@ export function renderBeheer(){
             '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
             '<td class="rating-cell"><input type="checkbox" data-lid-heeft-sensor="'+g.id+'|'+i+'" '+(l.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
               '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
+            '<td><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
             '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
           '</tr>'
         ).join('')+
@@ -298,6 +316,7 @@ export function renderBeheer(){
           '<td><input placeholder="'+t('beheer.ledenNewPlaceholder')+'" data-lid-new-naam="'+g.id+'"></td>'+
           '<td><select data-lid-new-type="'+g.id+'"><option value="generator">'+t('beheer.typeGenerator')+'</option><option value="batterij">'+t('beheer.typeBatterij')+'</option></select></td>'+
           '<td><input type="number" placeholder="'+t('beheer.kvaPlaceholder')+'" data-lid-new-kva="'+g.id+'"></td>'+
+          '<td></td>'+
           '<td></td>'+
           '<td><button data-lid-add="'+g.id+'">+</button></td>'+
         '</tr>'+
@@ -329,18 +348,25 @@ export function renderBeheer(){
     try{ await apiCall('/api/generators/'+el.dataset.genRating, 'PUT', {rating_a: el.value}); await loadTopology(); }
     catch(e){ alert(e.message); }
   });
+  genTable.querySelectorAll('[data-gen-shelly]').forEach(el=>el.onchange = async ()=>{
+    try{ await apiCall('/api/generators/'+el.dataset.genShelly, 'PUT', {shelly_ip: el.value.trim() || null}); await loadTopology(); }
+    catch(e){ alert(e.message); }
+  });
   // uitvinken wist meteen de rating (opzettelijke "geen sensor"-declaratie, geen halve toestand);
   // aanvinken opent alleen het invoerveld, de save gebeurt pas via de rating-onchange hierboven
   // zodra Mike er ook echt een waarde intypt
   genTable.querySelectorAll('[data-gen-heeft-sensor]').forEach(el=>el.onchange = async ()=>{
     const id = el.dataset.genHeeftSensor;
     const ratingInput = genTable.querySelector('[data-gen-rating="'+id+'"]');
+    const shellyInput = genTable.querySelector('[data-gen-shelly="'+id+'"]');
     if(!el.checked){
       ratingInput.value = ''; ratingInput.disabled = true;
-      try{ await apiCall('/api/generators/'+id, 'PUT', {rating_a: ''}); await loadTopology(); }
+      shellyInput.value = ''; shellyInput.disabled = true;
+      try{ await apiCall('/api/generators/'+id, 'PUT', {rating_a: '', shelly_ip: null}); await loadTopology(); }
       catch(e){ alert(e.message); }
     } else {
       ratingInput.disabled = false; ratingInput.focus();
+      shellyInput.disabled = false;
     }
   });
   genTable.querySelectorAll('[data-gen-type]').forEach(el=>el.onchange = async ()=>{
@@ -376,16 +402,24 @@ export function renderBeheer(){
     const leden = huidigeLeden(genId); leden[idx].rating_a = el.value ? Number(el.value) : null;
     await saveLeden(genId, leden);
   });
+  genTable.querySelectorAll('[data-lid-shelly]').forEach(el=>el.onchange = async ()=>{
+    const [genId, idx] = el.dataset.lidShelly.split('|');
+    const leden = huidigeLeden(genId); leden[idx].shelly_ip = el.value.trim() || null;
+    await saveLeden(genId, leden);
+  });
   // zelfde opzettelijke-uitvinken-wist-meteen-patroon als bij data-gen-heeft-sensor hierboven
   genTable.querySelectorAll('[data-lid-heeft-sensor]').forEach(el=>el.onchange = async ()=>{
     const [genId, idx] = el.dataset.lidHeeftSensor.split('|');
     const ratingInput = genTable.querySelector('[data-lid-rating="'+genId+'|'+idx+'"]');
+    const shellyInput = genTable.querySelector('[data-lid-shelly="'+genId+'|'+idx+'"]');
     if(!el.checked){
       ratingInput.value = ''; ratingInput.disabled = true;
-      const leden = huidigeLeden(genId); leden[idx].rating_a = null;
+      shellyInput.value = ''; shellyInput.disabled = true;
+      const leden = huidigeLeden(genId); leden[idx].rating_a = null; leden[idx].shelly_ip = null;
       await saveLeden(genId, leden);
     } else {
       ratingInput.disabled = false; ratingInput.focus();
+      shellyInput.disabled = false;
     }
   });
   genTable.querySelectorAll('[data-lid-del]').forEach(el=>el.onclick = async ()=>{

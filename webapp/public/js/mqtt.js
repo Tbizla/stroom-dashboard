@@ -9,6 +9,9 @@ import { renderDetail } from './render-detail.js';
 import { renderKastPopup } from './kastpopup.js';
 import { t } from './i18n.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
+import { ververKastStatusPagina } from './kaststatus.js';
+import { verwerkAnomalyDetectie } from './anomaly.js';
+import { maxFaseStroom } from './topology.js';
 
 document.getElementById('connectBtn').onclick = ()=>{
   const host = document.getElementById('brokerHost').value || 'localhost';
@@ -39,8 +42,10 @@ document.getElementById('connectBtn').onclick = ()=>{
       // alle velden bewaren (niet alleen de subset die de aside-detail gebruikt) — de MQTT-
       // databallon toont ook act_power/aprt_power/pf per fase
       liveData[kastId] = { ...data, ts: Date.now() };
+      verwerkAnomalyDetectie(kastId, maxFaseStroom(liveData[kastId]));
       renderList(); renderPins(); if(state.mode==='schema') renderSchema(); if(state.selectedId===kastId) renderDetail();
       ververOverzichtLiveWeergave();
+      ververKastStatusPagina();
     });
   }catch(e){ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; }
 };

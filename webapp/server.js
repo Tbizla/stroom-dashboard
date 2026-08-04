@@ -547,6 +547,7 @@ function normaliseerLeden(leden) {
       // net als bij een generator: optioneel, alleen gezet als dit lid ook echt een eigen
       // Shelly+CT-klem heeft
       rating_a: (l.rating_a != null && l.rating_a !== '') ? Number(l.rating_a) : null,
+      shelly_ip: l.shelly_ip ? String(l.shelly_ip).trim() : null,
     };
     if (l.id) lid.id = l.id;
     return lid;
@@ -568,7 +569,7 @@ function voorzieLedenVanIdEnPrefix(gen, data) {
 }
 
 app.post('/api/generators', (req, res) => {
-  const { naam, vermogen_kva, type, rating_a } = req.body || {};
+  const { naam, vermogen_kva, type, rating_a, shelly_ip } = req.body || {};
   if (!naam || !vermogen_kva) return res.status(400).json({ error: 'naam en vermogen_kva zijn verplicht' });
   if (type !== undefined && !GEN_TYPES.includes(type)) return res.status(400).json({ error: 'ongeldig type' });
   const data = readTopo();
@@ -583,6 +584,7 @@ app.post('/api/generators', (req, res) => {
     // topic is zelfreferentieel (site/<id>/<id>/status/em:0): een generator is voor de meetpijplijn
     // gewoon zijn eigen "kast", geen apart telegraf/InfluxDB-schema nodig.
     rating_a: rating_a ? Number(rating_a) : null,
+    shelly_ip: shelly_ip ? String(shelly_ip).trim() : null,
     mqtt_topic_prefix: mqttPrefix(id, id),
   };
   data.generators.push(gen);
@@ -594,10 +596,11 @@ app.put('/api/generators/:id', (req, res) => {
   const data = readTopo();
   const gen = data.generators.find(g => g.id === req.params.id);
   if (!gen) return res.status(404).json({ error: 'generator niet gevonden' });
-  const { naam, vermogen_kva, type, groep_soort, leden, rating_a } = req.body || {};
+  const { naam, vermogen_kva, type, groep_soort, leden, rating_a, shelly_ip } = req.body || {};
   if (naam) gen.naam = naam;
   if (vermogen_kva) gen.vermogen_kva = Number(vermogen_kva);
   if (rating_a !== undefined) gen.rating_a = rating_a === '' || rating_a === null ? null : Number(rating_a);
+  if (shelly_ip !== undefined) gen.shelly_ip = shelly_ip ? String(shelly_ip).trim() : null;
   // oudere generators (aangemaakt vóór dit veld bestond, bijv. via een testtopologie-JSON) missen
   // groep_soort/leden nog helemaal — die ontbreken dus niet alleen wanneer je van 'groep' wég schakelt,
   // ook de eerste keer dat je ze juist ÍN 'groep' zet moeten ze een geldige (lege) startwaarde krijgen
@@ -670,7 +673,7 @@ app.put('/api/kasten/:id', (req, res) => {
   const data = readTopo();
   const kast = data.kasten.find(k => k.id === req.params.id);
   if (!kast) return res.status(404).json({ error: 'kast niet gevonden' });
-  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass } = req.body || {};
+  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip } = req.body || {};
 
   const nieuweGenerator = generator || kast.generator;
   if (generator && !data.generators.find(g => g.id === generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
@@ -692,6 +695,7 @@ app.put('/api/kasten/:id', (req, res) => {
     if (type !== 'batterij') kast.heeft_bypass = false;
   }
   if (heeft_bypass !== undefined) kast.heeft_bypass = (kast.type === 'batterij') && !!heeft_bypass;
+  if (shelly_ip !== undefined) kast.shelly_ip = shelly_ip ? String(shelly_ip).trim() : null;
   kast.generator = nieuweGenerator;
   kast.parent = nieuweParent;
   kast.mqtt_topic_prefix = mqttPrefix(kast.generator, kast.id);
