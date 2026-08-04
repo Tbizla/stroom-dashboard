@@ -74,46 +74,44 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       herkenbaar grijs "geen sensor"-label op de vier plekken die voorheen stil niets toonden
       (Live-zijlijst, aside-detail, schema-tabblad, kastpopup-ledentabel). Zie event_dashboard.md,
       Topologiebeheer (Beheer-tabblad).
-- [ ] **Grafieken-tabblad (vrije ad-hoc analyse).** Gedeeltelijk gebouwd — niet als afgerond
-      aanvinken zolang dit zo is (zie de nieuwe afspraak hierover in CLAUDE.md). Zesde hoofdtabblad
-      in de mode-switch, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators,
-      metric (stroom/spanning/vermogen/energie), fase en periode/editie selecteren, zonder naar
-      Grafana te hoeven wisselen voor een snelle ad-hoc vraag. Vijf grafiektypes (lijn, staaf,
-      Sankey, taart, heatmap) plus een live-modus met schuifvenster. Spec + mockup: zie
-      [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md) — **v4 van die spec (4
-      augustus 2026)**: drie gaten gedicht die pas zichtbaar werden bij het doorrekenen van alle
-      vijf typen samen (multi-editie-selectie beperkt tot Lijndiagram, expliciete Periode-terugval
-      bij wisselen naar Heatmap vanuit Live, technologie-onafhankelijke PNG-export-eis), spec is nu
-      klaar voor de resterende bouwstappen.
-      **Gebouwd**: het tabblad zelf, checklist/metric/fase/periode/editie-selectie, het lijndiagram
-      (historisch, server-side downsampling), PNG-download en de deelbare link — volgens de "Lijn
-      eerst"-bouwvolgorde uit de spec. **Staafdiagram** (volgende bouwstap): nieuw generiek
+- [x] **Grafieken-tabblad (vrije ad-hoc analyse).** Afgerond — zesde hoofdtabblad in de mode-switch,
+      naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators, metric (stroom/
+      spanning/vermogen/energie), fase en periode/editie selecteren, zonder naar Grafana te hoeven
+      wisselen voor een snelle ad-hoc vraag. Vijf grafiektypes (lijn, staaf, Sankey, taart, heatmap)
+      plus een live-modus met schuifvenster, gebouwd conform
+      [specs/grafieken-tabblad-plan.md](specs/grafieken-tabblad-plan.md) (v4, 4 augustus 2026),
+      volgens de "Lijn eerst"-bouwvolgorde-suggestie uit die spec.
+      **Lijndiagram**: tijdreeks, server-side downsampling (Flux `aggregateWindow`). **Staafdiagram**:
       `/api/grafieken/aggregaat`-endpoint (piek/gemiddelde via Flux `max()`/`mean()`, periode-totaal
-      bij metric energie via dezelfde `integral(unit: 1h)`-aanpak als Overzicht), aggregatie-
-      knoppenrij (Periode-totaal alleen actief bij metric energie, valt anders terug op Piekwaarde),
-      balken aflopend gesorteerd, kleur volgt groen/amber/rood-t.o.v.-rating bij metric stroom,
-      categorisch palet (zelfde als het lijndiagram) bij de overige metrics. **Taartdiagram**
-      ("vrijwel gratis bovenop Staaf", zelfde `/api/grafieken/aggregaat`-endpoint): metric ligt
-      vast op Energie en aggregatie op Periode-totaal zolang Taart actief is (beide knoppenrijen
-      zichtbaar-maar-vergrendeld, geen zinvolle "aandeel van het totaal" bij een piek/gemiddelde of
-      een niet-optelbare grootheid) — bij wegschakelen van Taart wordt de vorige metric-keuze
-      hersteld. Percentage + kWh per segment in de legenda. **Heatmap**: nieuw
-      `/api/grafieken/heatmap`-endpoint (Flux `aggregateWindow`, uur-van-de-dag-kolommen bij een
-      periode tot ~3 dagen, anders per dag), rij per kast/generator, cel gekleurd via groen/amber/
-      rood t.o.v. rating — metric ligt hier net als bij Taart vast (op Stroom i.p.v. Energie, om
-      dezelfde reden: de celkleur ís "t.o.v. rating"), Periode-totaal is geen zinvolle aggregatie
-      per cel dus alleen Piekwaarde/Gemiddelde beschikbaar. Puur CSS-grid, geen chartlibrary.
-      **Sankey** (laatste van de vijf grafiektypes): nieuw `/api/grafieken/sankey`-endpoint — de
-      keten zelf komt rechtstreeks uit de in-memory topologie (zelfde bron als het Schema-tabblad,
-      geen aparte Influx-round-trip nodig), alleen de kWh-waarde per link komt uit InfluxDB via
-      dezelfde `integral(unit: 1h)`-aanpak als Periode-totaal. Linkerkolom wisselt om naar een
-      startpunt-dropdown (alleen generators/groepen, bewust geen "Alles"-optie); Fase verdwijnt
-      volledig uit de linkerkolom, metric ligt vast op Energie — de eerder gekozen kasten-
-      checklist-selectie blijft intact en komt terug zodra je naar een ander grafiektype wisselt.
-      Eigen, zelfgetekende SVG-Sankey (geen d3-sankey-library nodig: de data is altijd een boom,
-      geen algemene DAG) met dezelfde node-kleurcodering per type als het Schema-tabblad.
-      **Nog te bouwen**: de live-modus; meerdere-edities-vergelijking (Lijndiagram) wacht op de
-      tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md,
+      bij metric energie via `integral(unit: 1h)`), balken aflopend gesorteerd, kleur volgt groen/
+      amber/rood-t.o.v.-rating bij metric stroom, categorisch palet bij de overige metrics.
+      **Taartdiagram** (zelfde `/api/grafieken/aggregaat`-endpoint): metric+aggregatie vergrendeld op
+      Energie/Periode-totaal, percentage + kWh per segment in de legenda. **Heatmap**:
+      `/api/grafieken/heatmap`-endpoint, rij per kast/generator, kolom per uur-van-de-dag (of dag bij
+      >~3 dagen), cel gekleurd via groen/amber/rood t.o.v. rating, metric vergrendeld op Stroom, puur
+      CSS-grid. **Sankey**: `/api/grafieken/sankey`-endpoint — de keten komt rechtstreeks uit de
+      in-memory topologie, alleen de kWh-waarde per link uit InfluxDB; linkerkolom wisselt om naar
+      een startpunt-dropdown, metric vergrendeld op Energie, eigen zelfgetekende SVG (geen
+      d3-sankey-library nodig, de data is altijd een boom).
+      **Live-modus**: vierde periode-optie "Live" met schuifvenster (5/15/30/60 min), hergebruikt de
+      bestaande MQTT-websocketverbinding van het Live-tabblad via een client-side rolling buffer
+      (altijd 60 min, ongeacht het gekozen venster) die per binnenkomend bericht gevuld wordt,
+      ongeacht actief tabblad. Editie-select vastgezet zolang Live actief is; pulserende
+      "LIVE"-indicator + pauzeren/hervatten-knop. Lijn toont een scrollende meerdere-kasten-
+      tijdreeks; Staaf krijgt een eigen live-aggregatie-rij (Huidige waarde/Piek-in-venster/
+      Gemiddelde-in-venster); Sankey/Taart springen automatisch naar metric Vermogen (Energie is een
+      periode-optelling, niet zinvol live) — dezelfde Energie-uitsluiting geldt ook voor Lijn/Staaf,
+      daar blijft de rest van de metric-keuze wel vrij; Heatmap heeft geen live-modus (Live-chip
+      uitgeschakeld zolang Heatmap actief is, met terugval op de laatst gekozen niet-live periode).
+      Live wordt bewust nooit in de "Kopieer link"-URL gecodeerd.
+      **PNG-export**: één uniforme exportroute voor alle vijf typen — Lijn/Staaf/Taart rechtstreeks
+      vanaf de Chart.js-canvas, Sankey (eigen SVG) gerasterized naar canvas via een Image, Heatmap
+      tekent zijn laatste data opnieuw op een eigen canvas (een SVG-foreignObject-truc zoals bij
+      Sankey "taint" het canvas zodra er HTML in zit, een tijdens de bouw ontdekte Chromium-
+      beveiligingsbeperking — niet bruikbaar voor de CSS-grid-heatmap).
+      Meerdere-edities-vergelijking (jaar-op-jaar) is bewust buiten deze v1-scope gelaten (zie de
+      spec's "Wat het niet is") en wacht op de tijd-sinds-start-uitlijning uit
+      voorspellende-piekbelasting-plan.md, als aparte latere uitbreiding. Zie event_dashboard.md,
       Grafieken-tabblad.
 - [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
       "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een

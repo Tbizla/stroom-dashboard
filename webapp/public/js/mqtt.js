@@ -11,6 +11,7 @@ import { t } from './i18n.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
 import { ververKastStatusPagina } from './kaststatus.js';
 import { verwerkAnomalyDetectie } from './anomaly.js';
+import { verwerkGrafiekenLiveMessage } from './grafieken.js';
 import { maxFaseStroom } from './topology.js';
 
 document.getElementById('connectBtn').onclick = ()=>{
@@ -42,6 +43,7 @@ document.getElementById('connectBtn').onclick = ()=>{
       // alle velden bewaren (niet alleen de subset die de aside-detail gebruikt) — de MQTT-
       // databallon toont ook act_power/aprt_power/pf per fase
       liveData[kastId] = { ...data, ts: Date.now() };
+      verwerkGrafiekenLiveMessage(kastId, liveData[kastId]);
       verwerkAnomalyDetectie(kastId, maxFaseStroom(liveData[kastId]));
       renderList(); renderPins(); if(state.mode==='schema') renderSchema(); if(state.selectedId===kastId) renderDetail();
       ververOverzichtLiveWeergave();

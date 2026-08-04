@@ -570,6 +570,11 @@
             <button class="chip" data-aggregatie="gemiddelde" data-i18n="grafieken.aggregatieGemiddelde">Gemiddelde</button>
             <button class="chip" data-aggregatie="totaal" data-i18n="grafieken.aggregatieTotaal" data-i18n-title="grafieken.aggregatieTotaalTitle">Periode-totaal</button>
           </div>
+          <div class="listfilters" id="grafAggregatieRowLive" style="display:none">
+            <button class="chip active" data-aggregatie="huidig" data-i18n="grafieken.aggregatieHuidig">Huidige waarde</button>
+            <button class="chip" data-aggregatie="piekvenster" data-i18n="grafieken.aggregatiePiekVenster">Piek in venster</button>
+            <button class="chip" data-aggregatie="gemvenster" data-i18n="grafieken.aggregatieGemVenster">Gemiddelde in venster</button>
+          </div>
         </div>
         <div class="grafctlgroup">
           <div class="graflbl" data-i18n="grafieken.periodeLabel">Periode</div>
@@ -577,11 +582,21 @@
             <button class="chip" data-periodechip="alles" data-i18n="rapport.periodeAlles">Hele evenement</button>
             <button class="chip active" data-periodechip="24u" data-i18n="rapport.periode24u">Laatste 24u</button>
             <button class="chip" data-periodechip="aangepast" data-i18n="rapport.periodeAangepast">Aangepast</button>
+            <button class="chip" data-periodechip="live" data-i18n="grafieken.periodeLive">Live</button>
           </div>
           <div class="addform" id="grafAangepastPeriode" style="display:none;margin-top:8px">
             <input type="datetime-local" id="grafVanInput">
             <span style="color:var(--text3)" data-i18n="common.tot">tot</span>
             <input type="datetime-local" id="grafTotInput">
+          </div>
+        </div>
+        <div class="grafctlgroup" id="grafLiveVensterGroep" style="display:none">
+          <div class="graflbl" data-i18n="grafieken.liveVensterLabel">Live-venster</div>
+          <div class="listfilters" id="grafLiveVensterRow">
+            <button class="chip" data-venster-min="5">5 min</button>
+            <button class="chip active" data-venster-min="15">15 min</button>
+            <button class="chip" data-venster-min="30">30 min</button>
+            <button class="chip" data-venster-min="60">60 min</button>
           </div>
         </div>
         <div class="grafctlgroup">
@@ -600,7 +615,9 @@
           <button data-type="taart" data-i18n="grafieken.typeTaart">Taart</button>
           <button data-type="heatmap" data-i18n="grafieken.typeHeatmap">Heatmap</button>
         </div>
+        <span class="anomaly-badge" id="grafLiveIndicator" style="display:none" data-i18n="grafieken.liveLabel">● LIVE</span>
         <div class="grafacties">
+          <button id="grafLivePauseBtn" style="display:none" data-i18n="grafieken.livePauzeren">Pauzeren</button>
           <button id="grafPngBtn" data-i18n="grafieken.downloadPng">Downloaden als PNG</button>
           <button id="grafLinkBtn" data-i18n="grafieken.kopieerLink">Kopieer link</button>
         </div>

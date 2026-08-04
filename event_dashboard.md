@@ -226,7 +226,7 @@ zetten zonder code aan te passen.
   en verdwijnt vanzelf na 10 minuten als niemand dat doet. Overzicht-subtab heeft een eigen
   "N anomalieën actief"-telkaartje, naast de bestaande generator-/kasten-kaarten
 
-**Grafieken-tabblad (vrije ad-hoc analyse)** — *werk in uitvoering, zie specs/grafieken-tabblad-plan.md*
+**Grafieken-tabblad (vrije ad-hoc analyse)** — zie specs/grafieken-tabblad-plan.md
 - Zesde hoofdtabblad, naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators,
   metric/fase/periode/editie kiezen en in een grafiek zetten, zonder naar Grafana te hoeven
   wisselen voor een snelle ad-hoc vraag ("hoe deed kast 12 het gisteren t.o.v. kast 13?")
@@ -265,13 +265,34 @@ zetten zonder code aan te passen.
   elke stroom = kWh in de gekozen periode/editie; kleur per node-type (groep/generator/batterij/
   kast), zelfde kleurcodering als het Schema-tabblad. Eigen, zelfgetekende SVG (geen d3-sankey- of
   andere library nodig — de data is altijd een boom, geen algemene DAG)
-- "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie inclusief grafiektype als
-  leesbare query-string, `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in
-  dezelfde staat, geen opslag/database erbij)
-- **Nog niet gebouwd**: een live-modus (schuifvenster 5/15/30/60 min, hergebruikt de MQTT-
-  verbinding van het Live-tabblad) — volgt in een latere stap, zie de spec voor het volledige
-  ontwerp. Meerdere-edities-vergelijking (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet
-  meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
+- **Live-modus** (gebouwd): vierde periode-optie "Live" naast hele evenement/laatste 24u/aangepast
+  — een schuifvenster (5/15/30/60 min) dat continu doorschuift, geen vast begin/eind. Hergebruikt
+  dezelfde MQTT-websocketverbinding als het Live-tabblad (geen nieuwe databron); een client-side
+  rolling buffer (altijd 60 min, ongeacht het gekozen venster) wordt gevuld zodra er een MQTT-
+  bericht binnenkomt, ongeacht welk tabblad actief is. Editie-select staat vast op de huidige editie
+  zolang Live actief is. Pulserende "LIVE"-indicator naast de grafiektype-knoppenrij (zelfde
+  visuele taal als de anomaly-badge) en een pauzeren/hervatten-knop (puur client-side, de buffer
+  blijft ondertussen doorlopen). Per grafiektype:
+  - **Lijndiagram**: scrollende live-tijdreeks, meerdere kasten/generators in één grafiek.
+  - **Staafdiagram**: aggregatie-keuze wisselt naar Huidige waarde (default)/Piek-in-venster/
+    Gemiddelde-in-venster (eigen knoppenrij, vervangt Piekwaarde/Gemiddelde/Periode-totaal).
+  - **Sankey & Taart**: metric springt automatisch van Energie (kWh) naar Vermogen (W) en wordt
+    tijdelijk vastgezet — een live-aandeel/-verdeling toont de actuele vermogensverdeling, geen
+    cumulatieve energie. Dezelfde Energie-uitsluiting geldt ook voor Lijn/Staaf (alleen de
+    Energie-chip wordt daar uitgeschakeld, de rest van de metric-keuze blijft vrij).
+  - **Heatmap**: geen live-modus (draait per definitie om een afgerond patroon over meerdere uren)
+    — de Live-chip is uitgeschakeld zolang Heatmap actief is, en wisselen naar Heatmap terwijl Live
+    aanstond valt automatisch terug op de laatst gekozen niet-live periode.
+  - Live wordt bewust nooit in de "Kopieer link"-URL gecodeerd (valt terug op Laatste 24u).
+- "Downloaden als PNG" (gebouwd, technologie-onafhankelijk voor alle vijf typen) en "Kopieer link"
+  (codeert de huidige selectie inclusief grafiektype als leesbare query-string, `?mode=grafieken&...`
+  — opent bij het laden automatisch dit tabblad in dezelfde staat, geen opslag/database erbij).
+  Lijn/Staaf/Taart downloaden rechtstreeks vanaf de Chart.js-canvas; Sankey (eigen SVG, geen HTML
+  erin) wordt naar canvas gerasterized via een Image; Heatmap tekent zijn laatste data opnieuw op
+  een eigen onzichtbare canvas (een SVG-foreignObject-truc zoals bij Sankey "taint" het canvas zodra
+  er HTML in zit — een Chromium-beveiligingsbeperking, dus niet bruikbaar voor de CSS-grid-heatmap)
+- **Nog niet gebouwd**: meerdere-edities-vergelijking (jaar-op-jaar, alleen bij het lijndiagram) is
+  nog niet meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
   voorspellende-piekbelasting-plan.md
 
 **Testdata-tabblad** *(alleen in testmodus, zie hieronder)*
