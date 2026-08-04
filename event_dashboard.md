@@ -249,13 +249,20 @@ zetten zonder code aan te passen.
   is (geen zinvol "aandeel" bij een piek/gemiddelde of een niet-optelbare grootheid), en de vorige
   metric-keuze wordt automatisch hersteld zodra je naar een ander grafiektype wisselt. Legenda toont
   percentage + kWh per segment
+- **Belasting-heatmap** (gebouwd): rij per geselecteerde kast/generator, kolom per tijdvak (uur-van-
+  de-dag bij een periode tot ~3 dagen, anders per dag — voorkomt honderden kolommen bij een
+  meerdaags evenement). Celkleur volgt de groen/amber/rood-belastingsconventie; metric ligt hier
+  net als bij Taart vast (op Stroom, om dezelfde reden als het Staafdiagram: de celkleur ís "t.o.v.
+  rating", geen zinvolle vergelijking in W/V/kWh). Aggregatie per cel is Piekwaarde of Gemiddelde
+  (Periode-totaal is geen zinvolle aggregatie binnen één tijdvak-cel). Een ontbrekende meting toont
+  een lege cel, geen kunstmatige 0. Puur CSS-grid, geen chartlibrary nodig
 - "Downloaden als PNG" en "Kopieer link" (codeert de huidige selectie inclusief grafiektype als
   leesbare query-string, `?mode=grafieken&...` — opent bij het laden automatisch dit tabblad in
   dezelfde staat, geen opslag/database erbij)
-- **Nog niet gebouwd** (staan als uitgeschakelde knoppen in de grafiektype-rij): Sankey
-  (energieverdeling vanaf één startpunt-generator), belasting-heatmap (patroon per uur), en een
-  live-modus (schuifvenster 5/15/30/60 min, hergebruikt de MQTT-verbinding van het Live-tabblad) —
-  volgen in latere stappen, zie de spec voor het volledige ontwerp. Meerdere-edities-vergelijking
+- **Nog niet gebouwd** (staat als uitgeschakelde knop in de grafiektype-rij): Sankey
+  (energieverdeling vanaf één startpunt-generator), en een live-modus (schuifvenster 5/15/30/60
+  min, hergebruikt de MQTT-verbinding van het Live-tabblad) — volgt in een latere stap, zie de spec
+  voor het volledige ontwerp. Meerdere-edities-vergelijking
   (jaar-op-jaar, alleen bij het lijndiagram) is ook nog niet meegenomen, dat volgt samen met de
   tijd-sinds-start-uitlijning uit voorspellende-piekbelasting-plan.md
 

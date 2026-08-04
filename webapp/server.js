@@ -1322,6 +1322,69 @@ app.get('/api/grafieken/aggregaat', async (req, res) => {
   }
 });
 
+// ---------- Heatmap (zelfde roadmap-item, zie grafieken-tabblad-plan.md §5): rij per kast,
+// kolom per tijdvak — uur-van-de-dag bij een periode tot ~3 dagen, anders per dag (zodat een
+// meerdaags evenement geen honderden kolommen krijgt). Hergebruikt vrijwel dezelfde Flux-opbouw
+// als /api/grafieken/tijdreeks (alleen het venster wisselt van puntenaantal-gebaseerd naar
+// tijdvak-gebaseerd) en dezelfde grafiekenCsvNaarSeries()-parser; reshaped hier tot een grid met
+// een gezamenlijke kolom-as (union van alle tijdstippen die ergens voorkomen, missende cellen
+// blijven null i.p.v. een kunstmatige 0 — een lege meting is iets anders dan "geen stroom") ----------
+app.get('/api/grafieken/heatmap', async (req, res) => {
+  const { ids, metric, fase, van, tot, editie, aggregatie } = req.query;
+  const idLijst = (ids || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!idLijst.length) return res.status(400).json({ error: 'ids is verplicht (komma-gescheiden)' });
+  if (!idLijst.every(veiligeTagWaarde)) return res.status(400).json({ error: 'ongeldig id in ids' });
+  if (!['a', 'b', 'c', 'totaal'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  if (!['piek', 'gemiddelde'].includes(aggregatie)) return res.status(400).json({ error: 'ongeldige aggregatie (alleen piek/gemiddelde per cel)' });
+  if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
+    return res.status(400).json({ error: 'van en tot zijn verplicht en moeten geldige datums zijn' });
+  }
+  const veldinfo = grafiekenVeldenVoorMetric(metric, fase);
+  if (!veldinfo) return res.status(400).json({ error: 'ongeldige metric' });
+  let editieFilter = '';
+  if (editie && editie !== '__alle__') {
+    const veiligeEditie = veiligeTagWaarde(editie);
+    if (!veiligeEditie) return res.status(400).json({ error: 'ongeldige editie' });
+    editieFilter = '  |> filter(fn: (r) => r.editie == "' + veiligeEditie + '")\n';
+  }
+
+  const vanMs = new Date(van).getTime(), totMs = new Date(tot).getTime();
+  const periodeDagen = (totMs - vanMs) / (1000 * 3600 * 24);
+  const venster = periodeDagen > 3 ? '1d' : '1h';
+  const fn = aggregatie === 'gemiddelde' ? 'mean' : 'max';
+  const veldFilter = veldinfo.velden.map((v) => 'r._field == "' + v + '"').join(' or ');
+  const kastFilter = idLijst.map((id) => 'r.kast == "' + id + '"').join(' or ');
+
+  const flux =
+    'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+    '  |> range(start: ' + new Date(vanMs).toISOString() + ', stop: ' + new Date(totMs).toISOString() + ')\n' +
+    '  |> filter(fn: (r) => r._measurement == "' + veldinfo.measurement + '")\n' +
+    '  |> filter(fn: (r) => ' + veldFilter + ')\n' +
+    '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+    editieFilter +
+    '  |> group(columns: ["kast", "_field"])\n' +
+    '  |> aggregateWindow(every: ' + venster + ', fn: ' + fn + ', createEmpty: false)\n' +
+    '  |> group(columns: ["kast"])\n' +
+    '  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")\n' +
+    '  |> sort(columns: ["_time"])\n' +
+    '  |> keep(columns: ' + JSON.stringify(['_time', 'kast', ...veldinfo.velden]) + ')';
+
+  try {
+    const csv = await influxQueryPlatteCsv(flux);
+    const series = grafiekenCsvNaarSeries(csv, veldinfo.velden);
+    const kolommenSet = new Set();
+    series.forEach((s) => s.punten.forEach(([t]) => kolommenSet.add(t)));
+    const kolommen = Array.from(kolommenSet).sort((a, b) => a - b);
+    const rijen = series.map((s) => {
+      const perTijd = new Map(s.punten);
+      return { id: s.id, cellen: kolommen.map((t) => (perTijd.has(t) ? perTijd.get(t) : null)) };
+    });
+    res.json({ kolommen, rijen, venster });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 // haalt één paneel als PDF op bij Grafana's eigen /render-endpoint (via grafana-image-renderer) —
 // ondanks een misleidende "image/png"-Content-Type-header staat er een echte PDF in de body
 // (geverifieerd op byte-niveau tijdens implementatie)

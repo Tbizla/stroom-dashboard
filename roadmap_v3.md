@@ -97,9 +97,14 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       vast op Energie en aggregatie op Periode-totaal zolang Taart actief is (beide knoppenrijen
       zichtbaar-maar-vergrendeld, geen zinvolle "aandeel van het totaal" bij een piek/gemiddelde of
       een niet-optelbare grootheid) — bij wegschakelen van Taart wordt de vorige metric-keuze
-      hersteld. Percentage + kWh per segment in de legenda.
-      **Nog te bouwen**: Sankey- en heatmap-grafiektype (nu uitgeschakelde knoppen in de UI) en de
-      live-modus; meerdere-edities-vergelijking (Lijndiagram) wacht op de tijd-sinds-start-
+      hersteld. Percentage + kWh per segment in de legenda. **Heatmap**: nieuw
+      `/api/grafieken/heatmap`-endpoint (Flux `aggregateWindow`, uur-van-de-dag-kolommen bij een
+      periode tot ~3 dagen, anders per dag), rij per kast/generator, cel gekleurd via groen/amber/
+      rood t.o.v. rating — metric ligt hier net als bij Taart vast (op Stroom i.p.v. Energie, om
+      dezelfde reden: de celkleur ís "t.o.v. rating"), Periode-totaal is geen zinvolle aggregatie
+      per cel dus alleen Piekwaarde/Gemiddelde beschikbaar. Puur CSS-grid, geen chartlibrary.
+      **Nog te bouwen**: Sankey-grafiektype (nu uitgeschakelde knop in de UI) en de live-modus;
+      meerdere-edities-vergelijking (Lijndiagram) wacht op de tijd-sinds-start-
       uitlijning uit voorspellende-piekbelasting-plan.md. Zie event_dashboard.md, Grafieken-tabblad.
 - [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
       "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een

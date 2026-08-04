@@ -88,18 +88,21 @@ document.getElementById('grafZoek').addEventListener('input', (e)=>{
 });
 
 // ---------- grafiektype-knoppenrij ----------
-// metric vóór het (eventueel) locken bij Taart, zodat "vorige metric" hersteld kan worden zodra je
-// weer wegschakelt van Taart (spec §4: metric ligt bij Taart vast op Energie, elders vrij)
-let metricVoorTaart = null;
+// metric vóór het (eventueel) locken, zodat "vorige metric" hersteld kan worden zodra je wegschakelt
+// van een type met een vaste metric — Taart ligt vast op Energie (spec §4, een "aandeel van het
+// totaal" is alleen bij een optelbare grootheid zinvol), Heatmap op Stroom (spec §5: de groen/amber/
+// rood-celkleur ís "t.o.v. rating", net als bij Staaf — geen zinvolle rating-vergelijking voor W/V/kWh)
+const METRIC_LOCK = { taart: 'energie', heatmap: 'stroom' };
+let metricVoorLock = null;
 function ververMetricLock(){
-  const locked = grafiekType==='taart';
-  document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.disabled = locked);
-  if(locked){
-    if(metricVoorTaart==null) metricVoorTaart = metric;
-    metric = 'energie';
-  } else if(metricVoorTaart!=null){
-    metric = metricVoorTaart;
-    metricVoorTaart = null;
+  const lock = METRIC_LOCK[grafiekType] || null;
+  document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.disabled = !!lock);
+  if(lock){
+    if(metricVoorLock==null) metricVoorLock = metric;
+    metric = lock;
+  } else if(metricVoorLock!=null){
+    metric = metricVoorLock;
+    metricVoorLock = null;
   }
   document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
 }
@@ -206,7 +209,11 @@ document.getElementById('grafEditieSelect').addEventListener('change', verversGr
 
 // ---------- statusweergave (leeg/fout/chart) ----------
 function toonGrafState(status, foutmelding){
-  document.getElementById('grafCanvas').style.display = status==='chart' ? 'block' : 'none';
+  // Heatmap tekent op een eigen CSS-grid-div, geen Chart.js-canvas (spec §5: "puur SVG/CSS-grid,
+  // geen library nodig") — dus welk van de twee containers zichtbaar wordt hangt af van het type
+  const heatmapActief = grafiekType==='heatmap';
+  document.getElementById('grafCanvas').style.display = (status==='chart' && !heatmapActief) ? 'block' : 'none';
+  document.getElementById('grafHeatmap').style.display = (status==='chart' && heatmapActief) ? 'block' : 'none';
   const leeg = document.getElementById('grafLeegState');
   leeg.style.display = (status==='leeg' || status==='leeg-data') ? 'flex' : 'none';
   leeg.textContent = status==='leeg-data' ? t('grafieken.geenDataInPeriode') : t('grafieken.leegState');
@@ -348,6 +355,63 @@ async function verversTaartGrafiek(van, tot, editie){
   tekenTaartChart(data.waarden);
 }
 
+// puur CSS-grid, geen library (spec §5) — rij per kast, kolom per tijdvak (uur-van-de-dag of dag,
+// zie venster). Celkleur volgt groen/amber/rood t.o.v. rating (metric ligt hier vast op stroom via
+// ververMetricLock(), zelfde reden als bij Staaf); een ontbrekende meting (null) is een lege cel,
+// geen kunstmatige 0
+function tekenHeatmap(kolommen, rijen, venster){
+  const el = document.getElementById('grafHeatmap');
+  const labelFmt = venster==='1d'
+    ? (t)=> new Date(t).toLocaleDateString(huidigeLocale(), {day:'2-digit', month:'2-digit'})
+    : (t)=> new Date(t).toLocaleTimeString(huidigeLocale(), {hour:'2-digit', minute:'2-digit'});
+  el.innerHTML = '';
+  el.style.display = 'grid';
+  el.style.gridTemplateColumns = '140px repeat('+kolommen.length+', minmax(28px,1fr))';
+  el.style.gap = '2px';
+  el.style.alignContent = 'start';
+
+  el.appendChild(document.createElement('div')); // linkerbovenhoek, leeg
+  kolommen.forEach(t=>{
+    const kop = document.createElement('div');
+    kop.textContent = labelFmt(t);
+    kop.style.cssText = 'font-size:10px;color:'+KLEUR_TEXT2+';text-align:center;writing-mode:vertical-rl;padding:2px 0';
+    el.appendChild(kop);
+  });
+
+  rijen.forEach(rij=>{
+    const naamCel = document.createElement('div');
+    naamCel.textContent = (nodeById(rij.id)||{naam:rij.id}).naam;
+    naamCel.style.cssText = 'font-size:11.5px;color:'+KLEUR_TEXT2+';display:flex;align-items:center;padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    el.appendChild(naamCel);
+    const node = nodeById(rij.id);
+    rij.cellen.forEach((waarde,i)=>{
+      const cel = document.createElement('div');
+      cel.title = (nodeById(rij.id)||{naam:rij.id}).naam+' · '+labelFmt(kolommen[i])+': '+(waarde==null?t('grafieken.heatmapGeenData'):waarde.toFixed(1)+' '+({stroom:'A',spanning:'V',vermogen:'W',energie:'kWh'}[metric]));
+      cel.style.cssText = 'aspect-ratio:1;border-radius:3px;background:'+(waarde==null?'transparent':statusKleur(waarde, node?node.rating_a:null))+
+        (waarde==null ? ';border:1px dashed '+KLEUR_BORDER : '');
+      el.appendChild(cel);
+    });
+  });
+}
+
+async function verversHeatmapGrafiek(van, tot, editie){
+  // geen Chart.js-instantie voor een heatmap (eigen CSS-grid) — een eventuele oude chart van vóór
+  // het wisselen naar Heatmap opruimen, anders blijft "Downloaden als PNG" per ongeluk de vorige
+  // (nu verborgen) grafiek downloaden i.p.v. niets te doen
+  if(chart){ chart.destroy(); chart = null; }
+  const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie, aggregatie });
+  let data;
+  try{ data = await apiCall('/api/grafieken/heatmap?'+params.toString(), 'GET'); }
+  catch(e){ toonGrafState('fout', e.message); return; }
+  if(!data.kolommen.length || !data.rijen.length){
+    document.getElementById('grafHeatmap').innerHTML = '';
+    toonGrafState('leeg-data');
+    return;
+  }
+  toonGrafState('chart');
+  tekenHeatmap(data.kolommen, data.rijen, data.venster);
+}
+
 async function verversGrafiek(){
   if(!selectedIds.size){
     if(chart){ chart.destroy(); chart = null; }
@@ -361,6 +425,7 @@ async function verversGrafiek(){
 
   if(grafiekType==='staaf') return verversStaafGrafiek(van, tot, editie);
   if(grafiekType==='taart') return verversTaartGrafiek(van, tot, editie);
+  if(grafiekType==='heatmap') return verversHeatmapGrafiek(van, tot, editie);
   return verversLijnGrafiek(van, tot, editie);
 }
 document.getElementById('grafOpnieuwBtn').onclick = verversGrafiek;
@@ -428,15 +493,15 @@ function herstelVanUrl(){
   document.getElementById('grafAangepastPeriode').style.display = state.grafiekenPeriodeChip==='aangepast' ? 'flex' : 'none';
   document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b.dataset.type===grafiekType));
   document.getElementById('grafAggregatieGroup').style.display = ['staaf','taart','heatmap'].includes(grafiekType) ? 'flex' : 'none';
+  ververMetricLock();
   if(grafiekType==='taart'){
-    ververMetricLock();
     aggregatie = 'totaal';
     document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>{ c.classList.toggle('active', c.dataset.aggregatie==='totaal'); c.disabled = true; });
   } else {
-    document.querySelectorAll('#grafMetricRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.metric===metric));
     document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.disabled = false);
     ververAggregatieBeschikbaarheid();
   }
+  document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.aggregatie===aggregatie));
 }
 
 // aangeroepen vanuit modes.js zodra het Grafieken-tabblad getoond wordt

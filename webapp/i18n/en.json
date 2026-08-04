@@ -21,6 +21,7 @@
   "grafieken.aggregatieGemiddelde": "Average",
   "grafieken.aggregatieTotaal": "Period total",
   "grafieken.aggregatieTotaalTitle": "Only available with metric Energy (kWh)",
+  "grafieken.heatmapGeenData": "no data",
   "grafieken.periodeLabel": "Period",
   "grafieken.editieLabel": "Edition",
   "grafieken.typeLijn": "Line chart",
