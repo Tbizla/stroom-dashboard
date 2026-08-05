@@ -255,9 +255,10 @@ zetten zonder code aan te passen.
 - **Belasting-heatmap** (gebouwd): rij per geselecteerde kast/generator, kolom per tijdvak (uur-van-
   de-dag bij een periode tot ~3 dagen, anders per dag — voorkomt honderden kolommen bij een
   meerdaags evenement). Celkleur volgt de groen/amber/rood-belastingsconventie (zelfde zwaarst-
-  belaste-fase-vergelijking bij fase "Totaal" als het Staafdiagram); metric ligt hier net als bij
-  Taart vast (op Stroom, om dezelfde reden als het Staafdiagram: de celkleur ís "t.o.v. rating",
-  geen zinvolle vergelijking in W/V/kWh). Aggregatie per cel is Piekwaarde of Gemiddelde (Periode-
+  belaste-fase-vergelijking bij fase "Totaal" als het Staafdiagram, null-tolerant — een cel met
+  bijv. alleen fase A en B bekend krijgt nog een terechte kleur i.p.v. vals-groen); metric ligt hier
+  net als bij Taart vast (op Stroom, om dezelfde reden als het Staafdiagram: de celkleur ís "t.o.v.
+  rating", geen zinvolle vergelijking in W/V/kWh). Aggregatie per cel is Piekwaarde of Gemiddelde (Periode-
   totaal is geen zinvolle aggregatie binnen één tijdvak-cel). Een ontbrekende meting toont een lege
   cel, geen kunstmatige 0. Eigen SVG (native `<title>`-tooltip per cel), geen chartlibrary nodig
 - **Sankey** (gebouwd, laatste van de vijf grafiektypes): energieverdeling vanaf één gekozen

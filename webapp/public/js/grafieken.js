@@ -119,12 +119,16 @@ function ververMetricLock(){
   const liveEnergieUitgesloten = liveActief() && grafiekType!=='heatmap'; // heatmap heeft geen live-modus
   if(typeLock){
     // vervolgticket-grafieken-tabblad.md (code-review op de eerdere live-bouw): een type-lock
-    // (taart/heatmap/sankey) bepaalt de metric hier direct, inclusief de eigen live-omzetting —
-    // metricVoorLive expliciet leegmaken, anders kan een openstaande restore van een VORIGE
-    // live-sessie bij een ander type (bijv. live-Taart -> Heatmap) deze net bepaalde waarde alsnog
-    // overschrijven (metricVoorLive hoort alleen bij de vrije metric-keuze van Lijn/Staaf hieronder)
+    // (taart/heatmap/sankey) bepaalt de metric hier direct, inclusief de eigen live-omzetting.
+    // vervolgticket-grafieken-tabblad-ronde2.md §2: metricVoorLock moet de ECHTE, nog niet door
+    // live-Energie-uitsluiting gesubstitueerde keuze vastleggen — als er nog een openstaande
+    // metricVoorLive is (bijv. Lijn+Energie -> Live aan, metric staat dan al op 'vermogen' met de
+    // originele 'energie' in metricVoorLive), gebruik die, niet de huidige (mogelijk al
+    // gesubstitueerde) metric-waarde. Pas dáárna metricVoorLive leegmaken — anders kan een
+    // openstaande restore van een VORIGE live-sessie bij een ander type (bijv. live-Taart ->
+    // Heatmap) deze net bepaalde waarde alsnog overschrijven.
+    if(metricVoorLock==null) metricVoorLock = (metricVoorLive!=null ? metricVoorLive : metric);
     metricVoorLive = null;
-    if(metricVoorLock==null) metricVoorLock = metric;
     metric = (typeLock==='energie' && liveEnergieUitgesloten) ? 'vermogen' : typeLock;
   } else {
     if(metricVoorLock!=null){

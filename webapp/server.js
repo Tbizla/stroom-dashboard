@@ -1168,10 +1168,18 @@ function grafiekenVensterVoorPeriode(vanMs, totMs) {
 // stil als niet alle benodigde velden een getal hebben (liever geen punt dan een punt op een
 // onvolledig gemiddelde).
 // `combine` bepaalt hoe meerdere velden (bijv. de spanning+totaal-uitzondering, of de drie
-// statusvelden hierboven) tot één waarde per punt worden samengevoegt — gemiddelde als default
-// (ongewijzigd gedrag), de statuswaarde-berekening hieronder geeft er zelf een max-variant aan mee
+// statusvelden hierboven) tot één waarde per punt worden samengevoegt — gemiddelde-van-de-aanwezige-
+// velden als default, de statuswaarde-berekening hieronder geeft er zelf een max-variant aan mee.
+// vervolgticket-grafieken-tabblad-ronde2.md §1: een rij pas overslaan als ALLE gevraagde velden
+// ontbreken, niet zodra er ééntje mist (bijv. een eenfase-kast of een gat in precies één fase-veld)
+// — anders viel de hele rij (en dus de statuskleur) stil weg i.p.v. terecht amber/rood te tonen op
+// basis van de wél aanwezige fases. Beide combine-varianten (default-gemiddelde en de max-variant
+// hieronder) filteren zelf NaN/ontbrekend uit vóórdat ze middelen/maximaliseren.
 function grafiekenCsvNaarSeries(csv, velden, combine) {
-  const comb = combine || ((getallen) => getallen.reduce((a, b) => a + b, 0) / getallen.length);
+  const comb = combine || ((getallen) => {
+    const aanwezig = getallen.filter((n) => !isNaN(n));
+    return aanwezig.reduce((a, b) => a + b, 0) / aanwezig.length;
+  });
   const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
   if (regels.length < 2) return [];
   const kolommen = regels[0].split(',');
@@ -1184,7 +1192,7 @@ function grafiekenCsvNaarSeries(csv, velden, combine) {
     const waarden = regel.split(',');
     const id = waarden[kastIdx];
     const getallen = veldIdxen.map((i) => parseFloat(waarden[i]));
-    if (!id || getallen.some((n) => isNaN(n))) return;
+    if (!id || getallen.every((n) => isNaN(n))) return;
     const t = Date.parse(waarden[tijdIdx]);
     if (isNaN(t)) return;
     if (!perKast.has(id)) perKast.set(id, []);
@@ -1449,7 +1457,10 @@ app.get('/api/grafieken/heatmap', async (req, res) => {
         '  |> sort(columns: ["_time"])\n' +
         '  |> keep(columns: ' + JSON.stringify(['_time', 'kast', ...statusVelden]) + ')';
       const statusCsv = await influxQueryPlatteCsv(statusFlux);
-      const statusSeries = grafiekenCsvNaarSeries(statusCsv, statusVelden, (getallen) => Math.max(...getallen));
+      // vervolgticket-grafieken-tabblad-ronde2.md §1: NaN/ontbrekende fasewaarden er zelf uitfilteren
+      // vóórdat het maximum genomen wordt — grafiekenCsvNaarSeries() geeft deze rij nu al door zodra
+      // minstens één van de drie fasevelden aanwezig is (zie de aangepaste every()-check hierboven)
+      const statusSeries = grafiekenCsvNaarSeries(statusCsv, statusVelden, (getallen) => Math.max(...getallen.filter((n) => !isNaN(n))));
       statusPerKast = new Map(statusSeries.map((s) => [s.id, new Map(s.punten)]));
     }
 
