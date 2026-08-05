@@ -13,6 +13,10 @@ const KLEUR_BORDER = '#2a2f3a';
 // categorisch palet om lijnen uit elkaar te houden — bewust los van de groen/amber/rood-
 // statusconventie (die hoort bij het latere staafdiagram, waar kleur echt "t.o.v. rating" betekent)
 const PALET = ['#4fd1c5', '#f5a623', '#e5484d', '#7c9eff', '#c77dff', '#5eead4', '#fbbf24', '#f472b6'];
+// vervolgticket-grafieken-tabblad.md §3: één centrale eenheid-per-metric-tabel, gebruikt door alle
+// vijf grafiektypes — voorheen had Taart/Sankey een hardcoded "kWh" die niet meeveranderde toen
+// live-modus de metric naar vermogen omzette
+const EENHEID_PER_METRIC = { stroom:'A', spanning:'V', vermogen:'W', energie:'kWh' };
 
 let selectedIds = new Set();
 let metric = 'stroom';
@@ -112,20 +116,28 @@ let metricVoorLock = null; // vorige metric van vóór een type-lock (taart/heat
 let metricVoorLive = null;
 function ververMetricLock(){
   const typeLock = METRIC_LOCK[grafiekType] || null;
-  if(typeLock){
-    if(metricVoorLock==null) metricVoorLock = metric;
-    metric = typeLock;
-  } else if(metricVoorLock!=null){
-    metric = metricVoorLock;
-    metricVoorLock = null;
-  }
   const liveEnergieUitgesloten = liveActief() && grafiekType!=='heatmap'; // heatmap heeft geen live-modus
-  if(liveEnergieUitgesloten && metric==='energie'){
-    if(metricVoorLive==null) metricVoorLive = metric;
-    metric = 'vermogen';
-  } else if(!liveEnergieUitgesloten && metricVoorLive!=null){
-    metric = metricVoorLive;
+  if(typeLock){
+    // vervolgticket-grafieken-tabblad.md (code-review op de eerdere live-bouw): een type-lock
+    // (taart/heatmap/sankey) bepaalt de metric hier direct, inclusief de eigen live-omzetting —
+    // metricVoorLive expliciet leegmaken, anders kan een openstaande restore van een VORIGE
+    // live-sessie bij een ander type (bijv. live-Taart -> Heatmap) deze net bepaalde waarde alsnog
+    // overschrijven (metricVoorLive hoort alleen bij de vrije metric-keuze van Lijn/Staaf hieronder)
     metricVoorLive = null;
+    if(metricVoorLock==null) metricVoorLock = metric;
+    metric = (typeLock==='energie' && liveEnergieUitgesloten) ? 'vermogen' : typeLock;
+  } else {
+    if(metricVoorLock!=null){
+      metric = metricVoorLock;
+      metricVoorLock = null;
+    }
+    if(liveEnergieUitgesloten && metric==='energie'){
+      if(metricVoorLive==null) metricVoorLive = metric;
+      metric = 'vermogen';
+    } else if(!liveEnergieUitgesloten && metricVoorLive!=null){
+      metric = metricVoorLive;
+      metricVoorLive = null;
+    }
   }
   document.querySelectorAll('#grafMetricRow .chip').forEach(c=>{
     const isEnergie = c.dataset.metric==='energie';
@@ -159,6 +171,7 @@ function ververAlleAfgeleideUiState(){
   ververSankeyLinkerkolom();
   ververAggregatieWeergave();
   ververLiveUi();
+  ververEditieBeschikbaarheid();
 }
 
 document.querySelectorAll('#grafTypeRow button:not([disabled])').forEach(btn=>{
@@ -209,6 +222,11 @@ function ververAggregatieWeergave(){
     aggregatie = 'totaal';
     document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>{ c.classList.toggle('active', c.dataset.aggregatie==='totaal'); c.disabled = true; });
   } else {
+    // vervolgticket-grafieken-tabblad.md §2: een live-specifieke aggregatiewaarde (huidig/
+    // piekvenster/gemvenster) is ongeldig zodra Live verlaten wordt (bijv. periode terug naar
+    // "Laatste 24u", of type wisselt naar Heatmap) — zonder deze terugval bleef 'ie op zo'n waarde
+    // staan, geen chip actief én een 400 van de server die alleen piek/gemiddelde/totaal accepteert
+    if(AGG_LIVE_OPTIES.includes(aggregatie)) aggregatie = 'piek';
     document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.disabled = false);
     ververAggregatieBeschikbaarheid();
     document.querySelectorAll('#grafAggregatieRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.aggregatie===aggregatie));
@@ -319,8 +337,30 @@ async function vulEditieSelect(){
       data.edities.map(e=>'<option value="'+e+'"'+(e===huidige?' selected':'')+'>'+e+'</option>').join('');
     if(!huidige && data.edities.length) select.value = data.edities[data.edities.length-1];
   }catch(e){ select.innerHTML = '<option value="__alle__">'+t('rapport.alleEdities')+'</option>'; }
+  ververEditieBeschikbaarheid();
 }
 document.getElementById('grafEditieSelect').addEventListener('change', verversGrafiek);
+
+// vervolgticket-grafieken-tabblad.md §5: "meerdere/alle edities" geeft alleen bij het Lijndiagram
+// een ondubbelzinnige weergave (spec v4 §"Editie(s)") — bij de overige typen valt de select
+// automatisch terug naar single-select zodra je ernaartoe wisselt, zelfde soort automatische
+// aanpassing als Sankey's startpunt-dropdown en de metric-vergrendeling bij Taart. Aangeroepen
+// vanuit zowel vulEditieSelect() (elke keer dat de opties herbouwd worden) als
+// ververAlleAfgeleideUiState() (bij een type-wissel, zonder dat de opties herbouwd hoeven worden).
+function ververEditieBeschikbaarheid(){
+  const select = document.getElementById('grafEditieSelect');
+  const alleOptie = select.querySelector('option[value="__alle__"]');
+  if(!alleOptie) return;
+  const toegestaan = grafiekType==='lijn';
+  alleOptie.disabled = !toegestaan;
+  alleOptie.hidden = !toegestaan;
+  if(!toegestaan && select.value==='__alle__'){
+    // meest recente editie, niet de eerste in de lijst — zelfde "laatste editie als default"-
+    // conventie als vulEditieSelect() hierboven al gebruikt (data.edities[length-1])
+    const echte = select.querySelectorAll('option:not([value="__alle__"])');
+    if(echte.length) select.value = echte[echte.length-1].value;
+  }
+}
 
 // ---------- statusweergave (leeg/fout/chart) ----------
 function toonGrafState(status, foutmelding){
@@ -339,7 +379,7 @@ function toonGrafState(status, foutmelding){
 }
 
 function tekenChart(series){
-  const eenheid = { stroom:'A', spanning:'V', vermogen:'W', energie:'kWh' }[metric];
+  const eenheid = EENHEID_PER_METRIC[metric];
   const datasets = series.map(s=>({
     label: (nodeById(s.id) || {naam: s.id}).naam,
     data: s.punten.map(([tijd, waarde])=>({x: tijd, y: waarde})),
@@ -371,13 +411,17 @@ function tekenStaafChart(waarden){
   // groen/amber/rood-conventie past hier alleen rechtstreeks bij metric "stroom" (dat ís letterlijk
   // "t.o.v. rating", zie spec §2) — bij de andere metrics (geen rating-drempel in Ampère
   // vergelijkbaar met W/V/kWh) valt dit terug op hetzelfde categorische palet als het lijndiagram
-  const eenheid = { stroom:'A', spanning:'V', vermogen:'W', energie:'kWh' }[metric];
+  const eenheid = EENHEID_PER_METRIC[metric];
   const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
   const labels = gesorteerd.map(w=>(nodeById(w.id)||{naam:w.id}).naam);
   const kleuren = gesorteerd.map(w=>{
     if(metric!=='stroom') return kleurVoorId(w.id);
     const node = nodeById(w.id);
-    return statusKleur(w.waarde, node ? node.rating_a : null);
+    // vervolgticket-grafieken-tabblad.md §1: bij fase totaal is w.statusWaarde (zwaarst-belaste
+    // fase, meegegeven door de server, of live door liveStatusBasis()) de juiste vergelijkings-
+    // grootheid tegen rating_a — de driefasen-som (w.waarde, wat wél de getoonde balkhoogte is)
+    // zou pas rond ~300% van de rating "rood" worden
+    return statusKleur(w.statusWaarde ?? w.waarde, node ? node.rating_a : null);
   });
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById('grafCanvas'), {
@@ -395,6 +439,9 @@ function tekenStaafChart(waarden){
 }
 
 function tekenTaartChart(waarden){
+  // vervolgticket-grafieken-tabblad.md §3: eenheid volgt de actieve metric (kWh bij Energie
+  // historisch, W bij Vermogen zodra live-modus de metric omzet) i.p.v. een hardcoded "kWh"
+  const eenheid = EENHEID_PER_METRIC[metric];
   const totaal = waarden.reduce((s,w)=>s+w.waarde, 0);
   const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
   const labels = gesorteerd.map(w=>(nodeById(w.id)||{naam:w.id}).naam);
@@ -410,17 +457,17 @@ function tekenTaartChart(waarden){
           position: 'right',
           labels: {
             color: KLEUR_TEXT2,
-            // percentage + kWh-waarde in de legenda, zie spec §4
+            // percentage + waarde in de legenda, zie spec §4
             generateLabels: (c)=> c.data.labels.map((label,i)=>{
               const waarde = c.data.datasets[0].data[i];
               const pct = totaal>0 ? Math.round((waarde/totaal)*100) : 0;
-              return { text: label+' — '+pct+'% ('+waarde.toFixed(1)+' kWh)', fillStyle: kleuren[i], strokeStyle: kleuren[i], index: i };
+              return { text: label+' — '+pct+'% ('+waarde.toFixed(1)+' '+eenheid+')', fillStyle: kleuren[i], strokeStyle: kleuren[i], index: i };
             }),
           },
         },
         tooltip: { callbacks: { label: (item)=>{
           const pct = totaal>0 ? Math.round((item.parsed/totaal)*100) : 0;
-          return item.label+': '+pct+'% ('+item.parsed.toFixed(1)+' kWh)';
+          return item.label+': '+pct+'% ('+item.parsed.toFixed(1)+' '+eenheid+')';
         } } },
       },
     },
@@ -472,50 +519,67 @@ async function verversTaartGrafiek(van, tot, editie){
   tekenTaartChart(data.waarden);
 }
 
-// puur CSS-grid, geen library (spec §5) — rij per kast, kolom per tijdvak (uur-van-de-dag of dag,
-// zie venster). Celkleur volgt groen/amber/rood t.o.v. rating (metric ligt hier vast op stroom via
-// ververMetricLock(), zelfde reden als bij Staaf); een ontbrekende meting (null) is een lege cel,
-// geen kunstmatige 0
+// eigen SVG, geen library (spec §5, zie ook vervolgticket-grafieken-tabblad.md §6) — rij per kast,
+// kolom per tijdvak (uur-van-de-dag of dag, zie venster). Celkleur volgt groen/amber/rood t.o.v.
+// rating (metric ligt hier vast op stroom via ververMetricLock(), zelfde reden als bij Staaf); een
+// ontbrekende meting (null) is een lege cel, geen kunstmatige 0
 function heatmapLabelFmt(venster){
   return venster==='1d'
     ? (t)=> new Date(t).toLocaleDateString(huidigeLocale(), {day:'2-digit', month:'2-digit'})
     : (t)=> new Date(t).toLocaleTimeString(huidigeLocale(), {hour:'2-digit', minute:'2-digit'});
 }
 
-// laatst getekende heatmap-data, bewaard voor de PNG-export hieronder (tekenHeatmap() zelf tekent
-// alleen de zichtbare CSS-grid-DOM, geen canvas)
-let laatsteHeatmapData = null;
-
+// vervolgticket-grafieken-tabblad.md §6: eigen SVG i.p.v. een CSS-grid-DOM — zelfde soort
+// zelfgetekende SVG als de Sankey hierboven, zodat "Downloaden als PNG" voor beide typen dezelfde
+// svgNaarPngDataUrl()-route kan hergebruiken i.p.v. een aparte, tweede canvas-hertekening die uit
+// de pas kan raken met deze weergave. Native SVG <title>-elementen geven dezelfde hover-tooltip als
+// voorheen het HTML title-attribuut.
 function tekenHeatmap(kolommen, rijen, venster){
-  laatsteHeatmapData = { kolommen, rijen, venster };
-  const el = document.getElementById('grafHeatmap');
+  const svg = document.getElementById('grafHeatmapSvg');
+  svg.innerHTML = '';
   const labelFmt = heatmapLabelFmt(venster);
-  el.innerHTML = '';
-  el.style.display = 'grid';
-  el.style.gridTemplateColumns = '140px repeat('+kolommen.length+', minmax(28px,1fr))';
-  el.style.gap = '2px';
-  el.style.alignContent = 'start';
+  const eenheid = EENHEID_PER_METRIC[metric];
+  const NAAMKOL = 140, CELW = 32, CELH = 28, KOPH = 56;
+  const W = NAAMKOL + kolommen.length*CELW, H = KOPH + rijen.length*CELH;
+  // geen viewBox (i.t.t. de Sankey hierboven): de heatmap moet op eigen pixelgrootte blijven en
+  // laten scrollen binnen de overflow:auto-wrapper-div, niet uitrekken/krimpen naar de container
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
 
-  el.appendChild(document.createElement('div')); // linkerbovenhoek, leeg
-  kolommen.forEach(t=>{
-    const kop = document.createElement('div');
+  // clipPath voor de naamkolom — SVG-tekst kent geen text-overflow:ellipsis zoals de vorige
+  // CSS-grid-versie, dit voorkomt dat een lange kastnaam over de eerste cellenkolom heen loopt
+  const defs = svgEl('defs', {});
+  const clip = svgEl('clipPath', { id: 'heatmapNaamClip' });
+  clip.appendChild(svgEl('rect', { x: 0, y: 0, width: NAAMKOL-8, height: H }));
+  defs.appendChild(clip);
+  svg.appendChild(defs);
+
+  kolommen.forEach((t,i)=>{
+    const x = NAAMKOL + i*CELW + CELW/2, y = KOPH - 8;
+    const kop = svgEl('text', { x, y, fill: KLEUR_TEXT2, 'font-size':'10', 'text-anchor':'middle', transform: 'rotate(-90 '+x+' '+y+')' });
     kop.textContent = labelFmt(t);
-    kop.style.cssText = 'font-size:10px;color:'+KLEUR_TEXT2+';text-align:center;writing-mode:vertical-rl;padding:2px 0';
-    el.appendChild(kop);
+    svg.appendChild(kop);
   });
 
-  rijen.forEach(rij=>{
-    const naamCel = document.createElement('div');
-    naamCel.textContent = (nodeById(rij.id)||{naam:rij.id}).naam;
-    naamCel.style.cssText = 'font-size:11.5px;color:'+KLEUR_TEXT2+';display:flex;align-items:center;padding-right:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    el.appendChild(naamCel);
+  rijen.forEach((rij, ri)=>{
     const node = nodeById(rij.id);
+    const naamY = KOPH + ri*CELH + CELH/2;
+    const naam = svgEl('text', { x: 0, y: naamY, fill: KLEUR_TEXT2, 'font-size':'11.5', 'dominant-baseline':'middle', 'clip-path':'url(#heatmapNaamClip)' });
+    naam.textContent = (node||{naam:rij.id}).naam;
+    svg.appendChild(naam);
     rij.cellen.forEach((waarde,i)=>{
-      const cel = document.createElement('div');
-      cel.title = (nodeById(rij.id)||{naam:rij.id}).naam+' · '+labelFmt(kolommen[i])+': '+(waarde==null?t('grafieken.heatmapGeenData'):waarde.toFixed(1)+' '+({stroom:'A',spanning:'V',vermogen:'W',energie:'kWh'}[metric]));
-      cel.style.cssText = 'aspect-ratio:1;border-radius:3px;background:'+(waarde==null?'transparent':statusKleur(waarde, node?node.rating_a:null))+
-        (waarde==null ? ';border:1px dashed '+KLEUR_BORDER : '');
-      el.appendChild(cel);
+      // vervolgticket-grafieken-tabblad.md §1: rij.statusCellen (indien meegegeven door de server,
+      // zie grafiekenStatusVeldenVoorMetric()) is de zwaarst-belaste-fase-waarde t.o.v. rating_a —
+      // de getoonde waarde/tooltip blijft gewoon de driefasen-som
+      const statusBasis = rij.statusCellen ? rij.statusCellen[i] : waarde;
+      const x = NAAMKOL + i*CELW, y = KOPH + ri*CELH;
+      const cel = svgEl('rect', { x: x+1, y: y+1, width: CELW-2, height: CELH-2, rx: 3,
+        fill: waarde==null ? 'transparent' : statusKleur(statusBasis, node?node.rating_a:null) });
+      if(waarde==null){ cel.setAttribute('stroke', KLEUR_BORDER); cel.setAttribute('stroke-dasharray', '2,2'); }
+      const titel = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      titel.textContent = (node||{naam:rij.id}).naam+' · '+labelFmt(kolommen[i])+': '+(waarde==null?t('grafieken.heatmapGeenData'):waarde.toFixed(1)+' '+eenheid);
+      cel.appendChild(titel);
+      svg.appendChild(cel);
     });
   });
 }
@@ -599,13 +663,15 @@ function tekenSankeyChart(nodes, links){
     svg.appendChild(path);
   });
 
-  // dan de nodes zelf + labels
+  // dan de nodes zelf + labels — eenheid volgt de actieve metric (vervolgticket-grafieken-
+  // tabblad.md §3: kWh historisch/Energie, W zodra live-modus naar Vermogen omzet)
+  const eenheid = EENHEID_PER_METRIC[metric];
   nodes.forEach(n=>{
     const p = pos.get(n.id);
     if(!p) return;
     svg.appendChild(svgEl('rect', { x:p.x, y:p.y, width:RECT_W, height:p.h, rx:2, fill:sankeyNodeKleur(n.type) }));
     const label = svgEl('text', { x: p.x+RECT_W+6, y: p.y+p.h/2, fill: KLEUR_TEXT2, 'font-size':'11', 'dominant-baseline':'middle' });
-    label.textContent = n.naam + (n.id!==root.id ? ' · '+p.v.toFixed(1)+' kWh' : ' · '+p.v.toFixed(1)+' kWh totaal');
+    label.textContent = n.naam + (n.id!==root.id ? ' · '+p.v.toFixed(1)+' '+eenheid : ' · '+p.v.toFixed(1)+' '+eenheid+' totaal');
     svg.appendChild(label);
   });
 }
@@ -628,17 +694,16 @@ async function verversSankeyGrafiek(van, tot, editie){
 }
 
 async function verversHeatmapGrafiek(van, tot, editie){
-  // geen Chart.js-instantie voor een heatmap (eigen CSS-grid) — een eventuele oude chart van vóór
-  // het wisselen naar Heatmap opruimen, anders blijft "Downloaden als PNG" per ongeluk de vorige
-  // (nu verborgen) grafiek downloaden i.p.v. niets te doen
+  // geen Chart.js-instantie voor een heatmap (eigen SVG) — een eventuele oude chart van vóór het
+  // wisselen naar Heatmap opruimen, anders blijft "Downloaden als PNG" per ongeluk de vorige (nu
+  // verborgen) grafiek downloaden i.p.v. niets te doen
   if(chart){ chart.destroy(); chart = null; }
   const params = new URLSearchParams({ ids: Array.from(selectedIds).join(','), metric, fase, van, tot, editie, aggregatie });
   let data;
   try{ data = await apiCall('/api/grafieken/heatmap?'+params.toString(), 'GET'); }
   catch(e){ toonGrafState('fout', e.message); return; }
   if(!data.kolommen.length || !data.rijen.length){
-    document.getElementById('grafHeatmap').innerHTML = '';
-    laatsteHeatmapData = null;
+    document.getElementById('grafHeatmapSvg').innerHTML = '';
     toonGrafState('leeg-data');
     return;
   }
@@ -722,6 +787,22 @@ function liveStaafWaarde(id){
   return aggregatie==='piekvenster' ? Math.max(...punten) : punten.reduce((a,b)=>a+b,0)/punten.length;
 }
 
+// vervolgticket-grafieken-tabblad.md §1: live-tegenhanger van de server-side statusWaarde hierboven
+// — bij fase totaal + metric stroom de zwaarst-belaste fase nemen i.p.v. total_current, met dezelfde
+// aggregatie (huidig/piekvenster/gemvenster) als liveStaafWaarde() zelf gebruikt voor de balkhoogte
+function liveStatusBasis(id){
+  if(metric!=='stroom' || fase!=='totaal') return null;
+  const perFaseWaarde = (f)=>{
+    if(aggregatie!=='piekvenster' && aggregatie!=='gemvenster') return liveVeldWaarde(liveData[id], 'stroom', f);
+    const grens = Date.now() - liveVensterMin*60000;
+    const punten = (liveBuffer.get(id)||[]).filter(e=>e.ts>=grens).map(e=>liveVeldWaarde(e.data, 'stroom', f)).filter(v=>v!=null);
+    if(!punten.length) return liveVeldWaarde(liveData[id], 'stroom', f);
+    return aggregatie==='piekvenster' ? Math.max(...punten) : punten.reduce((a,b)=>a+b,0)/punten.length;
+  };
+  const waarden = ['a','b','c'].map(perFaseWaarde).filter(v=>v!=null);
+  return waarden.length ? Math.max(...waarden) : null;
+}
+
 // zelfde boomdefinitie als het backend-Sankey-endpoint (verzamel()/readTopo() in server.js), maar
 // client-side met de al-geladen topologie + de laatste MQTT-waarde per kast i.p.v. een berekende
 // kWh-integraal over een periode — spec Live-modus: "actuele vermogensverdeling, geen cumulatieve
@@ -763,7 +844,7 @@ function verversLiveWeergave(){
     return;
   }
   if(grafiekType==='staaf'){
-    const waarden = Array.from(selectedIds).map(id=>({ id, waarde: liveStaafWaarde(id) || 0 }));
+    const waarden = Array.from(selectedIds).map(id=>({ id, waarde: liveStaafWaarde(id) || 0, statusWaarde: liveStatusBasis(id) }));
     toonGrafState('chart'); tekenStaafChart(waarden);
     return;
   }
@@ -779,10 +860,10 @@ function verversLiveWeergave(){
 zorgLiveTick();
 
 // ---------- PNG-download: één uniforme exportroute voor alle vijf typen (spec, Technisch fundament:
-// "geen aparte, per-type-verschillende downloadknop-logica"). Lijn/Staaf/Taart zijn al canvas-based
-// via Chart.js; Sankey (eigen SVG, geen HTML erin) rasterizeert alsnog naar canvas via een Image —
-// de browser kan dat zelf, geen library nodig. Heatmap tekent in plaats daarvan zijn laatste data
-// opnieuw rechtstreeks op een eigen canvas (zie heatmapNaarPngDataUrl hieronder). ----------
+// "geen aparte, per-type-verschillende downloadknop-logica"). Lijn/Staaf/Taart zijn canvas-based via
+// Chart.js (chart.toBase64Image); Sankey en Heatmap zijn allebei een zuivere SVG (geen HTML/
+// foreignObject erin) en rasterizeren via dezelfde svgNaarPngDataUrl()-route naar canvas — de
+// browser kan dat zelf, geen library nodig. ----------
 function downloadPng(dataUrl){
   const a = document.createElement('a');
   a.href = dataUrl;
@@ -815,57 +896,17 @@ function svgNaarPngDataUrl(bronSvg){
     img.src = url;
   });
 }
-// Heatmap opnieuw tekenen op een eigen (onzichtbare) canvas i.p.v. de zichtbare CSS-grid-DOM te
-// rasterizeren: een SVG-foreignObject-truc (zoals bij Sankey hierboven) "taint" het canvas zodra er
-// HTML in zit (Chromium-beveiligingsbeperking, tijdens implementatie ontdekt via Playwright — het
-// canvas mag dan niet meer uitgelezen worden met toDataURL) — dat probleem doet zich niet voor bij
-// een zuivere SVG zoals de Sankey. Gebruikt dezelfde laatsteHeatmapData als tekenHeatmap() hierboven.
-function heatmapNaarPngDataUrl(){
-  const { kolommen, rijen, venster } = laatsteHeatmapData;
-  const labelFmt = heatmapLabelFmt(venster);
-  const NAAMKOL = 140, CELW = 32, CELH = 28, KOPH = 56;
-  const W = NAAMKOL + kolommen.length*CELW, H = KOPH + rijen.length*CELH;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#12151a'; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = KLEUR_TEXT2; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  kolommen.forEach((tijd, i)=>{
-    ctx.save();
-    ctx.translate(NAAMKOL + i*CELW + CELW/2, KOPH - 6);
-    ctx.rotate(-Math.PI/2);
-    ctx.fillText(labelFmt(tijd), 0, 0);
-    ctx.restore();
-  });
-  ctx.textAlign = 'left';
-  rijen.forEach((rij, ri)=>{
-    const node = nodeById(rij.id);
-    ctx.fillStyle = KLEUR_TEXT2; ctx.font = '11.5px sans-serif';
-    ctx.fillText((node||{naam:rij.id}).naam, 4, KOPH + ri*CELH + CELH/2);
-    rij.cellen.forEach((waarde, ci)=>{
-      const x = NAAMKOL + ci*CELW, y = KOPH + ri*CELH;
-      if(waarde==null){
-        ctx.strokeStyle = KLEUR_BORDER; ctx.setLineDash([2,2]);
-        ctx.strokeRect(x+1, y+1, CELW-2, CELH-2);
-        ctx.setLineDash([]);
-      } else {
-        ctx.fillStyle = statusKleur(waarde, node ? node.rating_a : null);
-        ctx.fillRect(x+1, y+1, CELW-2, CELH-2);
-      }
-    });
-  });
-  return canvas.toDataURL('image/png');
-}
+// vervolgticket-grafieken-tabblad.md §6: Sankey en Heatmap zijn nu allebei een zuivere SVG (geen
+// HTML/foreignObject erin), dus delen letterlijk dezelfde svgNaarPngDataUrl()-route hierboven —
+// nog maar twee technische paden in totaal (canvas via Chart.js, SVG-rasterisatie), en geen van
+// beide houdt een eigen tweede layout-implementatie bij die uit de pas kan lopen met de weergave.
+const SVG_ID_PER_TYPE = { sankey: 'grafSankeySvg', heatmap: 'grafHeatmapSvg' };
 document.getElementById('grafPngBtn').onclick = async ()=>{
-  if(grafiekType==='sankey'){
-    const sankeySvg = document.getElementById('grafSankeySvg');
-    if(!sankeySvg.childElementCount) return;
-    try{ downloadPng(await svgNaarPngDataUrl(sankeySvg)); }catch(e){ /* browser kan geen SVG->canvas, stil negeren i.p.v. crashen */ }
-    return;
-  }
-  if(grafiekType==='heatmap'){
-    if(!laatsteHeatmapData || !laatsteHeatmapData.rijen.length) return;
-    downloadPng(heatmapNaarPngDataUrl());
+  const svgId = SVG_ID_PER_TYPE[grafiekType];
+  if(svgId){
+    const bronSvg = document.getElementById(svgId);
+    if(!bronSvg.childElementCount) return;
+    try{ downloadPng(await svgNaarPngDataUrl(bronSvg)); }catch(e){ /* browser kan geen SVG->canvas, stil negeren i.p.v. crashen */ }
     return;
   }
   if(!chart) return;
@@ -931,11 +972,15 @@ function herstelVanUrl(){
   document.querySelectorAll('#grafPeriodeRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.periodechip===state.grafiekenPeriodeChip));
   document.getElementById('grafAangepastPeriode').style.display = state.grafiekenPeriodeChip==='aangepast' ? 'flex' : 'none';
   document.querySelectorAll('#grafTypeRow button').forEach(b=>b.classList.toggle('active', b.dataset.type===grafiekType));
+  // vervolgticket-grafieken-tabblad.md §4: ververAlleAfgeleideUiState() (via ververSankeyLinkerkolom()
+  // -> vulSankeyStartpuntSelect()) vult de #grafSankeyStartpunt-opties pas — dus EERST aanroepen,
+  // dán pas de gewenste startpunt-waarde uit de URL toepassen, anders is de dropdown nog leeg op
+  // het moment van de querySelector-check hieronder en wint altijd de eerste generator in de lijst
+  ververAlleAfgeleideUiState();
   const startpuntParam = params.get('startpunt');
   if(grafiekType==='sankey' && startpuntParam && document.querySelector('#grafSankeyStartpunt option[value="'+startpuntParam+'"]')){
     document.getElementById('grafSankeyStartpunt').value = startpuntParam;
   }
-  ververAlleAfgeleideUiState();
 }
 
 // aangeroepen vanuit modes.js zodra het Grafieken-tabblad getoond wordt
@@ -947,6 +992,9 @@ export async function toonGrafieken(){
     const editieUitUrl = new URLSearchParams(location.search).get('editie');
     const select = document.getElementById('grafEditieSelect');
     if(editieUitUrl && Array.from(select.options).some(o=>o.value===editieUitUrl)) select.value = editieUitUrl;
+    // een (handmatig aangepaste of oudere) link met editie=__alle__ bij een niet-Lijndiagram-type
+    // mag die combinatie alsnog niet opleveren, zie ververEditieBeschikbaarheid()
+    ververEditieBeschikbaarheid();
   }
   renderChecklist();
   verversGrafiek();

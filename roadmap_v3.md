@@ -74,7 +74,12 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       herkenbaar grijs "geen sensor"-label op de vier plekken die voorheen stil niets toonden
       (Live-zijlijst, aside-detail, schema-tabblad, kastpopup-ledentabel). Zie event_dashboard.md,
       Topologiebeheer (Beheer-tabblad).
-- [x] **Grafieken-tabblad (vrije ad-hoc analyse).** Afgerond — zesde hoofdtabblad in de mode-switch,
+- [x] **Grafieken-tabblad (vrije ad-hoc analyse).** Afgerond — alle vijf grafiektypes + live-modus +
+      PNG-export gebouwd, en de zes bugs uit de code-review van 5 augustus 2026 (statuskleur bij
+      fase Totaal, live-aggregatie die niet terugvalt, hardcoded kWh-label, Sankey-link die het
+      startpunt verloor, "Alle edities" buiten het Lijndiagram, drie losse PNG-exportroutes) allemaal
+      gefixt en opnieuw getest — zie specs/vervolgticket-grafieken-tabblad.md. Zesde hoofdtabblad in
+      de mode-switch,
       naast Beheer/Kalibreren/Schema/Live/Rapportages: zelf kasten/generators, metric (stroom/
       spanning/vermogen/energie), fase en periode/editie selecteren, zonder naar Grafana te hoeven
       wisselen voor een snelle ad-hoc vraag. Vijf grafiektypes (lijn, staaf, Sankey, taart, heatmap)
@@ -84,15 +89,20 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       **Lijndiagram**: tijdreeks, server-side downsampling (Flux `aggregateWindow`). **Staafdiagram**:
       `/api/grafieken/aggregaat`-endpoint (piek/gemiddelde via Flux `max()`/`mean()`, periode-totaal
       bij metric energie via `integral(unit: 1h)`), balken aflopend gesorteerd, kleur volgt groen/
-      amber/rood-t.o.v.-rating bij metric stroom, categorisch palet bij de overige metrics.
+      amber/rood-t.o.v.-rating bij metric stroom, categorisch palet bij de overige metrics. Bij fase
+      "Totaal" vergelijkt de kleur (niet de getoonde balkhoogte) tegen de zwaarst-belaste van de drie
+      fases i.p.v. de driefasen-som — `rating_a` is een per-fase rating, een som zou pas rond ~300%
+      "rood" worden (bugfix, zie vervolgticket hierboven); dezelfde fix geldt voor de Heatmap.
       **Taartdiagram** (zelfde `/api/grafieken/aggregaat`-endpoint): metric+aggregatie vergrendeld op
-      Energie/Periode-totaal, percentage + kWh per segment in de legenda. **Heatmap**:
+      Energie/Periode-totaal, percentage + waarde per segment in de legenda (eenheid volgt de actieve
+      metric — kWh normaal, W zodra live-modus naar Vermogen omzet). **Heatmap**:
       `/api/grafieken/heatmap`-endpoint, rij per kast/generator, kolom per uur-van-de-dag (of dag bij
-      >~3 dagen), cel gekleurd via groen/amber/rood t.o.v. rating, metric vergrendeld op Stroom, puur
-      CSS-grid. **Sankey**: `/api/grafieken/sankey`-endpoint — de keten komt rechtstreeks uit de
-      in-memory topologie, alleen de kWh-waarde per link uit InfluxDB; linkerkolom wisselt om naar
-      een startpunt-dropdown, metric vergrendeld op Energie, eigen zelfgetekende SVG (geen
-      d3-sankey-library nodig, de data is altijd een boom).
+      >~3 dagen), cel gekleurd via groen/amber/rood t.o.v. rating (zelfde zwaarst-belaste-fase-fix als
+      Staaf), metric vergrendeld op Stroom, eigen SVG (native `<title>`-tooltips per cel). **Sankey**:
+      `/api/grafieken/sankey`-endpoint — de keten komt rechtstreeks uit de in-memory topologie, alleen
+      de kWh-waarde per link uit InfluxDB; linkerkolom wisselt om naar een startpunt-dropdown, metric
+      vergrendeld op Energie, eigen zelfgetekende SVG (geen d3-sankey-library nodig, de data is altijd
+      een boom).
       **Live-modus**: vierde periode-optie "Live" met schuifvenster (5/15/30/60 min), hergebruikt de
       bestaande MQTT-websocketverbinding van het Live-tabblad via een client-side rolling buffer
       (altijd 60 min, ongeacht het gekozen venster) die per binnenkomend bericht gevuld wordt,
@@ -104,15 +114,28 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       daar blijft de rest van de metric-keuze wel vrij; Heatmap heeft geen live-modus (Live-chip
       uitgeschakeld zolang Heatmap actief is, met terugval op de laatst gekozen niet-live periode).
       Live wordt bewust nooit in de "Kopieer link"-URL gecodeerd.
-      **PNG-export**: één uniforme exportroute voor alle vijf typen — Lijn/Staaf/Taart rechtstreeks
-      vanaf de Chart.js-canvas, Sankey (eigen SVG) gerasterized naar canvas via een Image, Heatmap
-      tekent zijn laatste data opnieuw op een eigen canvas (een SVG-foreignObject-truc zoals bij
-      Sankey "taint" het canvas zodra er HTML in zit, een tijdens de bouw ontdekte Chromium-
-      beveiligingsbeperking — niet bruikbaar voor de CSS-grid-heatmap).
+      **PNG-export**: twee technische paden i.p.v. de oorspronkelijke drie (bugfix) — Lijn/Staaf/
+      Taart rechtstreeks vanaf de Chart.js-canvas, Sankey én Heatmap (allebei een zuivere SVG, geen
+      HTML/foreignObject erin — een foreignObject-truc "taint" het canvas zodra er HTML in zit, een
+      Chromium-beveiligingsbeperking) delen dezelfde svgNaarPngDataUrl()-rasterisatie-route, geen
+      aparte tweede layout-implementatie die uit de pas kan lopen met de weergave zelf.
       Meerdere-edities-vergelijking (jaar-op-jaar) is bewust buiten deze v1-scope gelaten (zie de
       spec's "Wat het niet is") en wacht op de tijd-sinds-start-uitlijning uit
       voorspellende-piekbelasting-plan.md, als aparte latere uitbreiding. Zie event_dashboard.md,
       Grafieken-tabblad.
+      **Gevonden bugs (code-review, 5 augustus 2026)**, geprioriteerd:
+      (1) staaf/heatmap-live-aggregatie valt niet terug op een geldige waarde bij het verlaten van
+      Live, geeft een harde foutstaat; (2) statuskleur bij fase "Totaal" vergelijkt het
+      totaalstroom-getal met de per-fase `rating_a`, klopt daardoor bijna nooit (geldt voor
+      Staaf-metric-stroom én Heatmap); (3) live-Taart/Sankey tonen "kWh" terwijl de waarde dan
+      Vermogen (W) is; (4) een gedeelde Sankey-link ("Kopieer link") verliest het startpunt omdat
+      de dropdown nog leeg is op het moment dat de link-URL wordt uitgelezen; (5) "Alle edities"
+      blijft aanklikbaar/telt samen bij Staaf/Taart/Heatmap/Sankey, terwijl v4 van de spec dat
+      juist uitsluit (alleen Lijndiagram mag multi-editie); (6) PNG-export is drie losse routes
+      per grafiektype i.p.v. de gevraagde ene uniforme aanpak. Alle zes punten meenemen, geen van
+      allen optioneel — punt 1 is inhoudelijk wel het belangrijkst, de statuskleur klopt daardoor
+      bijna nooit. Zie
+      [specs/vervolgticket-grafieken-tabblad.md](specs/vervolgticket-grafieken-tabblad.md).
 - [x] **QR-code per kast.** Afgerond — gebouwd conform [specs/qr-code-plan.md](specs/qr-code-plan.md):
       "QR-code"-actieknop per kastrij in Beheer (overlay met downloaden/printen) + een
       "Alle QR-codes printen"-bulkknop, elk codeert `/?mode=live&kast=<id>`. Op een smal scherm

@@ -240,31 +240,39 @@ zetten zonder code aan te passen.
 - **Staafdiagram** (gebouwd): één balk per geselecteerde kast/generator over de gekozen periode,
   met een aggregatie-keuze (Piekwaarde/Gemiddelde/Periode-totaal — periode-totaal alleen actief bij
   metric Energie, elders uitgeschakeld en valt terug op Piekwaarde). Balken aflopend gesorteerd op
-  waarde. Kleur volgt de groen/amber/rood-belastingsconventie (t.o.v. rating) bij metric Stroom;
-  bij de overige metrics (geen rating-vergelijking mogelijk in W/V/kWh) hetzelfde categorische
-  palet als het lijndiagram
+  waarde. Kleur volgt de groen/amber/rood-belastingsconventie (t.o.v. rating) bij metric Stroom; bij
+  fase "Totaal" vergelijkt de kleur (niet de getoonde balkhoogte) tegen de zwaarst-belaste van de
+  drie fases, niet de driefasen-som (`rating_a` is een per-fase rating, een som zou pas rond ~300%
+  "rood" worden). Bij de overige metrics (geen rating-vergelijking mogelijk in W/V/kWh) hetzelfde
+  categorische palet als het lijndiagram
 - **Taartdiagram/donut** (gebouwd): aandeel van elke geselecteerde kast/generator in het totaal,
   plat (geen boomstructuur, gewone checklist). Metric ligt hier vast op Energie (kWh) en aggregatie
   op Periode-totaal — beide knoppenrijen blijven zichtbaar maar zijn vergrendeld zolang Taart actief
   is (geen zinvol "aandeel" bij een piek/gemiddelde of een niet-optelbare grootheid), en de vorige
   metric-keuze wordt automatisch hersteld zodra je naar een ander grafiektype wisselt. Legenda toont
-  percentage + kWh per segment
+  percentage + waarde per segment, eenheid volgt de actieve metric (kWh normaal, W zodra live-modus
+  naar Vermogen omzet)
 - **Belasting-heatmap** (gebouwd): rij per geselecteerde kast/generator, kolom per tijdvak (uur-van-
   de-dag bij een periode tot ~3 dagen, anders per dag — voorkomt honderden kolommen bij een
-  meerdaags evenement). Celkleur volgt de groen/amber/rood-belastingsconventie; metric ligt hier
-  net als bij Taart vast (op Stroom, om dezelfde reden als het Staafdiagram: de celkleur ís "t.o.v.
-  rating", geen zinvolle vergelijking in W/V/kWh). Aggregatie per cel is Piekwaarde of Gemiddelde
-  (Periode-totaal is geen zinvolle aggregatie binnen één tijdvak-cel). Een ontbrekende meting toont
-  een lege cel, geen kunstmatige 0. Puur CSS-grid, geen chartlibrary nodig
+  meerdaags evenement). Celkleur volgt de groen/amber/rood-belastingsconventie (zelfde zwaarst-
+  belaste-fase-vergelijking bij fase "Totaal" als het Staafdiagram); metric ligt hier net als bij
+  Taart vast (op Stroom, om dezelfde reden als het Staafdiagram: de celkleur ís "t.o.v. rating",
+  geen zinvolle vergelijking in W/V/kWh). Aggregatie per cel is Piekwaarde of Gemiddelde (Periode-
+  totaal is geen zinvolle aggregatie binnen één tijdvak-cel). Een ontbrekende meting toont een lege
+  cel, geen kunstmatige 0. Eigen SVG (native `<title>`-tooltip per cel), geen chartlibrary nodig
 - **Sankey** (gebouwd, laatste van de vijf grafiektypes): energieverdeling vanaf één gekozen
   startpunt-generator/-groep. De linkerkolom wisselt hier om naar een startpunt-dropdown (alleen
   generators/groepen, bewust geen "Alles"-optie — een fictieve top-node bij meerdere onafhankelijke
   generators zou verwarrend zijn) i.p.v. de gewone kasten-checklist; Fase verdwijnt volledig uit de
-  linkerkolom en metric ligt vast op Energie (kWh). De eerder gekozen kasten-checklist-selectie
-  blijft ondertussen intact en komt terug zodra je naar een ander grafiektype wisselt. Breedte van
-  elke stroom = kWh in de gekozen periode/editie; kleur per node-type (groep/generator/batterij/
-  kast), zelfde kleurcodering als het Schema-tabblad. Eigen, zelfgetekende SVG (geen d3-sankey- of
-  andere library nodig — de data is altijd een boom, geen algemene DAG)
+  linkerkolom en metric ligt vast op Energie (kWh, W zodra live-modus naar Vermogen omzet). De eerder
+  gekozen kasten-checklist-selectie blijft ondertussen intact en komt terug zodra je naar een ander
+  grafiektype wisselt. Breedte van elke stroom = kWh in de gekozen periode/editie; kleur per
+  node-type (groep/generator/batterij/kast), zelfde kleurcodering als het Schema-tabblad. Eigen,
+  zelfgetekende SVG (geen d3-sankey- of andere library nodig — de data is altijd een boom, geen
+  algemene DAG)
+- **Editie(s)**: "Alle edities" is alleen bij het Lijndiagram bruikbaar (het enige type waar
+  "meerdere lijnen, één per editie" ondubbelzinnig is) — bij Staaf/Taart/Heatmap/Sankey valt de
+  select automatisch terug naar de meest recente enkele editie zodra je naar zo'n type wisselt
 - **Live-modus** (gebouwd): vierde periode-optie "Live" naast hele evenement/laatste 24u/aangepast
   — een schuifvenster (5/15/30/60 min) dat continu doorschuift, geen vast begin/eind. Hergebruikt
   dezelfde MQTT-websocketverbinding als het Live-tabblad (geen nieuwe databron); een client-side
@@ -287,10 +295,10 @@ zetten zonder code aan te passen.
 - "Downloaden als PNG" (gebouwd, technologie-onafhankelijk voor alle vijf typen) en "Kopieer link"
   (codeert de huidige selectie inclusief grafiektype als leesbare query-string, `?mode=grafieken&...`
   — opent bij het laden automatisch dit tabblad in dezelfde staat, geen opslag/database erbij).
-  Lijn/Staaf/Taart downloaden rechtstreeks vanaf de Chart.js-canvas; Sankey (eigen SVG, geen HTML
-  erin) wordt naar canvas gerasterized via een Image; Heatmap tekent zijn laatste data opnieuw op
-  een eigen onzichtbare canvas (een SVG-foreignObject-truc zoals bij Sankey "taint" het canvas zodra
-  er HTML in zit — een Chromium-beveiligingsbeperking, dus niet bruikbaar voor de CSS-grid-heatmap)
+  Lijn/Staaf/Taart downloaden rechtstreeks vanaf de Chart.js-canvas; Sankey en Heatmap zijn allebei
+  een zuivere SVG (geen HTML/foreignObject erin — dat "taint" het canvas zodra er HTML in zit, een
+  Chromium-beveiligingsbeperking) en delen dezelfde rasterisatie-route (SVG naar canvas via een
+  Image, de browser kan dat zelf)
 - **Nog niet gebouwd**: meerdere-edities-vergelijking (jaar-op-jaar, alleen bij het lijndiagram) is
   nog niet meegenomen, dat volgt samen met de tijd-sinds-start-uitlijning uit
   voorspellende-piekbelasting-plan.md

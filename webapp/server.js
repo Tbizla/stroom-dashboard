@@ -1146,6 +1146,16 @@ function grafiekenVeldenVoorMetric(metric, fase) {
   return { measurement: 'shelly_em', velden: [(fase === 'totaal' ? 'total_' : fase + '_') + suffix] };
 }
 
+// vervolgticket-grafieken-tabblad.md §1: rating_a is een PER-FASE rating (zie topology.js), bij
+// fase "totaal" is de driefasen-som (total_current) daar niet één-op-één mee vergelijkbaar (pas
+// rond ~300% van rating_a "rood") — voor de statuskleur specifiek de zwaarst-belaste van de drie
+// fases nemen, zelfde conventie als maxFaseStroom() in topology.js voor de live-status-stip.
+// Geldt alleen bij metric stroom + fase totaal; alle andere combinaties tonen/kleuren al met de
+// juiste, één-op-één vergelijkbare grootheid en hebben geen aparte statuswaarde nodig.
+function grafiekenStatusVeldenVoorMetric(metric, fase) {
+  return (metric === 'stroom' && fase === 'totaal') ? ['a_current', 'b_current', 'c_current'] : null;
+}
+
 // Flux-duration-string voor aggregateWindow(), berekend uit de periodelengte zodat het aantal
 // punten per lijn ongeveer GRAFIEKEN_MAX_PUNTEN blijft, ongeacht periodelengte
 function grafiekenVensterVoorPeriode(vanMs, totMs) {
@@ -1157,7 +1167,11 @@ function grafiekenVensterVoorPeriode(vanMs, totMs) {
 // hierboven) is de waarde het gemiddelde van de drie, anders het ene veld direct. Skipt een rij
 // stil als niet alle benodigde velden een getal hebben (liever geen punt dan een punt op een
 // onvolledig gemiddelde).
-function grafiekenCsvNaarSeries(csv, velden) {
+// `combine` bepaalt hoe meerdere velden (bijv. de spanning+totaal-uitzondering, of de drie
+// statusvelden hierboven) tot één waarde per punt worden samengevoegt — gemiddelde als default
+// (ongewijzigd gedrag), de statuswaarde-berekening hieronder geeft er zelf een max-variant aan mee
+function grafiekenCsvNaarSeries(csv, velden, combine) {
+  const comb = combine || ((getallen) => getallen.reduce((a, b) => a + b, 0) / getallen.length);
   const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
   if (regels.length < 2) return [];
   const kolommen = regels[0].split(',');
@@ -1174,7 +1188,7 @@ function grafiekenCsvNaarSeries(csv, velden) {
     const t = Date.parse(waarden[tijdIdx]);
     if (isNaN(t)) return;
     if (!perKast.has(id)) perKast.set(id, []);
-    perKast.get(id).push([t, getallen.reduce((a, b) => a + b, 0) / getallen.length]);
+    perKast.get(id).push([t, comb(getallen)]);
   });
   return Array.from(perKast, ([id, punten]) => ({ id, punten }));
 }
@@ -1254,16 +1268,17 @@ async function berekenEnergieKwh(id, veld, range, editieFilter) {
 }
 
 // csv-kolommen kast,_field,_value (geen _time nodig na max()/mean(), dus geen pivot() — voorkomt
-// onduidelijk pivot-rowKey-gedrag op een al-gereduceerd resultaat). Middelt over meerdere velden
-// net als grafiekenCsvNaarSeries() (de spanning+totaal-uitzondering).
-function grafiekenAggregaatCsvNaarWaarden(csv, velden) {
+// onduidelijk pivot-rowKey-gedrag op een al-gereduceerd resultaat). Groepeert per kast, veld -> waarde
+// (geen combine-functie hier — grafiekenAggregaatCsvNaarWaarden() middelt, de statuswaarde-
+// berekening hieronder neemt het max, vandaar apart gehouden)
+function grafiekenAggregaatCsvGroeperen(csv, velden) {
   const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
-  if (regels.length < 2) return [];
+  if (regels.length < 2) return new Map();
   const kolommen = regels[0].split(',');
   const kastIdx = kolommen.indexOf('kast');
   const veldIdx = kolommen.indexOf('_field');
   const waardeIdx = kolommen.indexOf('_value');
-  if (kastIdx === -1 || veldIdx === -1 || waardeIdx === -1) return [];
+  if (kastIdx === -1 || veldIdx === -1 || waardeIdx === -1) return new Map();
   const perKast = new Map();
   regels.slice(1).forEach((regel) => {
     const cellen = regel.split(',');
@@ -1271,10 +1286,18 @@ function grafiekenAggregaatCsvNaarWaarden(csv, velden) {
     const veld = cellen[veldIdx];
     const waarde = parseFloat(cellen[waardeIdx]);
     if (!id || !velden.includes(veld) || isNaN(waarde)) return;
-    if (!perKast.has(id)) perKast.set(id, []);
-    perKast.get(id).push(waarde);
+    if (!perKast.has(id)) perKast.set(id, new Map());
+    perKast.get(id).set(veld, waarde);
   });
-  return Array.from(perKast, ([id, waarden]) => ({ id, waarde: waarden.reduce((a, b) => a + b, 0) / waarden.length }));
+  return perKast;
+}
+// middelt over meerdere velden net als grafiekenCsvNaarSeries() (de spanning+totaal-uitzondering)
+function grafiekenAggregaatCsvNaarWaarden(csv, velden) {
+  const perKast = grafiekenAggregaatCsvGroeperen(csv, velden);
+  return Array.from(perKast, ([id, veldMap]) => {
+    const waarden = Array.from(veldMap.values());
+    return { id, waarde: waarden.reduce((a, b) => a + b, 0) / waarden.length };
+  });
 }
 
 app.get('/api/grafieken/aggregaat', async (req, res) => {
@@ -1320,7 +1343,32 @@ app.get('/api/grafieken/aggregaat', async (req, res) => {
       '  |> ' + fn + '()\n' +
       '  |> keep(columns: ["kast", "_field", "_value"])';
     const csv = await influxQueryPlatteCsv(flux);
-    res.json({ waarden: grafiekenAggregaatCsvNaarWaarden(csv, veldinfo.velden) });
+    const waarden = grafiekenAggregaatCsvNaarWaarden(csv, veldinfo.velden);
+
+    // vervolgticket-grafieken-tabblad.md §1: bij fase totaal + metric stroom een aparte
+    // statusWaarde meegeven (zwaarst-belaste fase i.p.v. de driefasen-som) — de weergegeven
+    // waarde zelf (total_current) blijft ongewijzigd, alleen de kleurbepaling gebruikt statusWaarde
+    const statusVelden = grafiekenStatusVeldenVoorMetric(metric, fase);
+    if (statusVelden) {
+      const statusVeldFilter = statusVelden.map((v) => 'r._field == "' + v + '"').join(' or ');
+      const statusFlux =
+        'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+        '  |> ' + range + '\n' +
+        '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+        '  |> filter(fn: (r) => ' + statusVeldFilter + ')\n' +
+        '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+        editieFilter +
+        '  |> group(columns: ["kast", "_field"])\n' +
+        '  |> ' + fn + '()\n' +
+        '  |> keep(columns: ["kast", "_field", "_value"])';
+      const statusCsv = await influxQueryPlatteCsv(statusFlux);
+      const statusPerKast = grafiekenAggregaatCsvGroeperen(statusCsv, statusVelden);
+      waarden.forEach((w) => {
+        const veldMap = statusPerKast.get(w.id);
+        if (veldMap && veldMap.size) w.statusWaarde = Math.max(...veldMap.values());
+      });
+    }
+    res.json({ waarden });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
@@ -1379,9 +1427,38 @@ app.get('/api/grafieken/heatmap', async (req, res) => {
     const kolommenSet = new Set();
     series.forEach((s) => s.punten.forEach(([t]) => kolommenSet.add(t)));
     const kolommen = Array.from(kolommenSet).sort((a, b) => a - b);
+
+    // vervolgticket-grafieken-tabblad.md §1: zie dezelfde toelichting bij /api/grafieken/aggregaat
+    // hierboven — per cel een apart statusCellen-getal (zwaarst-belaste fase), de weergegeven
+    // waarde (cellen) blijft de driefasen-som
+    let statusPerKast = null;
+    const statusVelden = grafiekenStatusVeldenVoorMetric(metric, fase);
+    if (statusVelden) {
+      const statusVeldFilter = statusVelden.map((v) => 'r._field == "' + v + '"').join(' or ');
+      const statusFlux =
+        'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+        '  |> range(start: ' + new Date(vanMs).toISOString() + ', stop: ' + new Date(totMs).toISOString() + ')\n' +
+        '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+        '  |> filter(fn: (r) => ' + statusVeldFilter + ')\n' +
+        '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+        editieFilter +
+        '  |> group(columns: ["kast", "_field"])\n' +
+        '  |> aggregateWindow(every: ' + venster + ', fn: ' + fn + ', createEmpty: false)\n' +
+        '  |> group(columns: ["kast"])\n' +
+        '  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")\n' +
+        '  |> sort(columns: ["_time"])\n' +
+        '  |> keep(columns: ' + JSON.stringify(['_time', 'kast', ...statusVelden]) + ')';
+      const statusCsv = await influxQueryPlatteCsv(statusFlux);
+      const statusSeries = grafiekenCsvNaarSeries(statusCsv, statusVelden, (getallen) => Math.max(...getallen));
+      statusPerKast = new Map(statusSeries.map((s) => [s.id, new Map(s.punten)]));
+    }
+
     const rijen = series.map((s) => {
       const perTijd = new Map(s.punten);
-      return { id: s.id, cellen: kolommen.map((t) => (perTijd.has(t) ? perTijd.get(t) : null)) };
+      const statusPerTijd = statusPerKast ? statusPerKast.get(s.id) : null;
+      const rij = { id: s.id, cellen: kolommen.map((t) => (perTijd.has(t) ? perTijd.get(t) : null)) };
+      if (statusPerTijd) rij.statusCellen = kolommen.map((t) => (statusPerTijd.has(t) ? statusPerTijd.get(t) : null));
+      return rij;
     });
     res.json({ kolommen, rijen, venster });
   } catch (e) {
