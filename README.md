@@ -70,14 +70,14 @@ nog niet eerder gebruikte machine.)
    `EVENT_NAME`/`EVENT_EDITION` in.
 6. **Eerst droogtesten met de simulator**, vóórdat er fysieke Shelly's bij komen:
    ```
-   ./start.sh --profile test up -d --build
+   docker compose --profile test up -d --build
    ```
-   `start.sh` (Linux/macOS) of `start.ps1` (Windows) is een dun wrapperscript om `docker compose` —
-   het detecteert het LAN-IP van deze machine en geeft dat door aan de webapp, die het bij het
-   opstarten in de logs toont (`docker logs webapp`) zodat je niet zelf hoeft te achterhalen welk
-   adres je in de browser moet intypen. Werkt de auto-detectie niet (bijv. onbekende
-   netwerk-setup)? Draai dan gewoon `docker compose --profile test up -d --build` rechtstreeks en
-   zoek het IP op met `ip addr`/`ipconfig`.
+   Geen los wrapperscript meer nodig: een kleine, eenmalige `lan-ip-detector`-service in de stack
+   zelf detecteert het LAN-IP van deze machine vóórdat de webapp opstart, die het bij het opstarten
+   in de logs toont (`docker logs webapp`) zodat je niet zelf hoeft te achterhalen welk adres je in
+   de browser moet intypen. Lukt de detectie een keer niet (bijv. onbekende netwerk-setup)? Dan valt
+   de webapp terug op alleen `localhost` in de logs en zoek je het IP zelf op met
+   `ip addr`/`ipconfig`.
 
    Open `http://<getoonde-ip>:8080`, laad een testtopologie (**Testdata**-tabblad), start de
    simulator, controleer de **Live**-tab, en probeer één PDF-rapport te genereren (§11) — dat dekt
@@ -86,13 +86,13 @@ nog niet eerder gebruikte machine.)
    hardware/CPU-architectuur draaien) — niet pas op de dag van het evenement zelf.
 7. **Testmodus uit, echte topologie invoeren**:
    ```
-   ./start.sh up -d --build
+   docker compose up -d --build
    ```
    (zonder `--profile test` — dit stopt de simulator en verbergt het Testdata-tabblad). Dan in
    **Beheer**: generators/kasten invoeren, plattegrond uploaden, kalibreren (§2).
 8. **Shelly's instellen**, één keer per kast/generator/lid (§3).
 9. **Eenmalige Grafana-setup** voor PDF-rapporten: service-account-token aanmaken (§11).
-10. **Vlak vóór het echte evenement**: nogmaals `./start.sh up -d` (zonder `--profile test`)
+10. **Vlak vóór het echte evenement**: nogmaals `docker compose up -d` (zonder `--profile test`)
     draaien, zodat je zeker weet dat de simulator/het Testdata-tabblad niet meedraait tijdens het
     evenement zelf.
 
@@ -133,12 +133,12 @@ Het script staat kant-en-klaar in [`shelly/em-fast-publish.js`](shelly/em-fast-p
 ```
 cp .env.example .env
 # vul .env in met eigen wachtwoorden/token
-./start.sh up -d --build
+docker compose up -d --build
 ```
 
-(Windows: `.\start.ps1 up -d --build`.) Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000), het stroomdashboard zelf (poort 8080), en een klein `telegraf-herstarter`-servicetje (herstart Telegraf op de achtergrond zodra je de evenementnaam/editie in Beheer wijzigt, zie sectie 12 — heeft de Docker-socket nodig, maar biedt zelf maar één vaste actie aan). Niets hoeft meer los gekopieerd of ingesteld te worden.
+Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000), het stroomdashboard zelf (poort 8080), een klein `telegraf-herstarter`-servicetje (herstart Telegraf op de achtergrond zodra je de evenementnaam/editie in Beheer wijzigt, zie sectie 12 — heeft de Docker-socket nodig, maar biedt zelf maar één vaste actie aan), en een eenmalige `lan-ip-detector`-service (zie hieronder). Niets hoeft meer los gekopieerd of ingesteld te worden — geen apart wrapperscript, gewoon `docker compose` rechtstreeks aanroepen.
 
-`start.sh`/`start.ps1` detecteren het LAN-IP van deze machine en geven dat door aan de webapp; bij het opstarten toont die in zijn logs (`docker logs webapp`) exact welk adres je moet intypen — dat werkt dan vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. (Rechtstreeks `docker compose up -d --build` gebruiken kan ook, dan valt de webapp terug op alleen `localhost` in de logs en zoek je het netwerk-IP zelf op met `ip addr`/`ipconfig`.) De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
+`lan-ip-detector` detecteert het LAN-IP van deze machine vóórdat de webapp opstart en geeft dat door; bij het opstarten toont de webapp in zijn logs (`docker logs webapp`) exact welk adres je moet intypen — dat werkt dan vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. (Lukt de detectie een keer niet, dan valt de webapp terug op alleen `localhost` in de logs en zoek je het netwerk-IP zelf op met `ip addr`/`ipconfig`.) De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 
 Grafana zelf: de InfluxDB data source wordt automatisch geprovisioned (`grafana/provisioning/datasources/influxdb.yml`, met de token uit `.env`) — je hoeft 'm niet meer handmatig toe te voegen. Er staat ook een start-dashboard klaar ("Stroom-Dashboard - overzicht", `grafana/dashboards/stroomdashboard.json`) met een generator-totalenpaneel bovenaan, een paneel per kast (stroom per fase, geen los "totale stroom"-paneel — zie sectie 6 hieronder waarom) dat automatisch herhaald wordt via een `$kast`-variabele, en een `$editie`-variabele. Alarmdrempels bevat het dashboard bewust niet — die vereisen `rating_a` uit de webapp-topologie, die niet in InfluxDB zit; zie sectie 7 hieronder om die zelf toe te voegen.
 

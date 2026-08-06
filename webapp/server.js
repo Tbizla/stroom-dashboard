@@ -2680,16 +2680,30 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 8080;
-const HOST_LAN_IP = process.env.HOST_LAN_IP || '';
+// specs/lan-ip-detectie-verplaatsen-plan.md: geen HOST_LAN_IP-env-var meer (die vereiste het losse
+// start.sh/start.ps1-wrapperscriptje op de host) — de eenmalige lan-ip-detector-service in
+// docker-compose.yml schrijft het gedetecteerde host-LAN-IP naar dit gedeelde volume-bestand vóórdat
+// webapp opstart (depends_on: condition: service_completed_successfully), dus gewoon synchroon
+// uitlezen bij opstarten is genoeg — leeg/ontbrekend bestand (bijv. handmatig gestart zonder compose,
+// of detectie mislukt) valt terug op alleen `localhost` tonen, geen harde crash.
+const HOST_LAN_IP_FILE = '/shared/host_lan_ip.txt';
+function bepaalHostLanIp() {
+  try {
+    return fs.readFileSync(HOST_LAN_IP_FILE, 'utf8').trim();
+  } catch (e) {
+    return '';
+  }
+}
 const server = app.listen(PORT, () => {
   console.log('Stroom-Dashboard luistert op poort ' + PORT);
   console.log('Open in de browser:');
   console.log('  http://localhost:' + PORT + '  (op deze machine)');
-  if (HOST_LAN_IP) {
-    console.log('  http://' + HOST_LAN_IP + ':' + PORT + '  (vanaf een ander apparaat op hetzelfde netwerk)');
+  const hostLanIp = bepaalHostLanIp();
+  if (hostLanIp) {
+    console.log('  http://' + hostLanIp + ':' + PORT + '  (vanaf een ander apparaat op hetzelfde netwerk)');
   } else {
-    console.log('  Netwerk-IP niet gedetecteerd — start via start.sh/start.ps1 voor automatische detectie,');
-    console.log('  of zoek het handmatig op met `ip addr` (Linux) / `ipconfig` (Windows).');
+    console.log('  Netwerk-IP niet gedetecteerd — zoek het handmatig op met `ip addr` (Linux) /');
+    console.log('  `ipconfig` (Windows), of controleer de lan-ip-detector-containerlogs.');
   }
 });
 

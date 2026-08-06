@@ -179,6 +179,29 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       (dat is het moment waarop Grafana's ntfy-contact-point het `Authorization: Bearer`-token
       krijgt); bouwen met `docker compose build`/`up --build`, niet alleen `up -d`. Zie
       event_dashboard.md voor de volledige featurebeschrijving.
+- [x] **LAN-IP-detectie verplaatsen naar de container.** Afgerond — gebouwd conform
+      [specs/lan-ip-detectie-verplaatsen-plan.md](specs/lan-ip-detectie-verplaatsen-plan.md), Mike's
+      oorspronkelijke verzoek dat aanvankelijk verkeerd begrepen werd als de Caddy-verwijdering
+      hierboven (zie de correctie daar): de losse `start.sh`/`start.ps1`-wrapperscripts (detecteerden
+      op de host het LAN-IP en riepen dan pas `docker compose` aan) zijn verwijderd — `docker
+      compose ...` rechtstreeks aanroepen is nu genoeg. De LAN-IP-detectie zelf blijft bestaan maar
+      verhuist naar een nieuwe, eenmalige `lan-ip-detector`-service in `docker-compose.yml`
+      (`network_mode: host`, ziet zo de echte host-netwerkinterfaces) die het gedetecteerde adres
+      naar een gedeeld volume-bestand schrijft; `webapp` mount dat volume read-only en wacht erop via
+      `depends_on: condition: service_completed_successfully` vóórdat 'ie zelf opstart. Bewust
+      alléén deze kleine wegwerp-service in host-netwerkmodus — `webapp` zelf blijft op het gewone
+      Docker-bridge-netwerk, dus alle bestaande service-naam-DNS (`influxdb:8086`, `mosquitto:1883`,
+      enz.) is ongewijzigd blijven werken. `webapp/server.js` leest voortaan het gedeelde bestand
+      i.p.v. de vervallen `HOST_LAN_IP`-env-var. Geverifieerd: opstartvolgorde klopt (detector
+      draait en sluit af vóórdat webapp start), het bestand komt read-only aan bij de webapp, de
+      juiste waarde verschijnt in de opstartlogs, de volledige regressietest slaagt, en de combinatie
+      met `--profile publiek` (Caddy) geeft geen opstartconflict. De QR-code-deeplinks zijn
+      hierdoor niet geraakt — die gebruiken `location.origin` uit de browser zelf, nooit de
+      server-side LAN-IP-waarde. Kanttekening: end-to-end getest op deze (Windows/Docker Desktop/
+      WSL2-)ontwikkelmachine, waar het gedetecteerde adres de interne WSL-VM-IP is, niet het echte
+      LAN-adres van de Windows-host — de daadwerkelijke juistheid van het gedetecteerde adres is dus
+      pas op de échte Linux-productiemachine te bevestigen (de mechaniek zelf — detecteren, wegschrijven,
+      uitlezen, tonen — is wel volledig geverifieerd).
 - [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete
       "Heeft sensor"-checkbox naast het rating-veld in Beheer (generatorrij + ledentabel), en een

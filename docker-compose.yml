@@ -85,16 +85,42 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
 
+  # specs/lan-ip-detectie-verplaatsen-plan.md: eenmalige, wegwerp-init-service die het LAN-IP van de
+  # HOST detecteert (network_mode: host, dus ziet de echte netwerkinterfaces) en wegschrijft naar
+  # een gedeeld volume — vervangt het losse start.sh/start.ps1-wrapperscriptje dat dit voorheen op
+  # de host zelf deed vóór het aanroepen van `docker compose`. Alleen déze kleine service draait in
+  # host-netwerkmodus; webapp zelf blijft op het normale Docker-bridge-netwerk staan, dus alle
+  # bestaande service-naam-DNS (influxdb:8086, mosquitto:1883, enz.) blijft ongewijzigd werken. Een
+  # bestand op een gedeeld volume i.p.v. een env-var, want een env-var kan niet ná het opstarten van
+  # een andere service alsnog gezet worden.
+  lan-ip-detector:
+    image: alpine:3.20
+    container_name: lan-ip-detector
+    network_mode: host
+    command: >
+      sh -c "
+        IP=$$(ip route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p');
+        if [ -z \"$$IP\" ]; then IP=$$(hostname -I 2>/dev/null | awk '{print $$1}'); fi;
+        echo -n \"$$IP\" > /shared/host_lan_ip.txt;
+        echo Host-IP gedetecteerd: $$IP
+      "
+    volumes:
+      - lan-ip-shared:/shared
+
   webapp:
     build: ./webapp
     container_name: webapp
     restart: unless-stopped
     depends_on:
-      - influxdb
-      - telegraf-herstarter
+      influxdb:
+        condition: service_started
+      telegraf-herstarter:
+        condition: service_started
+      lan-ip-detector:
+        condition: service_completed_successfully
     # blijft altijd gepubliceerd, ook met de `publiek`-profile (Caddy) actief — nodig voor het
-    # bestaande op-locatie-gebruik (crew-telefoons op hetzelfde festivalnetwerk, zie HOST_LAN_IP/
-    # start.sh en de QR-code-deeplinks), dat is onafhankelijk van internet-toegang via Caddy.
+    # bestaande op-locatie-gebruik (crew-telefoons op hetzelfde festivalnetwerk, zie lan-ip-detector
+    # hierboven en de QR-code-deeplinks), dat is onafhankelijk van internet-toegang via Caddy.
     # vervolgticket-toegang-van-buitenaf.md §3: zodra deze instance ook publiek (internet) bereikbaar
     # is, hoort poort 8080 zelf NIET vanaf het publieke internet bereikbaar te zijn (alleen 80/443
     # via Caddy) — regel dat op netwerkniveau af (firewall/security group), niet hier in compose:
@@ -102,7 +128,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - HOST_LAN_IP=${HOST_LAN_IP:-}
       - INFLUX_URL=http://influxdb:8086
       - INFLUX_TOKEN=${INFLUX_TOKEN}
       - INFLUX_ORG=site
@@ -121,6 +146,7 @@ services:
       - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-}
     volumes:
       - webapp-data:/data
+      - lan-ip-shared:/shared:ro
 
   # alleen gestart met `docker compose --profile test up -d` — de webapp herkent zelf of deze
   # service bestaat (DNS-lookup op "simulator", zie isTestMode() in server.js) om de Testdata-tabblad
@@ -176,3 +202,4 @@ volumes:
   webapp-data:
   caddy-data:
   caddy-config:
+  lan-ip-shared:
