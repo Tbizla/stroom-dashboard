@@ -55,6 +55,12 @@ export async function verbindMqtt(){
     // zichtbaar in de netwerktab maar onzichtbaar voor client.on('error'/'close')). Vandaar een
     // eigen watchdog die de client hoe dan ook na een paar seconden hard afsluit en zelf, met een
     // vers ticket, opnieuw begint — vertrouwt niet op mqtt.js' eigen events voor de mislukt-paden.
+    // vervolgticket-toegang-van-buitenaf-ronde2.md §2: `afgehandeld` mag ALLEEN de huidige
+    // verbindingspoging afdekken (voorkomt dat de watchdog nog ingrijpt ná een net gelukte
+    // 'connect'), niet de hele levensduur van de client — anders leidt een latere 'close' (broker-
+    // herstart, netwerkstoring) ná een eerdere geslaagde verbinding tot een stille no-op: de
+    // statusstip bleef dan groen tonen terwijl er allang geen live-data meer binnenkwam. Daarom
+    // wordt de vlag in de 'connect'-handler weer teruggezet i.p.v. permanent aan te blijven.
     let afgehandeld = false;
     const opnieuw = ()=>{
       if(afgehandeld) return;
@@ -70,8 +76,10 @@ export async function verbindMqtt(){
       // een late 'connect' van een client die de watchdog inmiddels al heeft afgesloten (en dus al
       // vervangen is door een nieuwere poging) mag deze niet alsnog als "verbonden" tonen
       if(afgehandeld || state.mqttClient !== client) return;
-      afgehandeld = true;
       clearTimeout(watchdog);
+      // terugzetten (niet permanent true laten staan): een 'close'/'error' NA deze geslaagde
+      // verbinding moet alsnog via opnieuw() een echte herverbindingspoging starten
+      afgehandeld = false;
       dot.className='dot ok'; label.textContent=t('header.connVerbonden');
       client.subscribe('site/+/+/status/em:0');
       client.subscribe('site/+/+/status/emdata:0');

@@ -58,20 +58,25 @@ zetten zonder code aan te passen.
   sessie-gebonden ticket vereist vóór 'ie doorverbindt — de broker zelf is niet meer van buiten het
   interne netwerk bereikbaar. Als bijvangst: geen handmatig in te vullen broker-host/-poort meer,
   Live verbindt vanzelf naar het juiste adres, ook van buitenaf
-- Optionele `caddy`-service (TLS/reverse-proxy, alleen gestart met
-  `docker compose --profile publiek up -d`) voor als deze locatie-instance over het publieke
-  internet bereikbaar moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld domein.
-  Lokaal ontwikkelen/testen blijft gewoon rechtstreeks op `http://localhost:8080`. De sessiecookie
-  wordt automatisch `secure`-only zodra dat domein ingesteld staat
-- Login-gate is hoofdletterongevoelig op elk `/api/*`-pad (incl. `/mqtt`) — een gevonden bug waarbij
-  bijv. `/API/topology` de gate omzeilde is gefixt en met alle hoofdlettervarianten hertest.
-  `SESSION_SECRET` hoeft niet handmatig ingesteld te worden: ontbreekt die, dan genereert de webapp
-  er bij de allereerste opstart zelf één en bewaart 'm. Simpele rate-limiters op het inlogscherm en
-  het publieke HQ-statusendpoint. Live-monitoring herstelt vanzelf na een netwerkstoring of
-  webapp-herstart (een vers, kortlevend MQTT-ticket per herverbinding), zonder handmatige
-  pagina-ververs
+- Login-gate is hoofdletterongevoelig op elk `/api/*`-pad (incl. `/mqtt` en `/mqtt/`-varianten) —
+  een gevonden bug waarbij bijv. `/API/topology` de gate omzeilde is gefixt en met alle
+  hoofdlettervarianten hertest. `SESSION_SECRET` hoeft niet handmatig ingesteld te worden: ontbreekt
+  die (of staat 'm nog op de `.env.example`-placeholder), dan genereert de webapp er bij de
+  allereerste opstart zelf één en bewaart 'm. Simpele rate-limiters op het inlogscherm en het
+  publieke HQ-statusendpoint
+- Live-monitoring herstelt vanzelf na een netwerkstoring, mosquitto-herstart óf webapp-herstart (een
+  vers, kortlevend MQTT-ticket per herverbinding), zonder handmatige pagina-ververs — ook een
+  verbindingsdrop ná een eerder geslaagde verbinding wordt gedetecteerd en opnieuw opgebouwd (niet
+  alleen de allereerste connectiepoging)
+- Servicetoegang (de testmodus-`simulator` en Grafana's ntfy-webhook, zie Alert-notificaties
+  hieronder) gebruikt een gedeeld `INTERNAL_API_TOKEN` — een niet-overschreven placeholderwaarde uit
+  `.env.example` wordt genegeerd (telt als "niet ingesteld") i.p.v. als geldig geheim geaccepteerd
+- `NODE_ENV=production` staat aan (plus een generieke laatste error-handler) zodat een fout nooit
+  een stacktrace met serverpaden teruggeeft
 - **Nog niet gebouwd**: rol-onderscheid tussen accounts (alle accounts hebben nu gelijke, volledige
-  rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten")
+  rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten"). Publieke/internet-bereikbaarheid
+  (TLS/reverse-proxy) is bewust geen onderdeel meer van deze feature (zie
+  specs/caddy-wrapper-verwijderen-plan.md) — deze stack is en blijft voorlopig lokaal-netwerk-only
 
 **Topologiebeheer (Beheer-tabblad)**
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
@@ -126,7 +131,9 @@ zetten zonder code aan te passen.
   doorvoeren"-knop die de instellingen opslaat (`PUT /api/instellingen/notificaties`) én Grafana's
   contact-point-/notification-policy-provisioning-API bijwerkt (Telegram/Pushover/e-mail als
   Grafana-native contact-point-types onder één gedeeld contact point "Stroomdashboard"; ntfy heeft
-  geen native Grafana-type en loopt via een webhook terug naar de webapp, die 'm doorstuurt). Het
+  geen native Grafana-type en loopt via een webhook terug naar de webapp, die 'm doorstuurt —
+  Grafana authenticeert die aanroep met het gedeelde `INTERNAL_API_TOKEN` (`Authorization: Bearer`),
+  zelfde patroon als de testmodus-simulator). Het
   testbericht gaat altijd rechtstreeks (buiten Grafana om), met dezelfde verstuurfunctie als de
   webhook. Provisioning is best effort — mislukt die stap (Grafana onbereikbaar, onvolledig
   ingevuld kanaal), dan blijven de al opgeslagen instellingen en de overige, wél correcte kanalen

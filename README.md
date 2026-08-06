@@ -48,8 +48,12 @@ nog niet eerder gebruikte machine.)
 2. **Vast IP-adres**: reserveer een vaste DHCP-lease (of een statische configuratie) voor deze
    machine — dat adres komt terug in elke Shelly-config (§3) en in elke browser-bookmark van de
    crew, dus niet iets om halverwege een editie te wijzigen.
-3. **Firewall**: zorg dat poorten 1883 (MQTT), 8080 (webapp) en 3000 (Grafana) bereikbaar zijn
-   vanaf het lokale netwerk. Deze stack is niet bedoeld om publiek (internet) open te zetten.
+3. **Firewall**: zorg dat poort 8080 (webapp) bereikbaar is vanaf het lokale netwerk — dat is het
+   enige adres dat crew nodig heeft (incl. QR-code-deeplinks). Poort 3000 (Grafana) en 8086
+   (InfluxDB) zijn alleen nodig als je die rechtstreeks wilt benaderen (dashboards bewerken,
+   directe queries); MQTT (1883/9001) is sinds de login-laag niet meer naar de host gepubliceerd —
+   die loopt altijd via de webapp's eigen `/mqtt`-proxy. Deze stack is niet bedoeld om publiek
+   (internet) open te zetten — alleen het lokale festivalnetwerk.
 4. **Code ophalen**:
    ```
    git clone <repo-url>

@@ -92,13 +92,8 @@ services:
     depends_on:
       - influxdb
       - telegraf-herstarter
-    # blijft altijd gepubliceerd, ook met de `publiek`-profile (Caddy) actief — nodig voor het
-    # bestaande op-locatie-gebruik (crew-telefoons op hetzelfde festivalnetwerk, zie HOST_LAN_IP/
-    # start.sh en de QR-code-deeplinks), dat is onafhankelijk van internet-toegang via Caddy.
-    # vervolgticket-toegang-van-buitenaf.md §3: zodra deze instance ook publiek (internet) bereikbaar
-    # is, hoort poort 8080 zelf NIET vanaf het publieke internet bereikbaar te zijn (alleen 80/443
-    # via Caddy) — regel dat op netwerkniveau af (firewall/security group), niet hier in compose:
-    # een `ports:`-mapping is altijd aan/uit, kan niet conditioneel per profile.
+    # nodig voor het op-locatie-gebruik (crew-telefoons op hetzelfde festivalnetwerk, zie
+    # HOST_LAN_IP/start.sh en de QR-code-deeplinks).
     ports:
       - "8080:8080"
     environment:
@@ -116,9 +111,6 @@ services:
       - TELEGRAF_HERSTARTER_URL=http://telegraf-herstarter:8090
       - SESSION_SECRET=${SESSION_SECRET}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
-      # gebruikt hier alleen als signaal "draait achter Caddy/TLS" (secure-cookie-vlag, server.js) —
-      # niet voor routering, dat regelt caddy/Caddyfile zelf
-      - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-}
     volumes:
       - webapp-data:/data
 
@@ -140,32 +132,9 @@ services:
       - PIEK_KANS=0.01
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
 
-  # optioneel, alleen nodig zodra deze locatie-instance van buitenaf (publiek internet) bereikbaar
-  # moet zijn (specs/toegang-van-buitenaf-diagnose.md) — TLS-terminatie + reverse-proxy naar de
-  # webapp, zie caddy/Caddyfile. Lokaal ontwikkelen/testen blijft gewoon rechtstreeks op
-  # http://localhost:8080 zonder Caddy ertussen — alleen gestart met
-  # `docker compose --profile publiek up -d`.
-  caddy:
-    build: ./caddy
-    container_name: caddy
-    restart: unless-stopped
-    profiles: ["publiek"]
-    depends_on:
-      - webapp
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-}
-    volumes:
-      - caddy-data:/data
-      - caddy-config:/config
-
 volumes:
   mosquitto-data:
   mosquitto-log:
   influxdb-data:
   grafana-data:
   webapp-data:
-  caddy-data:
-  caddy-config:

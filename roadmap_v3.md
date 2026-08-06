@@ -59,30 +59,69 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       omslag van de header-rij.
 - [x] **Toegang van buitenaf (HQ meekijken).** Afgerond — gebouwd conform
       [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md) en het
-      technische implementatieplan daar bovenop, plus een volledige vervolgticket-ronde
-      (6 augustus 2026) met een **kritieke bug**: de login-laag was met een hoofdletter in het pad
-      te omzeilen (`/API/...` matchte de route wél maar de auth-gate niet, Express routeert
-      standaard case-insensitive) — zonder in te loggen was hiermee o.a. een account aan te maken
-      en de hele Beheer-laag te benaderen. Direct en geïsoleerd gefixt en hertest (hoofdletter-
-      gegate-check op alle varianten) vóórdat aan de rest van het ticket begonnen is. Zes verdere
-      punten meegenomen in dezelfde ronde: `SESSION_SECRET` genereert nu zichzelf bij een
-      ontbrekende `.env`-waarde i.p.v. een hardcoded fallback; sessiecookie krijgt `secure:true`
-      zodra `PUBLIC_DOMEIN` ingesteld is (Caddy/TLS) + `trust proxy`; het MQTT-ticket is nu
-      eenmalig/kortlevend (30s) en `mqtt.js` vraagt een vers ticket per (her)verbinding — tijdens
-      het testen bleek daarbovenop een **tweede, diepere bug**: mqtt.js' `reconnectPeriod:0` bleek
-      in de praktijk niet te voorkomen dat de onderliggende websocket-stream zelf op transportniveau
-      bleef doorproberen met een allang verlopen ticket, zonder ooit een client-event te vuren —
-      opgelost met een eigen watchdog-timer die de client hoe dan ook na 10s hard afsluit en zelf
-      opnieuw begint (geverifieerd met een echte webapp-herstart: live-monitoring herstelt nu
-      vanzelf, zonder handmatige pagina-ververs); `/mqtt` zelf zit nu ook achter de auth-gate (exacte
-      padmatch i.p.v. `startsWith`); simpele rate-limiters op `/api/login` (20/15 min) en
-      `/api/hq-status` (30/min) + een generieke foutmelding i.p.v. de ruwe Influx-fout. Kleinere
-      punten: stored-XSS-escape in `accounts.js`/`hq-locaties.js`, `accounts.json`/`locaties.json`
-      nu ook in de back-up-/restore-flow, `PUBLIC_DOMEIN` in `.env.example`, verouderde
-      `mosquitto.conf`-comment bijgewerkt. Zie
+      technische implementatieplan daar bovenop, daarna twee code-review-rondes volledig gefixt en
+      hertest, plus een scope-inperking (Caddy/publieke-internet-laag weer verwijderd) waardoor dit
+      nu een puur lokaal-netwerk-only feature is — precies wat "klaar" betekent voor die scope.
+      **Eerste ticketronde** (6 augustus 2026) vond een **kritieke bug**: de login-laag was met een
+      hoofdletter in het pad te omzeilen (`/API/...` matchte de route wél maar de auth-gate niet,
+      Express routeert standaard case-insensitive) — zonder in te loggen was hiermee o.a. een
+      account aan te maken en de hele Beheer-laag te benaderen. Direct en geïsoleerd gefixt en
+      hertest (hoofdletter-gegate-check op alle varianten, `case sensitive routing` als tweede,
+      onafhankelijke laag). Zes verdere punten meegenomen in dezelfde ronde: `SESSION_SECRET`
+      genereert nu zichzelf bij een ontbrekende `.env`-waarde i.p.v. een hardcoded fallback; het
+      MQTT-ticket is nu eenmalig/kortlevend (30s) en `mqtt.js` vraagt een vers ticket per
+      (her)verbinding — tijdens het testen bleek daarbovenop een **tweede, diepere bug**: mqtt.js'
+      `reconnectPeriod:0` bleek in de praktijk niet te voorkomen dat de onderliggende
+      websocket-stream zelf op transportniveau bleef doorproberen met een allang verlopen ticket,
+      zonder ooit een client-event te vuren — opgelost met een eigen watchdog-timer die de client
+      hoe dan ook na 10s hard afsluit en zelf opnieuw begint; `/mqtt` zelf zit ook achter de
+      auth-gate; simpele rate-limiters op `/api/login` (20/15 min) en `/api/hq-status` (30/min) +
+      een generieke foutmelding i.p.v. de ruwe Influx-fout. Kleinere punten: stored-XSS-escape in
+      `accounts.js`/`hq-locaties.js`, `accounts.json`/`locaties.json` nu ook in de
+      back-up-/restore-flow, verouderde `mosquitto.conf`-comment bijgewerkt. Zie
       [specs/vervolgticket-toegang-van-buitenaf.md](specs/vervolgticket-toegang-van-buitenaf.md).
-      Beide blokkerende voorwaarden uit de diagnose opgelost: een login-laag voor de hele app
-      (bevinding #1) én de losse, onbeveiligde MQTT-websocketverbinding (bevinding #2).
+      **Tweede ticketronde** (6 augustus 2026, "is dit klaar voor productie?") bevestigde de
+      hoofdletterbug-fix grondig (tientallen padvarianten getest) en vond vier nieuwe blokkers, alle
+      vier direct gefixt en empirisch hertest: (1) `INTERNAL_API_TOKEN` accepteerde de letterlijke
+      `.env.example`-placeholderwaarde als geldig servicegeheim — een niet-overschreven placeholder
+      telt nu als "niet ingesteld" (zelfde voor `SESSION_SECRET`, uit voorzorg, al niet expliciet
+      gemeld); (2) de MQTT-reconnect-fix uit ronde 1 werkte niet ná een geslaagde verbinding —
+      `mqtt.js` zette een "afgehandeld"-vlag permanent op `true` zodra 'm ooit gelukt was, waardoor
+      een latere verbindingsdrop (broker-herstart, netwerkstoring) nooit meer tot een nieuwe poging
+      leidde en de statusstip stil "verbonden"/groen bleef tonen met bevroren data — vlag wordt nu
+      per verbindingspoging teruggezet, geverifieerd met een echte mosquitto-herstart tijdens een
+      actieve verbinding (stip viel binnen 4s terug naar "niet verbonden" en herstelde zichzelf 3s
+      later, zonder page-reload); (3) de sessiecookie's `secure`-vlag hing af van een globale
+      `PUBLIC_DOMEIN`-schakelaar i.p.v. het daadwerkelijke protocol van de binnenkomende request —
+      nu gebaseerd op `req.secure` (via `req.sessionOptions`, cookie-session's per-request
+      cookie-optiehaak), geverifieerd dat zowel een gewone HTTP-request (geen `secure`-vlag, geen
+      loginloop) als een gesimuleerde `X-Forwarded-Proto: https`-request (wél `secure`-vlag) correct
+      werken; (4) Grafana's ntfy-webhook (`/api/notificaties/grafana-webhook`) kreeg sinds de
+      login-laag 401 — een eerder afgerond item (het ntfy-notificatiekanaal) stond daardoor
+      stilzwijgend stil. Grafana authenticeert die aanroep nu met `INTERNAL_API_TOKEN` via
+      `Authorization: Bearer` (contact-point-provisioning uitgebreid met
+      `authorization_scheme`/`authorization_credentials`), geverifieerd met een echt bericht dat op
+      een test-ntfy.sh-topic aankwam. Niet-blokkerende hardeningspunten uit hetzelfde ticket ook
+      meegenomen: `NODE_ENV=production` + een generieke laatste error-handler (geen stacktraces
+      meer), `/mqtt/`-varianten met trailing slash/extra pad-segment vallen nu ook onder de
+      auth-gate, en de README-firewall-paragraaf is bijgewerkt naar de huidige poortsituatie. Zie
+      [specs/vervolgticket-toegang-van-buitenaf-ronde2.md]
+      (specs/vervolgticket-toegang-van-buitenaf-ronde2.md).
+      **Scope-inperking (6 augustus 2026)**: Mike koos ervoor de Caddy-TLS/reverse-proxy-wrapper (de
+      publieke-internet-uitrol-laag, `--profile publiek`) weer te verwijderen i.p.v. de resterende
+      publiek-bereikbaarheid-vraag open te laten — deze instance hoeft voorlopig niet vanaf het
+      publieke internet bereikbaar te zijn, simpeler dan wachten tot dat wél verantwoord is.
+      Uitgevoerd conform
+      [specs/caddy-wrapper-verwijderen-plan.md](specs/caddy-wrapper-verwijderen-plan.md): de
+      `caddy`-service + `caddy/`-map + `PUBLIC_DOMEIN`-env-var volledig verwijderd. De
+      `req.secure`/cookie-logica uit ronde 2 blijft ongewijzigd correct (een rechtstreekse
+      HTTP-request op 8080 heeft nu gewoon nooit een `X-Forwarded-Proto`-header, dus nooit een
+      secure-only-cookie). Bij het uitvoeren bleek `trust proxy` (aangeraden te laten staan in het
+      plan) zónder een echte reverse-proxy ervoor de IP-rate-limiters juist actief omzeilbaar te
+      maken via een vervalste `X-Forwarded-For`-header — als afwijking van het plan daarom
+      helemaal uitgezet i.p.v. aangehouden (`req.secure` blijft zonder `trust proxy` gewoon correct
+      `false` voor deze lokale opstelling). De rest van dit item (login-laag, accounts, beveiligde
+      MQTT-proxy, HQ-Locaties) blijft gewoon staan, dat is ook lokaal-netwerk-only nuttig.
       **Login + accounts**: `cookie-session` (signed+encrypted cookie, geen server-side
       sessieopslag), wachtwoorden gehashed met `bcryptjs`. Eerste-opstart maakt automatisch één
       admin-account aan (wachtwoord eenmalig in de container-log). Nieuwe "Accounts"-sectie in
@@ -96,17 +135,15 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       sessie-gebonden ticket (`/api/mqtt-ticket`) dat de upgrade valideert vóór 'ie wordt doorgezet.
       Loste meteen ook de bestaande adresdetectie-bug op: geen handmatig in te vullen broker-host/
       -poort meer, `mqtt.js`/`kaststatus.js` verbinden automatisch. De testmodus-`simulator` (die
-      geen browser-sessie heeft) authenticeert zichzelf met een gedeeld `INTERNAL_API_TOKEN`.
+      geen browser-sessie heeft) authenticeert zichzelf met een gedeeld `INTERNAL_API_TOKEN` —
+      hetzelfde token wordt sinds ronde 2 ook door Grafana's ntfy-webhook gebruikt.
       **HQ-Locaties-pagina**: nieuwe subtab onder Rapportages — een handmatige locatielijst
       (naam + URL) met live statuskaarten (kasten-aantal, aantal amber/rood, "Beheer openen"-link
       naar de volledige app van die locatie). Elke locatie-instance krijgt een nieuw, publiek
       (ongeauthenticeerd, geeft alleen tellingen terug) `/api/hq-status`-endpoint; de HQ-instance
       haalt dat server-naar-server op per bekende locatie, met een timeout per locatie zodat één
-      onbereikbare locatie de rest niet blokkeert (toont dan een grijze "offline"-kaart).
-      **TLS/reverse-proxy**: nieuwe, optionele `caddy`-service (alleen gestart met
-      `docker compose --profile publiek up -d`, lokaal ontwikkelen blijft gewoon op
-      `http://localhost:8080`) — automatische Let's Encrypt-certificaten via een `PUBLIC_DOMEIN`-
-      env-var, websocket-upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config.
+      onbereikbare locatie de rest niet blokkeert (toont dan een grijze "offline"-kaart). Werkt
+      zolang de HQ-instance en de locatie-instances op hetzelfde netwerk/VPN zitten.
       Zie event_dashboard.md voor de volledige featurebeschrijving.
 - [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete

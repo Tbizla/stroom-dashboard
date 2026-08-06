@@ -10,6 +10,11 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
 
+// letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
+// env-var (SESSION_SECRET/INTERNAL_API_TOKEN) — een installatie die 'm per ongeluk laat staan mag
+// 'm nooit als een echt geheim gebruiken (zie vervolgticket-toegang-van-buitenaf-ronde2.md §1)
+const ENV_PLACEHOLDER = 'kies-een-lange-random-string';
+
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
 const INSTELLINGEN_FILE = path.join(DATA_DIR, 'instellingen.json');
@@ -78,9 +83,15 @@ const app = express();
 // zelf ook een hoofdletterongevoelige vergelijking (de kern van de fix), dit is een tweede,
 // onafhankelijke laag die dezelfde klasse fouten voorkomt op Express-routeringsniveau.
 app.set('case sensitive routing', true);
-// vervolgticket-toegang-van-buitenaf.md §3: laat Express de X-Forwarded-Proto-header van Caddy
-// vertrouwen (nodig voor de secure-cookie-vlag hieronder) — harmless zonder reverse-proxy ervoor.
-app.set('trust proxy', 1);
+// GEEN `trust proxy` (bewust, afwijking van specs/caddy-wrapper-verwijderen-plan.md, dat aanraadde
+// 'm gewoon te laten staan): sinds de Caddy-reverse-proxy verwijderd is, staat er geen enkele
+// vertrouwde hop meer vóór deze instance — `trust proxy` zou dan de X-Forwarded-For-header van
+// iedere binnenkomende request blind vertrouwen, waarmee loginLimiter/hqStatusLimiter hieronder
+// (per-IP) door gewoon een vervalste header mee te sturen volledig te omzeilen zijn (niet "in
+// theorie", gewoon direct). Zonder `trust proxy` is `req.secure` altijd `false` voor deze puur
+// lokale/LAN-opstelling (geen TLS-terminatie op deze instance zelf) — precies correct voor de
+// secure-cookie-vlag hierbeneden. Komt er ooit weer een reverse-proxy voor terug, dan hoort deze
+// instelling (en een expliciete vertrouwde-hop-count, niet blind `1`) samen daarmee terug te komen.
 app.use(express.json());
 // tijdens actieve ontwikkeling wordt index.html regelmatig aangepast; zonder no-store kan de browser
 // een oude versie blijven hergebruiken (ook na een gewone F5) totdat er een harde refresh gebeurt,
@@ -103,7 +114,15 @@ const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
 // als het admin-wachtwoord hieronder), zodat sessies daarna consistent ondertekend blijven.
 const SESSION_SECRET_FILE = path.join(DATA_DIR, 'session_secret.txt');
 function bepaalSessionSecret() {
-  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  // vervolgticket-toegang-van-buitenaf-ronde2.md §1: dezelfde placeholder-klasse-bug als
+  // INTERNAL_API_TOKEN was hier ook mogelijk (.env.example gebruikt letterlijk dezelfde
+  // placeholder-tekst voor beide) — een niet-overschreven placeholder telt hier als "niet
+  // ingesteld", zodat er alsnog een echt willekeurig secret gegenereerd wordt.
+  if (process.env.SESSION_SECRET === ENV_PLACEHOLDER) {
+    console.warn('SESSION_SECRET staat nog op de placeholder-waarde uit .env.example — genegeerd, er wordt automatisch een eigen secret gegenereerd.');
+  } else if (process.env.SESSION_SECRET) {
+    return process.env.SESSION_SECRET;
+  }
   if (fs.existsSync(SESSION_SECRET_FILE)) return fs.readFileSync(SESSION_SECRET_FILE, 'utf8').trim();
   const gegenereerd = crypto.randomBytes(48).toString('hex');
   fs.writeFileSync(SESSION_SECRET_FILE, gegenereerd, 'utf8');
@@ -119,12 +138,25 @@ app.use(cookieSession({
   // vanaf de camera-app, geen cross-site POST) de cookie gewoon meesturen
   maxAge: 30 * 24 * 3600 * 1000,
   sameSite: 'lax',
-  // vervolgticket-toegang-van-buitenaf.md §3: secure-only zodra PUBLIC_DOMEIN ingesteld is (dan
-  // draait de stack achter Caddy/TLS, zie caddy/Caddyfile) — statisch altijd `true` zou de gewone
-  // lokale ontwikkelworkflow (rechtstreeks op http://localhost:8080, geen Caddy ertussen) breken:
-  // een browser bewaart een Secure-cookie niet over gewoon HTTP.
-  secure: !!process.env.PUBLIC_DOMEIN,
+  // vervolgticket-toegang-van-buitenaf-ronde2.md §3: NIET statisch aan PUBLIC_DOMEIN koppelen —
+  // zodra die env-var gezet is (publieke Caddy-uitrol), kreeg een crew-telefoon die gewoon
+  // rechtstreeks via http://<lan-ip>:8080 verbindt (nog steeds de bedoeling op het festivalnetwerk,
+  // zie ports-comment bij de webapp-service in docker-compose.yml) nooit een Set-Cookie: inloggen
+  // "lukte", maar zonder cookie bleef /api/session 401'en en stuurde de frontend eindeloos terug
+  // naar het loginscherm. `secure` wordt hieronder per-request overschreven (zie
+  // req.sessionOptions hieronder) i.p.v. hier statisch vastgezet.
+  secure: false,
 }));
+
+// cookie-session bewaart de cookie-opties per request in req.sessionOptions (een fresh
+// Object.create(opts) per binnenkomende request — zie node_modules/cookie-session/index.js) en
+// leest die pas uit bij het daadwerkelijk zetten van de Set-Cookie-header, ná de hele
+// middleware-/route-keten. Dat maakt dit de officiële manier om `secure` per request dynamisch te
+// bepalen i.p.v. één keer statisch bij het opzetten van de middleware: zonder `trust proxy`
+// (hierboven, bewust uit sinds de Caddy-verwijdering) is `req.secure` altijd `false` voor deze
+// lokale/LAN-opstelling — komt er ooit weer een reverse-proxy voor terug, dan volgt `req.secure`
+// automatisch weer diens `X-Forwarded-Proto`-header, zonder dat deze regel hoeft te wijzigen.
+app.use((req, res, next) => { req.sessionOptions.secure = req.secure; next(); });
 
 function readAccounts() {
   if (!fs.existsSync(ACCOUNTS_FILE)) return [];
@@ -196,21 +228,41 @@ app.get('/api/session', (req, res) => {
 // (index.html/JS/CSS, hierboven al geregistreerd) blijven bewust ongegate'd: de frontend blokkeert
 // zelf de UI (zie auth.js) tot een sessie bevestigd is, en er staat toch geen gevoelige data in de
 // JS-bundle zelf.
-// Ook een geldig X-Internal-Token-header telt als geauthenticeerd — nodig voor de `simulator`-
-// service (alleen aanwezig in testmodus, --profile test), die zonder browser-sessie /api/topology
-// en /api/simulator/status polt. Zelfde soort service-secret-patroon als INFLUX_TOKEN/
-// GRAFANA_REPORT_TOKEN hierboven, i.p.v. dit endpoint voor iedereen publiek te laten.
+// Ook een geldig X-Internal-Token- (simulator) of "Authorization: Bearer <token>"-header
+// (Grafana's webhook-contact-point, zie GRAFANA_CONTACTPOINT_UIDS.ntfy hieronder) telt als
+// geauthenticeerd — beide zijn machine-naar-machine-aanroepen zonder browser-sessie. Zelfde soort
+// service-secret-patroon als INFLUX_TOKEN/GRAFANA_REPORT_TOKEN hierboven, i.p.v. deze endpoints
+// voor iedereen publiek te laten.
 // vervolgticket-toegang-van-buitenaf.md §1 (kritiek): req.path hierbeneden expliciet lowercasen
 // vóór elke vergelijking — Express routeert standaard case-insensitive (`/API/topology` matchte
 // eerst wél de handler maar niet deze startsWith-check, een volledige bypass van de hele login-laag,
 // zie ook `case sensitive routing` hierboven als tweede, onafhankelijke hardeningslaag).
+// vervolgticket-toegang-van-buitenaf-ronde2.md §1 (kritiek): .env.example levert een placeholder-
+// waarde voor INTERNAL_API_TOKEN — een installatie die 'm niet overschrijft, geeft anders een
+// publiek-in-de-repo-bekende bypass-waarde weg. Die placeholder wordt hieronder als "niet
+// ingesteld" behandeld (bypass staat dan gewoon uit, net als wanneer de variabele leeg is), i.p.v.
+// hem te accepteren. Bewust GEEN test-modus-only-beperking (wat het ticket ook oppert): dit token
+// wordt sinds §4 ook gebruikt door Grafana's eigen ntfy-webhook, die net zo goed buiten testmodus
+// (een echt evenement) moet werken.
 const AUTH_UITGEZONDERD = new Set(['/api/login', '/api/logout', '/api/session', '/api/hq-status']);
-const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN || '';
+const INTERNAL_API_TOKEN_RAW = process.env.INTERNAL_API_TOKEN || '';
+if (INTERNAL_API_TOKEN_RAW === ENV_PLACEHOLDER) {
+  console.warn('INTERNAL_API_TOKEN staat nog op de placeholder-waarde uit .env.example — genegeerd. ' +
+    'Simulator (testmodus) en de ntfy-Grafana-koppeling werken hierdoor niet totdat je in .env een eigen random string invult.');
+}
+const INTERNAL_API_TOKEN = INTERNAL_API_TOKEN_RAW && INTERNAL_API_TOKEN_RAW !== ENV_PLACEHOLDER ? INTERNAL_API_TOKEN_RAW : '';
+function heeftGeldigInternToken(req) {
+  if (!INTERNAL_API_TOKEN) return false;
+  if (req.get('X-Internal-Token') === INTERNAL_API_TOKEN) return true;
+  return req.get('Authorization') === 'Bearer ' + INTERNAL_API_TOKEN;
+}
 app.use((req, res, next) => {
   const pad = req.path.toLowerCase();
-  const gevoeligPad = pad.startsWith('/api/') || pad === '/mqtt';
+  // ronde2 §5: /mqtt zelf mount als prefix (createProxyMiddleware), dus ook een trailing-slash-
+  // of extra-segment-variant (/mqtt/, /mqtt/foo) hoort hier als gevoelig pad te gelden
+  const gevoeligPad = pad.startsWith('/api/') || pad === '/mqtt' || pad.startsWith('/mqtt/');
   if (!gevoeligPad || AUTH_UITGEZONDERD.has(pad) || pad.startsWith('/api/i18n/')) return next();
-  if (INTERNAL_API_TOKEN && req.get('X-Internal-Token') === INTERNAL_API_TOKEN) return next();
+  if (heeftGeldigInternToken(req)) return next();
   if (!req.session || !req.session.accountId || !readAccounts().some((a) => a.id === req.session.accountId)) {
     return res.status(401).json({ error: 'niet ingelogd' });
   }
@@ -661,7 +713,22 @@ function grafanaContactPointBody(kanaal, cfg) {
   if (kanaal === 'telegram') return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'telegram', settings: { bottoken: cfg.bot_token, chatid: cfg.chat_id } };
   if (kanaal === 'pushover') return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'pushover', settings: { apiToken: cfg.api_token, userKey: cfg.user_key } };
   if (kanaal === 'email') return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'email', settings: { addresses: cfg.ontvangers.split(',').map((s) => s.trim()).filter(Boolean).join(';') } };
-  return { uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'webhook', settings: { url: 'http://webapp:8080/api/notificaties/grafana-webhook', httpMethod: 'POST' } };
+  // vervolgticket-toegang-van-buitenaf-ronde2.md §4: deze webhook is een container-naar-container-
+  // aanroep zonder browser-sessie, dus staat (terecht) niet in AUTH_UITGEZONDERD — Grafana moet zich
+  // legitimeren met hetzelfde INTERNAL_API_TOKEN als de simulator, via Grafana's eigen
+  // authorization_scheme/authorization_credentials-velden (zet de Authorization-header, zie
+  // heeftGeldigInternToken() hierboven). Leeg als INTERNAL_API_TOKEN niet ingesteld is — de webhook
+  // krijgt dan gewoon een 401 totdat dat alsnog gebeurt (zie de waarschuwing in de provisioning-lus
+  // hieronder).
+  return {
+    uid, name: GRAFANA_CONTACTPOINT_NAAM, type: 'webhook',
+    settings: {
+      url: 'http://webapp:8080/api/notificaties/grafana-webhook',
+      httpMethod: 'POST',
+      authorization_scheme: 'Bearer',
+      authorization_credentials: INTERNAL_API_TOKEN,
+    },
+  };
 }
 
 // Best effort: als Grafana niet bereikbaar is of het admin-wachtwoord ontbreekt, faalt het
@@ -679,6 +746,9 @@ async function provisionGrafanaContactPoints(notificaties) {
   for (const kanaal of Object.keys(GRAFANA_CONTACTPOINT_UIDS)) {
     const cfg = notificaties[kanaal];
     if (!cfg || !cfg.aan) continue;
+    if (kanaal === 'ntfy' && !INTERNAL_API_TOKEN) {
+      fouten.push('ntfy: INTERNAL_API_TOKEN is niet ingesteld (of staat nog op de .env.example-placeholder) — Grafana kan zich niet bij de webhook legitimeren, alerts komen niet aan totdat dat opgelost is');
+    }
     const uid = GRAFANA_CONTACTPOINT_UIDS[kanaal];
     try {
       const body = grafanaContactPointBody(kanaal, cfg);
@@ -2600,6 +2670,15 @@ app.get('/api/backup/automatisch/status', (req, res) => res.json(autoBackupStatu
 // enige poort. mosquitto zelf blijft dus `allow_anonymous true` (veilig: niet meer extern bereikbaar).
 const mqttProxy = createProxyMiddleware({ target: 'ws://mosquitto:9001', ws: true, changeOrigin: true });
 app.use('/mqtt', mqttProxy);
+
+// vervolgticket-toegang-van-buitenaf-ronde2.md §5: generieke laatste error-handler, nooit een
+// stacktrace/foutdetail teruggeven — vult NODE_ENV=production (Dockerfile) aan als een tweede,
+// onafhankelijke laag (bijv. voor wie de webapp buiten die Dockerfile om start). Bevestigd
+// triggerbaar vóór de auth-gate via een kapotte JSON-body (express.json() draait eerder).
+app.use((err, req, res, next) => {
+  console.error('onverwachte serverfout:', err);
+  res.status(err.status || 500).json({ error: 'er ging iets mis op de server' });
+});
 
 const PORT = process.env.PORT || 8080;
 const HOST_LAN_IP = process.env.HOST_LAN_IP || '';
