@@ -83,15 +83,14 @@ const app = express();
 // zelf ook een hoofdletterongevoelige vergelijking (de kern van de fix), dit is een tweede,
 // onafhankelijke laag die dezelfde klasse fouten voorkomt op Express-routeringsniveau.
 app.set('case sensitive routing', true);
-// GEEN `trust proxy` (bewust, afwijking van specs/caddy-wrapper-verwijderen-plan.md, dat aanraadde
-// 'm gewoon te laten staan): sinds de Caddy-reverse-proxy verwijderd is, staat er geen enkele
-// vertrouwde hop meer vóór deze instance — `trust proxy` zou dan de X-Forwarded-For-header van
-// iedere binnenkomende request blind vertrouwen, waarmee loginLimiter/hqStatusLimiter hieronder
-// (per-IP) door gewoon een vervalste header mee te sturen volledig te omzeilen zijn (niet "in
-// theorie", gewoon direct). Zonder `trust proxy` is `req.secure` altijd `false` voor deze puur
-// lokale/LAN-opstelling (geen TLS-terminatie op deze instance zelf) — precies correct voor de
-// secure-cookie-vlag hierbeneden. Komt er ooit weer een reverse-proxy voor terug, dan hoort deze
-// instelling (en een expliciete vertrouwde-hop-count, niet blind `1`) samen daarmee terug te komen.
+// specs/caddy-herstel-plan.md: `trust proxy` staat weer aan — Caddy (caddy/Caddyfile) is de enige
+// vertrouwde hop vóór deze instance en zet X-Forwarded-Proto/-For zelf correct, dus geen risico
+// meer dat een cliënt die header zelf vervalst (dat risico gold kortstondig tijdens de per-ongeluk
+// verwijderde Caddy-periode, zie git-geschiedenis rond commits f567e17/a13b913 — zónder een echte
+// proxy ervoor maakte `trust proxy` de IP-rate-limiters hieronder actief omzeilbaar). Nodig voor de
+// secure-cookie-vlag hieronder (via req.secure, zie de comment daar) en voor correcte client-IP's
+// bij de rate-limiters wanneer verkeer via Caddy binnenkomt.
+app.set('trust proxy', 1);
 app.use(express.json());
 // tijdens actieve ontwikkeling wordt index.html regelmatig aangepast; zonder no-store kan de browser
 // een oude versie blijven hergebruiken (ook na een gewone F5) totdat er een harde refresh gebeurt,
@@ -152,10 +151,10 @@ app.use(cookieSession({
 // Object.create(opts) per binnenkomende request — zie node_modules/cookie-session/index.js) en
 // leest die pas uit bij het daadwerkelijk zetten van de Set-Cookie-header, ná de hele
 // middleware-/route-keten. Dat maakt dit de officiële manier om `secure` per request dynamisch te
-// bepalen i.p.v. één keer statisch bij het opzetten van de middleware: zonder `trust proxy`
-// (hierboven, bewust uit sinds de Caddy-verwijdering) is `req.secure` altijd `false` voor deze
-// lokale/LAN-opstelling — komt er ooit weer een reverse-proxy voor terug, dan volgt `req.secure`
-// automatisch weer diens `X-Forwarded-Proto`-header, zonder dat deze regel hoeft te wijzigen.
+// bepalen i.p.v. één keer statisch bij het opzetten van de middleware: `req.secure` volgt met
+// `trust proxy` (hierboven) correct Caddy's `X-Forwarded-Proto`-header als die er is, en is anders
+// gewoon `false` voor een rechtstreekse HTTP-request op 8080 — dus altijd correct, voor beide
+// toegangswegen tegelijk, zonder een globale PUBLIC_DOMEIN-aan/uit-schakelaar.
 app.use((req, res, next) => { req.sessionOptions.secure = req.secure; next(); });
 
 function readAccounts() {

@@ -52,8 +52,9 @@ nog niet eerder gebruikte machine.)
    enige adres dat crew nodig heeft (incl. QR-code-deeplinks). Poort 3000 (Grafana) en 8086
    (InfluxDB) zijn alleen nodig als je die rechtstreeks wilt benaderen (dashboards bewerken,
    directe queries); MQTT (1883/9001) is sinds de login-laag niet meer naar de host gepubliceerd —
-   die loopt altijd via de webapp's eigen `/mqtt`-proxy. Deze stack is niet bedoeld om publiek
-   (internet) open te zetten — alleen het lokale festivalnetwerk.
+   die loopt altijd via de webapp's eigen `/mqtt`-proxy. Wil je deze instance ook van buiten het
+   lokale netwerk (internet) bereikbaar maken, zie §15 — dat vraagt om een aparte, bewuste firewall-
+   afweging, niet zomaar alle poorten open naar internet.
 4. **Code ophalen**:
    ```
    git clone <repo-url>
@@ -315,3 +316,42 @@ voor de app):
 
 Nieuwe/nog niet eerder gebruikte instances hebben niets van het bovenstaande nodig — die krijgen
 `site` gewoon vanaf de eerste opstart.
+
+## 15. Toegang van buitenaf (HQ meekijken/beheren via internet)
+
+Standaard is deze stack alleen bedoeld voor het lokale festivalnetwerk (`http://<lan-ip>:8080`,
+achter een login-verplichting, zie §1 punt 3). Wil je dat een HQ-locatie ook via internet kan
+meekijken (specs/toegang-van-buitenaf-diagnose.md), dan komt daar één extra service bij: `caddy`,
+die TLS-terminatie + reverse-proxy naar de webapp verzorgt.
+
+1. **DNS**: een domein/subdomein dat al naar het publieke IP van deze machine wijst (nodig vóórdat
+   Caddy een Let's Encrypt-certificaat kan aanvragen).
+2. **`.env`**: vul `PUBLIC_DOMEIN` in (bijv. `nieuwehaven.stroomdash.nl`) en zorg dat
+   `SESSION_SECRET`/`INTERNAL_API_TOKEN` allebei een eigen, echte random string hebben — niet de
+   placeholder uit `.env.example` laten staan (de webapp weigert die expliciet en logt daar een
+   waarschuwing over; zie vervolgticket-toegang-van-buitenaf-ronde2.md §1).
+3. **Starten met de `publiek`-profile erbij**:
+   ```
+   docker compose --profile publiek up -d --build
+   ```
+   (te combineren met `--profile test` tijdens het droogtesten). Poorten 80/443 gaan open voor
+   Caddy; poort 8080 blijft ook gewoon gepubliceerd (nodig voor het bestaande lokale/LAN-gebruik,
+   zie §1 punt 3) — dat is bewust, compose kan een poort niet conditioneel per profile
+   dicht/openzetten.
+4. **Firewall op deze machine/router regelen** (buiten Docker/compose om, dus hier niet
+   automatisch afgedwongen):
+   - Poort 8080 **niet** vanaf het publieke internet routeren — alleen via 80/443 (Caddy) naar
+     buiten, 8080 blijft alléén voor het lokale netwerk. Rechtstreekse toegang tot 8080 omzeilt TLS;
+     de IP-gebaseerde rate-limiters op `/api/login`/`/api/hq-status` blijven wél correct werken
+     (`trust proxy` vertrouwt specifiek Caddy als enige hop, geen vervalsbare header via een
+     rechtstreekse 8080-verbinding).
+   - Poorten 3000 (Grafana) en 8086 (InfluxDB) horen **niet** naar het publieke internet open te
+     staan — die hebben geen eigen rate-limiting/hardening tegen internet-blootstelling en zijn
+     niet nodig voor de HQ-Locaties-/Live-functionaliteit (die loopt via de webapp zelf). Alleen
+     lokaal netwerk, net als vóór deze feature.
+5. Elke locatie-instance krijgt zijn eigen Caddy/`PUBLIC_DOMEIN` in dezelfde stack — er is geen
+   gedeelde HQ-infrastructuur; "Beheer openen" vanaf de HQ-Locaties-pagina (Rapportages-tabblad)
+   opent gewoon het eigen loginscherm van die andere instance.
+
+Lokaal ontwikkelen/testen blijft altijd gewoon rechtstreeks op `http://localhost:8080` — zonder
+`--profile publiek` draait Caddy niet mee en verandert er niets aan de bestaande workflow.

@@ -73,10 +73,14 @@ zetten zonder code aan te passen.
   `.env.example` wordt genegeerd (telt als "niet ingesteld") i.p.v. als geldig geheim geaccepteerd
 - `NODE_ENV=production` staat aan (plus een generieke laatste error-handler) zodat een fout nooit
   een stacktrace met serverpaden teruggeeft
+- **TLS/reverse-proxy**: optionele `caddy`-service (alleen gestart met
+  `docker compose --profile publiek up -d`, lokaal ontwikkelen blijft gewoon op
+  `http://localhost:8080`) voor als deze locatie-instance ook over het publieke internet bereikbaar
+  moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld `PUBLIC_DOMEIN`, websocket-
+  upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config. De sessiecookie wordt
+  automatisch `secure`-only zodra verkeer via Caddy binnenkomt (volgt `req.secure`)
 - **Nog niet gebouwd**: rol-onderscheid tussen accounts (alle accounts hebben nu gelijke, volledige
-  rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten"). Publieke/internet-bereikbaarheid
-  (TLS/reverse-proxy) is bewust geen onderdeel meer van deze feature (zie
-  specs/caddy-wrapper-verwijderen-plan.md) — deze stack is en blijft voorlopig lokaal-netwerk-only
+  rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten")
 
 **Topologiebeheer (Beheer-tabblad)**
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,

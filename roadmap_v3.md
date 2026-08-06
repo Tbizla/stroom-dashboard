@@ -57,11 +57,38 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       voorbeeldlogo ([specs/assets/captain-power-logo-voorbeeld.svg]
       (specs/assets/captain-power-logo-voorbeeld.svg)): past nog prima naast de modeswitch, geen
       omslag van de header-rij.
-- [x] **Toegang van buitenaf (HQ meekijken).** Afgerond — gebouwd conform
-      [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md) en het
-      technische implementatieplan daar bovenop, daarna twee code-review-rondes volledig gefixt en
-      hertest, plus een scope-inperking (Caddy/publieke-internet-laag weer verwijderd) waardoor dit
-      nu een puur lokaal-netwerk-only feature is — precies wat "klaar" betekent voor die scope.
+- [x] **Toegang van buitenaf (HQ meekijken).** Afgerond — login-laag, accounts, beveiligde
+      MQTT-proxy, HQ-Locaties-pagina én de Caddy-TLS/reverse-proxy-laag staan allemaal, over drie
+      ticketrondes grondig gefixt en (na het Caddy-herstel hieronder) opnieuw end-to-end getest.
+      **Correctie (6 augustus 2026)**: de eerdere "scope-inperking" die hier stond — Caddy/de
+      publieke-internet-laag weer verwijderen — bleek op een misverstand te berusten. Mike's
+      verzoek "de wrapper die om de docker heen zit weg halen" sloeg op `start.sh` (het
+      LAN-IP-detectiescriptje), niet op Caddy; publieke bereikbaarheid moet gewoon beschikbaar
+      blijven. De verwijdering (commits `f567e17`/`a13b913`) is teruggedraaid conform
+      [specs/caddy-herstel-plan.md](specs/caddy-herstel-plan.md), met behoud van de legitieme
+      ronde-2-productiefixes die in diezelfde commits zaten (die hoefden niet te wijzigen, zie
+      hieronder). `trust proxy` staat weer aan (terecht: Caddy is de enige, vertrouwde hop ervoor).
+      Bij het herstellen bleek een **nieuwe bug** (nooit eerder end-to-end getest, want dat kon pas
+      nadat de service ooit echt draaide): `docker-compose.yml` zette `PUBLIC_DOMEIN` altijd als
+      env-var op de `caddy`-service, ook leeg — Caddy's eigen `{$PUBLIC_DOMEIN:localhost}`-fallback
+      in `caddy/Caddyfile` valt alleen terug op de default als de variabele volledig ontbreekt, niet
+      als 'm leeg-maar-gezet is, dus zonder een ingevuld `PUBLIC_DOMEIN` in `.env` crashte Caddy in
+      een restart-loop ("unrecognized global option: reverse_proxy" — een lege site-adres-regel werd
+      als het globale-opties-blok geparsed). Gefixt door de default op compose-niveau te leggen
+      (`PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-localhost}`). Geverifieerd met een echte
+      `docker compose --profile publiek up -d`: Caddy start en blijft stabiel draaien (self-signed
+      "localhost"-certificaat zonder een echt `PUBLIC_DOMEIN`), `https://localhost` proxied correct
+      naar de webapp, inloggen via Caddy geeft een `secure`-cookie terwijl rechtstreeks inloggen op
+      `http://localhost:8080` tegelijkertijd een niet-secure cookie blijft geven (beide toegangswegen
+      werken naast elkaar), een vervalste `X-Forwarded-For` via Caddy heeft geen effect op de
+      rate-limiters (alleen Caddy's eigen, correcte hop wordt vertrouwd), de MQTT-websocket-upgrade
+      komt door Caddy heen tot aan de ticket-check in `server.js`, en de volledige regressietest
+      (alle tabbladen) slaagt met Caddy actief. De eerdere "derde reviewronde"/productie-
+      gereedheidsconclusie ging uit van de (onterechte) lokaal-netwerk-only-scope — zie
+      [specs/productie-gereedheid-analyse-toegang-van-buitenaf.md]
+      (specs/productie-gereedheid-analyse-toegang-van-buitenaf.md) voor die (deels achterhaalde)
+      analyse; met Caddy nu hersteld én opnieuw getest geldt de kernconclusie ("geen resterende
+      code-blokkers") weer, inclusief de publieke-bereikbaarheid-laag.
       **Eerste ticketronde** (6 augustus 2026) vond een **kritieke bug**: de login-laag was met een
       hoofdletter in het pad te omzeilen (`/API/...` matchte de route wél maar de auth-gate niet,
       Express routeert standaard case-insensitive) — zonder in te loggen was hiermee o.a. een
@@ -107,23 +134,18 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       auth-gate, en de README-firewall-paragraaf is bijgewerkt naar de huidige poortsituatie. Zie
       [specs/vervolgticket-toegang-van-buitenaf-ronde2.md]
       (specs/vervolgticket-toegang-van-buitenaf-ronde2.md).
-      **Scope-inperking (6 augustus 2026)**: Mike koos ervoor de Caddy-TLS/reverse-proxy-wrapper (de
-      publieke-internet-uitrol-laag, `--profile publiek`) weer te verwijderen i.p.v. de resterende
-      publiek-bereikbaarheid-vraag open te laten — deze instance hoeft voorlopig niet vanaf het
-      publieke internet bereikbaar te zijn, simpeler dan wachten tot dat wél verantwoord is.
-      Uitgevoerd conform
-      [specs/caddy-wrapper-verwijderen-plan.md](specs/caddy-wrapper-verwijderen-plan.md): de
-      `caddy`-service + `caddy/`-map + `PUBLIC_DOMEIN`-env-var volledig verwijderd. De
-      `req.secure`/cookie-logica uit ronde 2 blijft ongewijzigd correct (een rechtstreekse
-      HTTP-request op 8080 heeft nu gewoon nooit een `X-Forwarded-Proto`-header, dus nooit een
-      secure-only-cookie). Bij het uitvoeren bleek `trust proxy` (aangeraden te laten staan in het
-      plan) zónder een echte reverse-proxy ervoor de IP-rate-limiters juist actief omzeilbaar te
-      maken via een vervalste `X-Forwarded-For`-header — als afwijking van het plan daarom
-      helemaal uitgezet i.p.v. aangehouden (`req.secure` blijft zonder `trust proxy` gewoon correct
-      `false` voor deze lokale opstelling). De rest van dit item (login-laag, accounts, beveiligde
-      MQTT-proxy, HQ-Locaties) blijft gewoon staan, dat is ook lokaal-netwerk-only nuttig.
-      **Login + accounts**: `cookie-session` (signed+encrypted cookie, geen server-side
-      sessieopslag), wachtwoorden gehashed met `bcryptjs`. Eerste-opstart maakt automatisch één
+      **TLS/reverse-proxy**: optionele `caddy`-service (alleen gestart met
+      `docker compose --profile publiek up -d`, lokaal ontwikkelen blijft gewoon op
+      `http://localhost:8080`) voor als deze locatie-instance ook over het publieke internet
+      bereikbaar moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld
+      `PUBLIC_DOMEIN`, websocket-upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config.
+      `trust proxy` staat aan (`app.set('trust proxy', 1)`) — Caddy is de enige vertrouwde hop ervoor
+      en zet `X-Forwarded-Proto`/`-For` zelf correct, waardoor zowel de secure-cookie-vlag
+      (`req.secure`) als de IP-rate-limiters kloppen voor beide toegangswegen tegelijk (rechtstreeks
+      op :8080 en via Caddy op :443).
+      **Login + accounts**: `cookie-session` (signed cookie — alleen ondertekend, niet versleuteld;
+      de payload is enkel een account-id, geen geheim, dus leesbare base64 is geen lek — geen
+      server-side sessieopslag), wachtwoorden gehashed met `bcryptjs`. Eerste-opstart maakt automatisch één
       admin-account aan (wachtwoord eenmalig in de container-log). Nieuwe "Accounts"-sectie in
       Beheer (naam/e-mail/laatst-ingelogd, wachtwoord resetten, verwijderen — geen rol-onderscheid,
       dat is de latere "Rolverdeling/rechten"-stap). Login geldt voor de hele app zonder
@@ -144,7 +166,19 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       haalt dat server-naar-server op per bekende locatie, met een timeout per locatie zodat één
       onbereikbare locatie de rest niet blokkeert (toont dan een grijze "offline"-kaart). Werkt
       zolang de HQ-instance en de locatie-instances op hetzelfde netwerk/VPN zitten.
-      Zie event_dashboard.md voor de volledige featurebeschrijving.
+      **Derde reviewronde / Caddy-herstel (6 augustus 2026, "is dit klaar voor productie?")**:
+      de eerdere versie van deze conclusie ging uit van de (onterecht) verwijderde Caddy-laag
+      ("lokaal-netwerk-only" scope) — met Caddy hersteld (zie hierboven) is die scope niet meer van
+      toepassing, en is opnieuw end-to-end getest onder de juiste (Caddy-inclusief) scope: Caddy
+      start en blijft stabiel draaien, TLS-config is valide, secure-cookies werken correct via zowel
+      Caddy als het rechtstreekse LAN-pad, rate-limiters blijven correct (niet omzeilbaar via een
+      vervalste header), MQTT-websocket-upgrades komen door Caddy heen, en de volledige regressietest
+      slaagt. Geen resterende code-blokkers. De destijds gevonden deploy-aandachtspunten blijven
+      gelden (geen codewerk, wel niet vergeten bij het opzetten): `INTERNAL_API_TOKEN` invullen in
+      `.env`; na opstarten eenmalig Beheer → Alert-notificaties → "Wijzigingen doorvoeren" klikken
+      (dat is het moment waarop Grafana's ntfy-contact-point het `Authorization: Bearer`-token
+      krijgt); bouwen met `docker compose build`/`up --build`, niet alleen `up -d`. Zie
+      event_dashboard.md voor de volledige featurebeschrijving.
 - [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete
       "Heeft sensor"-checkbox naast het rating-veld in Beheer (generatorrij + ledentabel), en een
