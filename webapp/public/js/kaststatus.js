@@ -10,6 +10,7 @@ import { renderPins } from './render-pins.js';
 import { renderDetail, metingenHtml } from './render-detail.js';
 import { renderKastPopup } from './kastpopup.js';
 import { t } from './i18n.js';
+import { verbindMqtt } from './mqtt.js';
 
 const NAUW_SCHERM = '(max-width: 700px)';
 let actievePaginaKastId = null;
@@ -65,12 +66,8 @@ export function initKastStatusRoute(){
   document.querySelector('.app').style.display = 'none';
   document.getElementById('kastStatusPagina').style.display = 'block';
   render(kastId);
-  // automatisch verbinden: de kast-statuspagina heeft geen eigen "Verbind"-knop (dat hoort bij de
-  // verborgen .app-header), dus hergebruikt de bestaande MQTT-connect-flow programmatisch met het
-  // hostname-/poort-standaard-gedrag dat modes.js ook al voor de gewone Live-modus toepast
-  const hostInput = document.getElementById('brokerHost');
-  const portInput = document.getElementById('brokerPort');
-  hostInput.value = hostInput.value || location.hostname || 'localhost';
-  portInput.value = portInput.value || '9001';
-  document.getElementById('connectBtn').click();
+  // de kast-statuspagina heeft geen eigen header (dat zit in de verborgen .app), dus zelf de
+  // MQTT-verbinding opzetten — zelfde automatische same-origin-verbinding als modes.js voor de
+  // gewone Live-modus (zie mqtt.js: geen handmatige host/poort meer nodig)
+  verbindMqtt();
 }

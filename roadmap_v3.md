@@ -57,17 +57,36 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       voorbeeldlogo ([specs/assets/captain-power-logo-voorbeeld.svg]
       (specs/assets/captain-power-logo-voorbeeld.svg)): past nog prima naast de modeswitch, geen
       omslag van de header-rij.
-- [ ] **Toegang van buitenaf (HQ meekijken).** Diagnose afgerond, besluiten met Mike bevestigd
-      (losse accounts per persoon, HQ-pagina in een bestaande instance, handmatige locatielijst)
-      en **akkoord op de drie mockups ontvangen (3 augustus 2026)** — login-scherm,
-      HQ-locatiesoverzicht, accounts-beheerscherm, plus het technisch-fundament-sectie, staan nu
-      klaar voor Code, geen openstaande vraag meer. **Belangrijke bevinding (3 augustus 2026)**:
-      naast de login-laag (bevinding #1) is er een tweede blokkerende voorwaarde ontdekt — het
-      Live-tabblad gebruikt een apart, volledig onbeveiligd MQTT-websocketkanaal
-      (`allow_anonymous true`, geen auto-adresdetectie) dat een reverse-proxy naar de webapp
-      alleen niet afdekt. Groter technisch werk dan aanvankelijk gedacht, geen kleinste stapje
-      meer op de bouwvolgorde-lijst.
-      Zie [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md).
+- [x] **Toegang van buitenaf (HQ meekijken).** Afgerond — gebouwd conform
+      [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md) en het
+      technische implementatieplan daar bovenop. Beide blokkerende voorwaarden uit de diagnose
+      opgelost: een login-laag voor de hele app (bevinding #1) én de losse, onbeveiligde
+      MQTT-websocketverbinding (bevinding #2).
+      **Login + accounts**: `cookie-session` (signed+encrypted cookie, geen server-side
+      sessieopslag), wachtwoorden gehashed met `bcryptjs`. Eerste-opstart maakt automatisch één
+      admin-account aan (wachtwoord eenmalig in de container-log). Nieuwe "Accounts"-sectie in
+      Beheer (naam/e-mail/laatst-ingelogd, wachtwoord resetten, verwijderen — geen rol-onderscheid,
+      dat is de latere "Rolverdeling/rechten"-stap). Login geldt voor de hele app zonder
+      uitzondering, ook de QR-deeplink (`kaststatus.js` deelt dezelfde boot-gate). Accountnamen zijn
+      uniek (dat is de inlog-identifier).
+      **MQTT-websocketproxy**: mosquitto's poort is niet meer naar de host gepubliceerd (alleen nog
+      intern bereikbaar, net als InfluxDB/Grafana) — de browser verbindt altijd naar hetzelfde
+      origin als de webapp zelf (`/mqtt`), geproxied via `http-proxy-middleware` met een kortlevend,
+      sessie-gebonden ticket (`/api/mqtt-ticket`) dat de upgrade valideert vóór 'ie wordt doorgezet.
+      Loste meteen ook de bestaande adresdetectie-bug op: geen handmatig in te vullen broker-host/
+      -poort meer, `mqtt.js`/`kaststatus.js` verbinden automatisch. De testmodus-`simulator` (die
+      geen browser-sessie heeft) authenticeert zichzelf met een gedeeld `INTERNAL_API_TOKEN`.
+      **HQ-Locaties-pagina**: nieuwe subtab onder Rapportages — een handmatige locatielijst
+      (naam + URL) met live statuskaarten (kasten-aantal, aantal amber/rood, "Beheer openen"-link
+      naar de volledige app van die locatie). Elke locatie-instance krijgt een nieuw, publiek
+      (ongeauthenticeerd, geeft alleen tellingen terug) `/api/hq-status`-endpoint; de HQ-instance
+      haalt dat server-naar-server op per bekende locatie, met een timeout per locatie zodat één
+      onbereikbare locatie de rest niet blokkeert (toont dan een grijze "offline"-kaart).
+      **TLS/reverse-proxy**: nieuwe, optionele `caddy`-service (alleen gestart met
+      `docker compose --profile publiek up -d`, lokaal ontwikkelen blijft gewoon op
+      `http://localhost:8080`) — automatische Let's Encrypt-certificaten via een `PUBLIC_DOMEIN`-
+      env-var, websocket-upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config.
+      Zie event_dashboard.md voor de volledige featurebeschrijving.
 - [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete
       "Heeft sensor"-checkbox naast het rating-veld in Beheer (generatorrij + ledentabel), en een

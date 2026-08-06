@@ -44,6 +44,27 @@ zetten zonder code aan te passen.
 - Vertalingen zitten in platte dot-key JSON-bestanden (`webapp/i18n/nl.json`/`en.json`), gedeeld
   tussen de webapp-UI (client-fetch) en het PDF-rapport (server-`require`) — één bron van waarheid
 
+**Login & toegangsbeheer** — zie specs/toegang-van-buitenaf-diagnose.md
+- De hele app (elke pagina en elk `/api/*`-endpoint, inclusief de QR-code-deeplinks) zit achter een
+  inlogscherm — losse accounts per persoon, geen gedeeld wachtwoord. Sessie blijft staan tot
+  uitloggen (of een lange sessietermijn), geen steeds-opnieuw-inloggen tijdens een evenementdag
+- Nieuwe "Accounts"-sectie in Beheer: naam/e-mail/laatst-ingelogd per account, wachtwoord resetten,
+  verwijderen. Alleen een al-ingelogde editor kan een account aanmaken (geen publieke registratie);
+  het gegenereerde wachtwoord wordt eenmalig getoond, daarna nergens meer op te vragen (alleen te
+  resetten). Bij de allereerste opstart wordt automatisch één admin-account aangemaakt, met het
+  wachtwoord eenmalig in de container-log
+- Live-monitoring (MQTT) valt onder dezelfde login-laag: de browser verbindt niet meer rechtstreeks
+  met de MQTT-broker, maar via een eigen websocket-proxy op de webapp zelf (`/mqtt`), die een
+  sessie-gebonden ticket vereist vóór 'ie doorverbindt — de broker zelf is niet meer van buiten het
+  interne netwerk bereikbaar. Als bijvangst: geen handmatig in te vullen broker-host/-poort meer,
+  Live verbindt vanzelf naar het juiste adres, ook van buitenaf
+- Optionele `caddy`-service (TLS/reverse-proxy, alleen gestart met
+  `docker compose --profile publiek up -d`) voor als deze locatie-instance over het publieke
+  internet bereikbaar moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld domein.
+  Lokaal ontwikkelen/testen blijft gewoon rechtstreeks op `http://localhost:8080`
+- **Nog niet gebouwd**: rol-onderscheid tussen accounts (alle accounts hebben nu gelijke, volledige
+  rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten")
+
 **Topologiebeheer (Beheer-tabblad)**
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
   **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
@@ -370,7 +391,7 @@ zetten zonder code aan te passen.
   Topologiebeheer hierboven) blijft kloppen
 
 **Rapportages-tabblad** (vijfde tab in de mode-switch, met een altijd-zichtbare subnav:
-Overzicht/PDF-rapport — Back-up verhuisde naar Beheer, zie Topologiebeheer hierboven)
+Overzicht/PDF-rapport/Locaties — Back-up verhuisde naar Beheer, zie Topologiebeheer hierboven)
 
 *Overzicht-subtab* — eigen hoofddashboard binnen de webapp zelf, i.p.v. te moeten wisselen naar
 Grafana:
@@ -401,3 +422,15 @@ Grafana:
   vlak met icoon i.p.v. de vorige kale tekstregel). Rapport volgt standaard de UI-taal, met een
   eigen schuifknop (los van de header-taalkeuze) om de rapporttaal per generatie op NL of EN te
   zetten. Logo-embedding werkt alleen met een PNG-logo (BMP/SVG worden overgeslagen)
+
+*Locaties-subtab* (specs/toegang-van-buitenaf-diagnose.md, uitgangspunt "meerdere locaties tegelijk
+zien") — alleen zinvol als HQ-instance, maar staat in elke instance beschikbaar:
+- Handmatige locatielijst (naam + URL per locatie-instance) beheren — geen auto-discovery
+- Statuskaart per bekende locatie: groen/amber/rood-stip, aantal kasten, aantal amber/rood, en een
+  "Beheer openen"-link die de volledige app van die locatie opent (zelfde rechten als ter plekke,
+  geen aparte uitgeklede weergave — vraagt om een eigen login op die andere instance, geen
+  single-sign-on tussen instances). Een niet-bereikbare locatie toont een grijze "offline"-kaart
+  i.p.v. de hele pagina te laten hangen
+- Onder de motorkap: elke instance heeft een nieuw, publiek `/api/hq-status`-endpoint (geen login
+  nodig, geeft alleen tellingen terug) dat deze pagina server-naar-server ophaalt per bekende
+  locatie, met een timeout per locatie

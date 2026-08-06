@@ -5,6 +5,11 @@ const TOPOLOGY_URL = process.env.TOPOLOGY_URL || 'http://webapp:8080/api/topolog
 const STATUS_URL = process.env.SIMULATOR_STATUS_URL || 'http://webapp:8080/api/simulator/status';
 const INTERVAL_MS = parseInt(process.env.INTERVAL_MS || '5000', 10);
 const PIEK_KANS = parseFloat(process.env.PIEK_KANS || '0.01'); // kans per tik dat een kast een belastingspiek krijgt
+// specs/toegang-van-buitenaf-diagnose.md: de webapp's /api/*-laag zit sinds de login-laag achter
+// een sessie-gate — de simulator heeft geen browser-sessie, dus dit gedeelde service-secret
+// (zelfde soort patroon als INFLUX_TOKEN aan de webapp-kant) i.p.v. deze twee endpoints publiek te laten
+const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN || '';
+const INTERNE_HEADERS = INTERNAL_API_TOKEN ? { 'X-Internal-Token': INTERNAL_API_TOKEN } : {};
 
 function rand(min, max) { return min + Math.random() * (max - min); }
 function round1(n) { return Math.round(n * 10) / 10; }
@@ -13,7 +18,7 @@ function round2(n) { return Math.round(n * 100) / 100; }
 async function wachtOpTopologie() {
   while (true) {
     try {
-      const res = await fetch(TOPOLOGY_URL);
+      const res = await fetch(TOPOLOGY_URL, { headers: INTERNE_HEADERS });
       if (res.ok) {
         const data = await res.json();
         if (data.kasten && data.kasten.length) return data;
@@ -81,7 +86,7 @@ const NIET_LEAF_EIGEN_SCHAAL = 0.15;
 
 async function isIngeschakeld() {
   try {
-    const res = await fetch(STATUS_URL);
+    const res = await fetch(STATUS_URL, { headers: INTERNE_HEADERS });
     if (!res.ok) return false;
     const data = await res.json();
     return !!data.enabled;
@@ -125,7 +130,7 @@ async function main() {
   // testtopologie op het Testdata-tabblad) zonder dat de container herstart hoeft te worden
   setInterval(async () => {
     try {
-      const res = await fetch(TOPOLOGY_URL);
+      const res = await fetch(TOPOLOGY_URL, { headers: INTERNE_HEADERS });
       if (!res.ok) return;
       const data = await res.json();
       if (!data.kasten || !data.kasten.length) return;

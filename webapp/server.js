@@ -3,6 +3,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const dns = require('dns');
+const crypto = require('crypto');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
@@ -75,6 +77,249 @@ app.use(express.json());
 // een oude versie blijven hergebruiken (ook na een gewone F5) totdat er een harde refresh gebeurt,
 // wat verwarrend is bij het testen van fixes
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res) => res.set('Cache-Control', 'no-store') }));
+
+// ---------- Accounts + sessies (specs/toegang-van-buitenaf-diagnose.md): login-laag voor de hele
+// app. Losse accounts per persoon (geen gedeeld wachtwoord), wachtwoorden altijd gehashed
+// (bcryptjs — pure JS, geen native compile-stap nodig; webapp/Dockerfile heeft geen build-tools).
+// Sessie leeft in een signed+encrypted cookie (cookie-session), geen server-side sessieopslag nodig
+// — past bij de rest van deze app, die ook geen database heeft en alles in platte JSON-bestanden
+// in DATA_DIR bewaart. ----------
+const bcrypt = require('bcryptjs');
+const cookieSession = require('cookie-session');
+
+const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'onveilige-standaardwaarde-zet-SESSION_SECRET-in-.env';
+
+app.use(cookieSession({
+  name: 'stroomdash_sessie',
+  secret: SESSION_SECRET,
+  // crew werkt de hele dag door met de app en moet niet steeds opnieuw hoeven inloggen — 30 dagen
+  // overleeft ruim een heel evenement, `sameSite:'lax'` laat de QR-deeplink (een normale navigatie
+  // vanaf de camera-app, geen cross-site POST) de cookie gewoon meesturen
+  maxAge: 30 * 24 * 3600 * 1000,
+  sameSite: 'lax',
+}));
+
+function readAccounts() {
+  if (!fs.existsSync(ACCOUNTS_FILE)) return [];
+  return JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'));
+}
+function writeAccounts(data) { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+
+// leesbaar, willekeurig wachtwoord (bijv. "bK4-mQz9-Rvt2", zie de accounts-beheer-mockup) —
+// crypto.randomBytes i.p.v. Math.random, geen onderling verwarrende tekens (0/O/l/1) om
+// typefouten te voorkomen bij het handmatig overtikken/doorgeven van een gegenereerd wachtwoord
+const WACHTWOORD_ALFABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+function genereerWachtwoord() {
+  const groep = () => Array.from(crypto.randomBytes(4)).map((b) => WACHTWOORD_ALFABET[b % WACHTWOORD_ALFABET.length]).join('');
+  return [groep(), groep(), groep()].join('-');
+}
+
+// eerste-opstart-bootstrap: zonder dit is er geen kip-of-ei-uitweg — er bestaat bewust geen publiek
+// registratieformulier, alleen een al-ingelogde editor kan via het Accounts-scherm een account
+// aanmaken (zie specs/toegang-van-buitenaf-diagnose.md)
+if (readAccounts().length === 0) {
+  const wachtwoord = genereerWachtwoord();
+  writeAccounts([{
+    id: crypto.randomUUID(),
+    naam: 'admin',
+    email: '',
+    wachtwoord_hash: bcrypt.hashSync(wachtwoord, 10),
+    aangemaakt: new Date().toISOString(),
+    laatst_ingelogd: null,
+  }]);
+  console.log('Geen accounts gevonden — eerste admin-account aangemaakt:');
+  console.log('  gebruikersnaam: admin');
+  console.log('  wachtwoord:     ' + wachtwoord);
+  console.log('  (dit wordt maar één keer getoond — maak na de eerste keer inloggen een eigen account aan)');
+}
+
+app.post('/api/login', (req, res) => {
+  const { naam, wachtwoord } = req.body || {};
+  const account = readAccounts().find((a) => a.naam === naam);
+  if (!account || !bcrypt.compareSync(wachtwoord || '', account.wachtwoord_hash)) {
+    return res.status(401).json({ error: 'onjuiste gebruikersnaam of wachtwoord' });
+  }
+  req.session.accountId = account.id;
+  const accounts = readAccounts();
+  const idx = accounts.findIndex((a) => a.id === account.id);
+  accounts[idx].laatst_ingelogd = new Date().toISOString();
+  writeAccounts(accounts);
+  res.json({ ok: true, naam: account.naam });
+});
+app.post('/api/logout', (req, res) => { req.session = null; res.json({ ok: true }); });
+app.get('/api/session', (req, res) => {
+  const account = req.session && req.session.accountId ? readAccounts().find((a) => a.id === req.session.accountId) : null;
+  if (!account) return res.status(401).json({ error: 'niet ingelogd' });
+  res.json({ naam: account.naam, email: account.email });
+});
+
+// gate alle /api/*-routes hierna achter een geldige sessie, behalve login/logout/session zelf, het
+// publieke HQ-statusendpoint (geeft alleen tellingen terug, geen gevoelige data — zie de
+// HQ-Locaties-pagina verderop), en /api/i18n/:taal — i18n.js laadt de vertaaldictionary via een
+// top-level await vóórdat main.js de sessie ooit checkt, dus óók het loginscherm zelf heeft deze
+// nodig (anders: kip-en-ei, geen vertaalde labels op het scherm dat je moet gebruiken om in te
+// loggen). Statische bestanden (index.html/JS/CSS, hierboven al geregistreerd) blijven bewust
+// ongegate'd: de frontend blokkeert zelf de UI (zie auth.js) tot een sessie bevestigd is, en er
+// staat toch geen gevoelige data in de JS-bundle zelf.
+// Ook een geldig X-Internal-Token-header telt als geauthenticeerd — nodig voor de `simulator`-
+// service (alleen aanwezig in testmodus, --profile test), die zonder browser-sessie /api/topology
+// en /api/simulator/status polt. Zelfde soort service-secret-patroon als INFLUX_TOKEN/
+// GRAFANA_REPORT_TOKEN hierboven, i.p.v. dit endpoint voor iedereen publiek te laten.
+const AUTH_UITGEZONDERD = new Set(['/api/login', '/api/logout', '/api/session', '/api/hq-status']);
+const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN || '';
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/') || AUTH_UITGEZONDERD.has(req.path) || req.path.startsWith('/api/i18n/')) return next();
+  if (INTERNAL_API_TOKEN && req.get('X-Internal-Token') === INTERNAL_API_TOKEN) return next();
+  if (!req.session || !req.session.accountId || !readAccounts().some((a) => a.id === req.session.accountId)) {
+    return res.status(401).json({ error: 'niet ingelogd' });
+  }
+  next();
+});
+
+app.get('/api/accounts', (req, res) => {
+  res.json(readAccounts().map(({ wachtwoord_hash, ...rest }) => rest));
+});
+app.post('/api/accounts', (req, res) => {
+  const { naam, email } = req.body || {};
+  if (!naam || typeof naam !== 'string' || !naam.trim()) return res.status(400).json({ error: 'naam is verplicht' });
+  const accounts = readAccounts();
+  // naam is de inlog-identifier (zie /api/login: find op naam) — een dubbele naam zou onvoorspelbaar
+  // altijd het eerst-aangemaakte account raken, de nieuwere zou nooit meer inlogbaar zijn
+  if (accounts.some((a) => a.naam.toLowerCase() === naam.trim().toLowerCase())) {
+    return res.status(400).json({ error: 'er bestaat al een account met deze naam' });
+  }
+  const wachtwoord = genereerWachtwoord();
+  accounts.push({
+    id: crypto.randomUUID(), naam: naam.trim(), email: (email || '').trim(),
+    wachtwoord_hash: bcrypt.hashSync(wachtwoord, 10),
+    aangemaakt: new Date().toISOString(), laatst_ingelogd: null,
+  });
+  writeAccounts(accounts);
+  res.json({ ok: true, wachtwoord });
+});
+app.post('/api/accounts/:id/reset-wachtwoord', (req, res) => {
+  const accounts = readAccounts();
+  const idx = accounts.findIndex((a) => a.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'account niet gevonden' });
+  const wachtwoord = genereerWachtwoord();
+  accounts[idx].wachtwoord_hash = bcrypt.hashSync(wachtwoord, 10);
+  writeAccounts(accounts);
+  res.json({ ok: true, wachtwoord });
+});
+app.delete('/api/accounts/:id', (req, res) => {
+  const accounts = readAccounts();
+  const overgebleven = accounts.filter((a) => a.id !== req.params.id);
+  if (overgebleven.length === accounts.length) return res.status(404).json({ error: 'account niet gevonden' });
+  if (!overgebleven.length) return res.status(400).json({ error: 'laatste account kan niet verwijderd worden' });
+  writeAccounts(overgebleven);
+  res.json({ ok: true });
+});
+
+// ---------- MQTT-ticket (specs/toegang-van-buitenaf-diagnose.md bevinding #2) ----------
+// De websocket-upgrade voor /mqtt hieronder loopt buiten Express' normale request-pipeline om (een
+// http.Server 'upgrade'-event, geen gewone request), dus cookie-session's req.session is daar niet
+// zomaar beschikbaar — cookie-session's eigen signing-formaat handmatig naspelen in de upgrade-
+// handler zou fragiel zijn (een fout daarin zou stil te strict óf te soepel kunnen verifiëren). In
+// plaats daarvan: dit endpoint (loopt wél door de gewone auth-middleware hierboven, dus al
+// geverifieerd) geeft een kortlevend, willekeurig ticket terug; de browser plakt dat als
+// querystring-param achter de /mqtt-URL, de upgrade-handler valideert alleen dát ticket. Niet
+// eenmalig gemaakt (bewust, zie MQTT_TICKET_TTL_MS): mqtt.js herverbindt na een netwerkonderbreking
+// automatisch met dezelfde URL, dus hetzelfde ticket moet dat kort na uitgifte nog kunnen dragen.
+const mqttTickets = new Map(); // ticket -> { accountId, verlooptOm }
+const MQTT_TICKET_TTL_MS = 15 * 60 * 1000;
+app.get('/api/mqtt-ticket', (req, res) => {
+  const nu = Date.now();
+  Array.from(mqttTickets.entries()).forEach(([tk, v]) => { if (v.verlooptOm < nu) mqttTickets.delete(tk); });
+  const ticket = crypto.randomUUID();
+  mqttTickets.set(ticket, { accountId: req.session.accountId, verlooptOm: nu + MQTT_TICKET_TTL_MS });
+  res.json({ ticket });
+});
+
+// ---------- HQ-Locaties (specs/toegang-van-buitenaf-diagnose.md, uitgangspunt 1: meerdere locaties
+// tegelijk zien) — handmatige locatielijst + een publiek, minimaal statusendpoint per instance. ----------
+const LOCATIES_FILE = path.join(DATA_DIR, 'locaties.json');
+function readLocaties() {
+  if (!fs.existsSync(LOCATIES_FILE)) return [];
+  return JSON.parse(fs.readFileSync(LOCATIES_FILE, 'utf8'));
+}
+function writeLocaties(data) { fs.writeFileSync(LOCATIES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+
+app.get('/api/locaties', (req, res) => res.json(readLocaties()));
+app.post('/api/locaties', (req, res) => {
+  const { naam, url } = req.body || {};
+  if (!naam || typeof naam !== 'string' || !naam.trim() || !url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'naam en url zijn verplicht' });
+  }
+  let parsedUrl;
+  try { parsedUrl = new URL(url); } catch (e) { return res.status(400).json({ error: 'ongeldige URL' }); }
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) return res.status(400).json({ error: 'url moet met http(s):// beginnen' });
+  const locaties = readLocaties();
+  locaties.push({ id: crypto.randomUUID(), naam: naam.trim(), url: url.trim().replace(/\/$/, '') });
+  writeLocaties(locaties);
+  res.json({ ok: true });
+});
+app.delete('/api/locaties/:id', (req, res) => {
+  const locaties = readLocaties();
+  const overgebleven = locaties.filter((l) => l.id !== req.params.id);
+  if (overgebleven.length === locaties.length) return res.status(404).json({ error: 'locatie niet gevonden' });
+  writeLocaties(overgebleven);
+  res.json({ ok: true });
+});
+
+// publiek endpoint (zie AUTH_UITGEZONDERD hierboven) — geeft bewust alleen tellingen terug, geen
+// namen/IP's/topologie. "amber/rood" is hier de zwaarst-belaste-fase-vergelijking t.o.v. rating_a,
+// zelfde conventie als overal elders (topology.js: statusOf()) — maar client-side bestaat die check
+// alleen (leest de browser's eigen MQTT-liveData); dit endpoint berekent 'm hier opnieuw server-side
+// via de laatste bekende meting per kast in InfluxDB (een venster van 10 minuten: recent genoeg om
+// "huidige status" te heten, ruim genoeg om een gemiste meting niet meteen als "geen data" te tonen).
+app.get('/api/hq-status', async (req, res) => {
+  try {
+    const data = readTopo();
+    const kastIds = data.kasten.map((k) => k.id).filter(veiligeTagWaarde);
+    if (!kastIds.length) return res.json({ kasten: 0, amberRood: 0, ts: Date.now() });
+    const kastFilter = kastIds.map((id) => 'r.kast == "' + id + '"').join(' or ');
+    const flux =
+      'from(bucket: "' + INFLUX_BUCKET + '")\n' +
+      '  |> range(start: -10m)\n' +
+      '  |> filter(fn: (r) => r._measurement == "shelly_em")\n' +
+      '  |> filter(fn: (r) => r._field == "a_current" or r._field == "b_current" or r._field == "c_current")\n' +
+      '  |> filter(fn: (r) => ' + kastFilter + ')\n' +
+      '  |> group(columns: ["kast", "_field"])\n' +
+      '  |> last()\n' +
+      '  |> keep(columns: ["kast", "_field", "_value"])';
+    const csv = await influxQueryPlatteCsv(flux);
+    const perKast = grafiekenAggregaatCsvGroeperen(csv, ['a_current', 'b_current', 'c_current']);
+    let amberRood = 0;
+    data.kasten.forEach((k) => {
+      const veldMap = perKast.get(k.id);
+      if (!veldMap || !veldMap.size || k.rating_a == null) return;
+      const pct = (Math.max(...veldMap.values()) / k.rating_a) * 100;
+      if (pct >= 70) amberRood++;
+    });
+    res.json({ kasten: data.kasten.length, amberRood, ts: Date.now() });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// fan-out naar elke bekende locatie — elke fetch vangt zijn eigen fout/timeout af en resolvet altijd
+// (nooit reject), zodat één trage/onbereikbare locatie de rest niet blokkeert (expliciete eis uit de
+// diagnose); result.offline=true + geen tellingen is dan het signaal voor de grijze "—"-kaart.
+app.get('/api/hq-locaties-status', async (req, res) => {
+  const locaties = readLocaties();
+  const resultaten = await Promise.all(locaties.map(async (loc) => {
+    try {
+      const r = await fetch(loc.url + '/api/hq-status', { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error('status ' + r.status);
+      const d = await r.json();
+      return { id: loc.id, naam: loc.naam, url: loc.url, offline: false, kasten: d.kasten, amberRood: d.amberRood };
+    } catch (e) {
+      return { id: loc.id, naam: loc.naam, url: loc.url, offline: true };
+    }
+  }));
+  res.json(resultaten);
+});
 
 // migreert oudere topologieën waarin generators/leden nog geen `mqtt_topic_prefix` (generators) of
 // `id`/`mqtt_topic_prefix` (leden van een groep) hebben.
@@ -2284,9 +2529,18 @@ app.put('/api/instellingen/automatische-backup', (req, res) => {
 });
 app.get('/api/backup/automatisch/status', (req, res) => res.json(autoBackupStatus));
 
+// ---------- MQTT-websocket-proxy (specs/toegang-van-buitenaf-diagnose.md bevinding #2) ----------
+// mosquitto's websocket-listener (poort 9001) wordt niet meer naar de host gepubliceerd (zie
+// docker-compose.yml) — alleen nog bereikbaar via het interne docker-netwerk, net als InfluxDB/
+// Grafana nu al. De browser verbindt in plaats daarvan naar hetzelfde origin als de rest van de app
+// (/mqtt), deze proxy stuurt dat door naar mosquitto — met het /api/mqtt-ticket-ticket hierboven als
+// enige poort. mosquitto zelf blijft dus `allow_anonymous true` (veilig: niet meer extern bereikbaar).
+const mqttProxy = createProxyMiddleware({ target: 'ws://mosquitto:9001', ws: true, changeOrigin: true });
+app.use('/mqtt', mqttProxy);
+
 const PORT = process.env.PORT || 8080;
 const HOST_LAN_IP = process.env.HOST_LAN_IP || '';
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log('Stroom-Dashboard luistert op poort ' + PORT);
   console.log('Open in de browser:');
   console.log('  http://localhost:' + PORT + '  (op deze machine)');
@@ -2296,4 +2550,19 @@ app.listen(PORT, () => {
     console.log('  Netwerk-IP niet gedetecteerd — start via start.sh/start.ps1 voor automatische detectie,');
     console.log('  of zoek het handmatig op met `ip addr` (Linux) / `ipconfig` (Windows).');
   }
+});
+
+// websocket-upgrades lopen buiten Express' request-pipeline om (zie de toelichting bij
+// /api/mqtt-ticket hierboven) — hier expliciet het ticket uit de querystring valideren vóórdat de
+// upgrade naar mosquitto wordt doorgezet.
+server.on('upgrade', (req, socket, head) => {
+  if (!req.url.startsWith('/mqtt')) { socket.destroy(); return; }
+  const ticket = new URL(req.url, 'http://localhost').searchParams.get('ticket');
+  const record = ticket && mqttTickets.get(ticket);
+  if (!record || record.verlooptOm < Date.now()) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  mqttProxy.upgrade(req, socket, head);
 });

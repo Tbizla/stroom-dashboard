@@ -1,0 +1,13 @@
+# Toegang van buitenaf (specs/toegang-van-buitenaf-diagnose.md): TLS-terminatie + reverse-proxy
+# naar de webapp. Zonder PUBLIC_DOMEIN valt dit terug op "localhost" — bedoeld voor lokaal
+# uitproberen van deze service zelf, niet voor de normale ontwikkelworkflow (die blijft gewoon
+# rechtstreeks op http://localhost:8080, zonder Caddy ertussen). Met een echt publiek domein
+# (PUBLIC_DOMEIN in .env) vraagt Caddy zelf automatisch een Let's Encrypt-certificaat aan — dat
+# vereist dat het domein al naar dit adres wijst (DNS) en dat poort 80/443 vanaf buiten bereikbaar
+# zijn, dat is aan de beheerder van de locatie-instance om te regelen.
+#
+# Websocket-upgrades (het /mqtt-pad in server.js) hebben geen aparte config nodig: Caddy's
+# reverse_proxy herkent een Connection: Upgrade-header vanzelf en zet de verbinding transparant door.
+{$PUBLIC_DOMEIN:localhost} {
+	reverse_proxy webapp:8080
+}

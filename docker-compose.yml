@@ -1,11 +1,13 @@
 services:
+  # sinds de webapp's eigen /mqtt-websocket-proxy (specs/toegang-van-buitenaf-diagnose.md
+  # bevinding #2) verbindt niets meer rechtstreeks met mosquitto van buiten het docker-netwerk —
+  # de browser gaat altijd via de webapp (poort 8080), de simulator via het interne
+  # mqtt://mosquitto:1883-adres. Geen ports: meer nodig, allow_anonymous true in mosquitto.conf is
+  # daardoor weer veilig (niet meer extern bereikbaar, net als InfluxDB/Grafana hieronder).
   mosquitto:
     build: ./mosquitto
     container_name: mosquitto
     restart: unless-stopped
-    ports:
-      - "1883:1883"
-      - "9001:9001"
     volumes:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
@@ -105,6 +107,8 @@ services:
       - EVENT_NAME=${EVENT_NAME}
       - EVENT_EDITION=${EVENT_EDITION}
       - TELEGRAF_HERSTARTER_URL=http://telegraf-herstarter:8090
+      - SESSION_SECRET=${SESSION_SECRET}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
     volumes:
       - webapp-data:/data
 
@@ -124,6 +128,28 @@ services:
       - TOPOLOGY_URL=http://webapp:8080/api/topology
       - INTERVAL_MS=1000
       - PIEK_KANS=0.01
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
+
+  # optioneel, alleen nodig zodra deze locatie-instance van buitenaf (publiek internet) bereikbaar
+  # moet zijn (specs/toegang-van-buitenaf-diagnose.md) — TLS-terminatie + reverse-proxy naar de
+  # webapp, zie caddy/Caddyfile. Lokaal ontwikkelen/testen blijft gewoon rechtstreeks op
+  # http://localhost:8080 zonder Caddy ertussen — alleen gestart met
+  # `docker compose --profile publiek up -d`.
+  caddy:
+    build: ./caddy
+    container_name: caddy
+    restart: unless-stopped
+    profiles: ["publiek"]
+    depends_on:
+      - webapp
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
 
 volumes:
   mosquitto-data:
@@ -131,3 +157,5 @@ volumes:
   influxdb-data:
   grafana-data:
   webapp-data:
+  caddy-data:
+  caddy-config:

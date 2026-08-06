@@ -15,6 +15,7 @@ import { initBackup } from './backup.js';
 import { initAutomatischeBackup } from './automatische-backup.js';
 import { initInstellingen } from './instellingen.js';
 import { initNotificaties } from './notificaties.js';
+import { initAccounts } from './accounts.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
 import './grafieken.js';
 import './mqtt.js';
@@ -26,6 +27,7 @@ import { initKastStatusRoute } from './kaststatus.js';
 import { initAnomalyOpruiming } from './anomaly.js';
 import { renderDetail } from './render-detail.js';
 import { renderList } from './render-list.js';
+import { controleerSessie } from './auth.js';
 
 // ---------- plattegrond uploaden ----------
 document.getElementById('mapFile').onchange = async (ev)=>{
@@ -82,44 +84,54 @@ document.getElementById('importFile').onchange = (ev)=>{
   reader.readAsText(file);
 };
 
-initRapport();
-initBackup();
-initAutomatischeBackup();
-initInstellingen();
-initNotificaties();
-initQrCodes();
-initAnomalyOpruiming(()=>{
-  renderList(); renderPins();
-  if(state.selectedId) renderDetail();
-  ververOverzichtLiveWeergave();
-});
+// alles hieronder raakt de (nu login-gegateде) /api/*-laag — pas starten zodra er een geldige
+// sessie is, anders krijgt een uitgelogde bezoeker een scherm vol 401-fouten onder de login-overlay
+// i.p.v. gewoon de overlay zelf (zie auth.js). De addEventListener-registraties hierboven (upload/
+// export/import) zijn zelf harmless zonder sessie — ze doen pas iets bij een klik, en de overlay
+// dekt het hele scherm af tot je bent ingelogd.
+async function bootstrapApp(){
+  initRapport();
+  initBackup();
+  initAutomatischeBackup();
+  initInstellingen();
+  initNotificaties();
+  initAccounts();
+  initQrCodes();
+  initAnomalyOpruiming(()=>{
+    renderList(); renderPins();
+    if(state.selectedId) renderDetail();
+    ververOverzichtLiveWeergave();
+  });
 
-// ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
-// niet op het Beheer-tabblad: daar ben je zelf de enige die bewerkt, en een tussentijdse herbouw van de
-// tabellen verstoort dan alleen het snel achter elkaar invoeren van velden (focus/cursor/onopgeslagen tekst)
-setInterval(async ()=>{
-  if(state.mode==='beheer') return;
-  const prevSelected = state.selectedId;
-  await loadTopology();
-  state.selectedId = prevSelected;
-  renderPins();
-  refreshSimStatusIfTest();
-  ververOverzichtLiveWeergave();
-}, 5000);
+  // ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
+  // niet op het Beheer-tabblad: daar ben je zelf de enige die bewerkt, en een tussentijdse herbouw van de
+  // tabellen verstoort dan alleen het snel achter elkaar invoeren van velden (focus/cursor/onopgeslagen tekst)
+  setInterval(async ()=>{
+    if(state.mode==='beheer') return;
+    const prevSelected = state.selectedId;
+    await loadTopology();
+    state.selectedId = prevSelected;
+    renderPins();
+    refreshSimStatusIfTest();
+    ververOverzichtLiveWeergave();
+  }, 5000);
 
-loadTopology().then(()=>{
-  loadMap();
-  // een "Kopieer link"-URL van het Grafieken-tabblad (?mode=grafieken&...) opent dat tabblad
-  // automatisch — geen algemene router, alleen deze ene deeplink (zie grafieken.js
-  // herstelVanUrl()); pas ná loadTopology() zodat de checklist niet leeg begint
-  if(new URLSearchParams(location.search).get('mode') === 'grafieken') document.getElementById('modeGrafieken').click();
-  // QR-code-deeplink (?mode=live&kast=<id>) — zie kaststatus.js: smal scherm krijgt de lichte
-  // mobiele statuspagina, breed scherm het bestaande drill-down-gedrag naar Live-modus
-  initKastStatusRoute();
-});
-loadLogo();
-// het Testdata-tabblad (en de bijbehorende endpoints) bestaat alleen als de stack met
-// --profile test + TEST_MODE=true gestart is; anders geven die endpoints toch 404, dus verberg 'm
-fetch('/api/test-mode').then(r=>r.json()).then(d=>{
-  if(!d.testMode) document.getElementById('modeTest').style.display = 'none';
-}).catch(()=>{});
+  loadTopology().then(()=>{
+    loadMap();
+    // een "Kopieer link"-URL van het Grafieken-tabblad (?mode=grafieken&...) opent dat tabblad
+    // automatisch — geen algemene router, alleen deze ene deeplink (zie grafieken.js
+    // herstelVanUrl()); pas ná loadTopology() zodat de checklist niet leeg begint
+    if(new URLSearchParams(location.search).get('mode') === 'grafieken') document.getElementById('modeGrafieken').click();
+    // QR-code-deeplink (?mode=live&kast=<id>) — zie kaststatus.js: smal scherm krijgt de lichte
+    // mobiele statuspagina, breed scherm het bestaande drill-down-gedrag naar Live-modus
+    initKastStatusRoute();
+  });
+  loadLogo();
+  // het Testdata-tabblad (en de bijbehorende endpoints) bestaat alleen als de stack met
+  // --profile test + TEST_MODE=true gestart is; anders geven die endpoints toch 404, dus verberg 'm
+  fetch('/api/test-mode').then(r=>r.json()).then(d=>{
+    if(!d.testMode) document.getElementById('modeTest').style.display = 'none';
+  }).catch(()=>{});
+}
+
+controleerSessie().then((ok)=>{ if(ok) bootstrapApp(); });

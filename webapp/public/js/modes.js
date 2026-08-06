@@ -11,6 +11,8 @@ import { zoomLevels } from './state.js';
 import { t } from './i18n.js';
 import { toonOverzicht } from './overzicht.js';
 import { toonGrafieken } from './grafieken.js';
+import { verbindMqtt } from './mqtt.js';
+import { toonLocaties } from './hq-locaties.js';
 
 function setActiveModeButton(id){
   ['modeBeheer','modeCal','modeSchema','modeLive','modeTest','modeRapportages','modeGrafieken'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
@@ -76,7 +78,7 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('mapwrap').style.display='flex';
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
-  document.getElementById('brokerHost').value = document.getElementById('brokerHost').value || location.hostname || 'localhost';
+  verbindMqtt();
   applyZoom();
   renderPins();
 };
@@ -98,13 +100,16 @@ document.getElementById('modeTest').onclick = ()=>{
 // rapport) — Back-up verhuisde naar Beheer, zie specs/vervolgticket-commit-37d57ff.md §2 ----------
 function toonRapportSubnav(naam){
   state.rapportSubnav = naam;
-  ['subnavOverzicht','subnavPdf'].forEach(id=>document.getElementById(id).classList.toggle('active', id==='subnav'+naam.charAt(0).toUpperCase()+naam.slice(1)));
+  ['subnavOverzicht','subnavPdf','subnavLocaties'].forEach(id=>document.getElementById(id).classList.toggle('active', id==='subnav'+naam.charAt(0).toUpperCase()+naam.slice(1)));
   document.getElementById('overzichtPanel').style.display = naam==='overzicht' ? 'flex' : 'none';
   document.getElementById('pdfRapportPanel').style.display = naam==='pdf' ? 'flex' : 'none';
+  document.getElementById('locatiesPanel').style.display = naam==='locaties' ? 'flex' : 'none';
   if(naam==='overzicht') toonOverzicht();
+  if(naam==='locaties') toonLocaties();
 }
 document.getElementById('subnavOverzicht').onclick = ()=>toonRapportSubnav('overzicht');
 document.getElementById('subnavPdf').onclick = ()=>toonRapportSubnav('pdf');
+document.getElementById('subnavLocaties').onclick = ()=>toonRapportSubnav('locaties');
 
 document.getElementById('modeRapportages').onclick = ()=>{
   state.mode='rapportages';

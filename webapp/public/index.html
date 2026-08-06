@@ -20,9 +20,6 @@
       <button id="modeGrafieken" data-i18n="mode.grafieken">Grafieken</button>
     </div>
     <div class="connbar" id="liveControls" style="display:none">
-      <input id="brokerHost" data-i18n-placeholder="header.brokerHostPlaceholder" placeholder="broker host" value="">
-      <input id="brokerPort" data-i18n-placeholder="header.brokerPortPlaceholder" placeholder="poort" value="9001" style="width:56px">
-      <button id="connectBtn" data-i18n="header.verbind">Verbind</button>
       <div class="dot" id="connDot"></div>
       <span id="connLabel" data-i18n="header.connNietVerbonden">niet verbonden</span>
     </div>
@@ -33,6 +30,10 @@
     <div class="langswitch">
       <button data-lang="nl">NL</button>
       <button data-lang="en">EN</button>
+    </div>
+    <div class="sessiebar">
+      <span id="sessieNaam"></span>
+      <button id="logoutBtn" data-i18n="login.uitloggen">Uitloggen</button>
     </div>
   </header>
 
@@ -153,6 +154,24 @@
       </div>
       <div id="notifErrorCard" class="addform" style="display:none;margin-top:10px">
         <span id="notifErrorInfo" style="color:var(--red)"></span>
+      </div>
+
+      <h2 style="margin-top:22px" data-i18n="beheer.accounts">Accounts</h2>
+      <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="beheer.accountsSubtitel">Losse accounts per persoon — geen gedeeld wachtwoord. Alleen een ingelogde editor kan hier een account aanmaken; geen publieke registratie.</div>
+      <table class="btable" id="accountsTable"></table>
+      <div class="addform">
+        <input id="newAccountNaam" data-i18n-placeholder="beheer.accountNaamPlaceholder" placeholder="Naam, bijv. Sanne">
+        <input id="newAccountEmail" data-i18n-placeholder="beheer.accountEmailPlaceholder" placeholder="E-mailadres">
+        <button id="addAccountBtn" data-i18n="beheer.accountAanmaken">+ Account aanmaken</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px" data-i18n="beheer.accountHint">Geen e-mail wordt verstuurd — na aanmaken (of resetten) verschijnt het wachtwoord eenmalig hieronder, deel het zelf met de persoon.</div>
+      <div id="accountWachtwoordCard" class="genbox" style="display:none">
+        <div class="lbl" id="accountWachtwoordLbl"></div>
+        <div class="pwrow">
+          <div class="pw" id="accountWachtwoordWaarde"></div>
+          <button id="accountWachtwoordKopieerBtn" data-i18n="beheer.kopieren">Kopiëren</button>
+        </div>
+        <div class="warn"><b data-i18n="beheer.letOp">Let op:</b> <span data-i18n="beheer.accountWachtwoordWaarschuwing">dit wachtwoord wordt maar één keer getoond. Gebruik "Wachtwoord resetten" als het kwijtraakt vóórdat je het gedeeld hebt.</span></div>
       </div>
 
       <h2 style="margin-top:22px" data-i18n="beheer.generators">Generators</h2>
@@ -448,6 +467,7 @@
     <div class="subnav" id="rapportSubnav">
       <button class="active" id="subnavOverzicht" data-i18n="subnav.overzicht">Overzicht</button>
       <button id="subnavPdf" data-i18n="subnav.pdfRapport">PDF-rapport</button>
+      <button id="subnavLocaties" data-i18n="subnav.locaties">Locaties</button>
     </div>
 
     <div class="beheer" id="overzichtPanel" style="display:flex">
@@ -523,6 +543,23 @@
         <div id="rapportErrorCard" class="addform" style="display:none;margin-top:10px">
           <span id="rapportErrorInfo" style="color:var(--red)"></span>
           <button id="rapportOpnieuwBtn" data-i18n="common.opnieuwProberen">Opnieuw proberen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="beheer" id="locatiesPanel" style="display:none">
+      <div class="beheercol" style="max-width:1100px;width:100%">
+        <h2 data-i18n="locaties.titel">Locaties</h2>
+        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:16px" data-i18n="locaties.subtitel">Live statusoverzicht van alle bekende locaties. Klik "Beheer openen" om de volledige app van die locatie te openen (zelfde rechten als ter plekke).</div>
+        <div class="loccards" id="locCards"></div>
+
+        <h2 style="margin-top:22px" data-i18n="locaties.beherenTitel">Locaties beheren</h2>
+        <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="locaties.beherenSubtitel">Handmatige lijst — naam + URL per locatie-instance.</div>
+        <table class="btable" id="locatiesTable"></table>
+        <div class="addform">
+          <input id="newLocatieNaam" data-i18n-placeholder="locaties.naamPlaceholder" placeholder="Naam, bijv. Kermis Voorjaarsplein" style="min-width:220px">
+          <input id="newLocatieUrl" data-i18n-placeholder="locaties.urlPlaceholder" placeholder="https://..." style="min-width:260px">
+          <button id="addLocatieBtn" data-i18n="locaties.toevoegen">+ Locatie</button>
         </div>
       </div>
     </div>
@@ -686,6 +723,26 @@
 </div>
 
 <div id="kastStatusPagina" class="kaststatus" style="display:none"></div>
+
+<div id="loginOverlay" class="login-overlay" style="display:none">
+  <div class="loginbox">
+    <h1>Stroom-<span>Dashboard</span></h1>
+    <div class="sub" data-i18n="login.subtitel">Log in om verder te gaan</div>
+    <form id="loginForm">
+      <div class="field">
+        <label data-i18n="login.gebruikersnaam">Gebruikersnaam</label>
+        <input type="text" id="loginNaam" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label data-i18n="login.wachtwoord">Wachtwoord</label>
+        <input type="password" id="loginWachtwoord" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="loginbtn" data-i18n="login.inloggen">Inloggen</button>
+    </form>
+    <div class="errbox" id="loginErr"></div>
+    <div class="footnote" data-i18n="login.footnote">Toegang beperkt tot geautoriseerde accounts</div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
