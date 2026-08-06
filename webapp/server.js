@@ -5,6 +5,7 @@ const path = require('path');
 const dns = require('dns');
 const crypto = require('crypto');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const rateLimit = require('express-rate-limit');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
@@ -72,6 +73,14 @@ if (!fs.existsSync(INSTELLINGEN_FILE)) {
 let simulatorEnabled = false;
 
 const app = express();
+// vervolgticket-toegang-van-buitenaf.md §1 (kritiek): zonder dit routeert Express `/API/topology`
+// gewoon naar de lowercase-geregistreerde `/api/topology`-handler — de auth-gate hieronder gebruikt
+// zelf ook een hoofdletterongevoelige vergelijking (de kern van de fix), dit is een tweede,
+// onafhankelijke laag die dezelfde klasse fouten voorkomt op Express-routeringsniveau.
+app.set('case sensitive routing', true);
+// vervolgticket-toegang-van-buitenaf.md §3: laat Express de X-Forwarded-Proto-header van Caddy
+// vertrouwen (nodig voor de secure-cookie-vlag hieronder) — harmless zonder reverse-proxy ervoor.
+app.set('trust proxy', 1);
 app.use(express.json());
 // tijdens actieve ontwikkeling wordt index.html regelmatig aangepast; zonder no-store kan de browser
 // een oude versie blijven hergebruiken (ook na een gewone F5) totdat er een harde refresh gebeurt,
@@ -88,7 +97,19 @@ const bcrypt = require('bcryptjs');
 const cookieSession = require('cookie-session');
 
 const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
-const SESSION_SECRET = process.env.SESSION_SECRET || 'onveilige-standaardwaarde-zet-SESSION_SECRET-in-.env';
+// vervolgticket-toegang-van-buitenaf.md §2: geen hardcoded fallback-string meer (die stond gewoon
+// in de repo, dus publiek bekend) — ontbreekt SESSION_SECRET in .env, dan wordt er bij de allereerste
+// opstart een willekeurig secret gegenereerd en weggeschreven (zelfde eenmalige-generatie-patroon
+// als het admin-wachtwoord hieronder), zodat sessies daarna consistent ondertekend blijven.
+const SESSION_SECRET_FILE = path.join(DATA_DIR, 'session_secret.txt');
+function bepaalSessionSecret() {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (fs.existsSync(SESSION_SECRET_FILE)) return fs.readFileSync(SESSION_SECRET_FILE, 'utf8').trim();
+  const gegenereerd = crypto.randomBytes(48).toString('hex');
+  fs.writeFileSync(SESSION_SECRET_FILE, gegenereerd, 'utf8');
+  return gegenereerd;
+}
+const SESSION_SECRET = bepaalSessionSecret();
 
 app.use(cookieSession({
   name: 'stroomdash_sessie',
@@ -98,6 +119,11 @@ app.use(cookieSession({
   // vanaf de camera-app, geen cross-site POST) de cookie gewoon meesturen
   maxAge: 30 * 24 * 3600 * 1000,
   sameSite: 'lax',
+  // vervolgticket-toegang-van-buitenaf.md §3: secure-only zodra PUBLIC_DOMEIN ingesteld is (dan
+  // draait de stack achter Caddy/TLS, zie caddy/Caddyfile) — statisch altijd `true` zou de gewone
+  // lokale ontwikkelworkflow (rechtstreeks op http://localhost:8080, geen Caddy ertussen) breken:
+  // een browser bewaart een Secure-cookie niet over gewoon HTTP.
+  secure: !!process.env.PUBLIC_DOMEIN,
 }));
 
 function readAccounts() {
@@ -134,7 +160,14 @@ if (readAccounts().length === 0) {
   console.log('  (dit wordt maar één keer getoond — maak na de eerste keer inloggen een eigen account aan)');
 }
 
-app.post('/api/login', (req, res) => {
+// vervolgticket-toegang-van-buitenaf.md §6: simpele rate-limiters op de twee routes die straks ook
+// zonder sessie/van buitenaf te bereiken zijn — /api/login (brute-force/scan-tegengas, wachtwoorden
+// zijn wel al 12 tekens random maar een limiter is op een publiek endpoint sowieso op zijn plek) en
+// /api/hq-status (elke aanvraag triggert een InfluxDB-query, zonder limiet een goedkope DoS-hefboom).
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+const hqStatusLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
+
+app.post('/api/login', loginLimiter, (req, res) => {
   const { naam, wachtwoord } = req.body || {};
   const account = readAccounts().find((a) => a.naam === naam);
   if (!account || !bcrypt.compareSync(wachtwoord || '', account.wachtwoord_hash)) {
@@ -154,22 +187,29 @@ app.get('/api/session', (req, res) => {
   res.json({ naam: account.naam, email: account.email });
 });
 
-// gate alle /api/*-routes hierna achter een geldige sessie, behalve login/logout/session zelf, het
-// publieke HQ-statusendpoint (geeft alleen tellingen terug, geen gevoelige data — zie de
-// HQ-Locaties-pagina verderop), en /api/i18n/:taal — i18n.js laadt de vertaaldictionary via een
-// top-level await vóórdat main.js de sessie ooit checkt, dus óók het loginscherm zelf heeft deze
-// nodig (anders: kip-en-ei, geen vertaalde labels op het scherm dat je moet gebruiken om in te
-// loggen). Statische bestanden (index.html/JS/CSS, hierboven al geregistreerd) blijven bewust
-// ongegate'd: de frontend blokkeert zelf de UI (zie auth.js) tot een sessie bevestigd is, en er
-// staat toch geen gevoelige data in de JS-bundle zelf.
+// gate alle /api/*-routes hierna (én /mqtt zelf, zie vervolgticket-toegang-van-buitenaf.md §5)
+// achter een geldige sessie, behalve login/logout/session zelf, het publieke HQ-statusendpoint
+// (geeft alleen tellingen terug, geen gevoelige data — zie de HQ-Locaties-pagina verderop), en
+// /api/i18n/:taal — i18n.js laadt de vertaaldictionary via een top-level await vóórdat main.js de
+// sessie ooit checkt, dus óók het loginscherm zelf heeft deze nodig (anders: kip-en-ei, geen
+// vertaalde labels op het scherm dat je moet gebruiken om in te loggen). Statische bestanden
+// (index.html/JS/CSS, hierboven al geregistreerd) blijven bewust ongegate'd: de frontend blokkeert
+// zelf de UI (zie auth.js) tot een sessie bevestigd is, en er staat toch geen gevoelige data in de
+// JS-bundle zelf.
 // Ook een geldig X-Internal-Token-header telt als geauthenticeerd — nodig voor de `simulator`-
 // service (alleen aanwezig in testmodus, --profile test), die zonder browser-sessie /api/topology
 // en /api/simulator/status polt. Zelfde soort service-secret-patroon als INFLUX_TOKEN/
 // GRAFANA_REPORT_TOKEN hierboven, i.p.v. dit endpoint voor iedereen publiek te laten.
+// vervolgticket-toegang-van-buitenaf.md §1 (kritiek): req.path hierbeneden expliciet lowercasen
+// vóór elke vergelijking — Express routeert standaard case-insensitive (`/API/topology` matchte
+// eerst wél de handler maar niet deze startsWith-check, een volledige bypass van de hele login-laag,
+// zie ook `case sensitive routing` hierboven als tweede, onafhankelijke hardeningslaag).
 const AUTH_UITGEZONDERD = new Set(['/api/login', '/api/logout', '/api/session', '/api/hq-status']);
 const INTERNAL_API_TOKEN = process.env.INTERNAL_API_TOKEN || '';
 app.use((req, res, next) => {
-  if (!req.path.startsWith('/api/') || AUTH_UITGEZONDERD.has(req.path) || req.path.startsWith('/api/i18n/')) return next();
+  const pad = req.path.toLowerCase();
+  const gevoeligPad = pad.startsWith('/api/') || pad === '/mqtt';
+  if (!gevoeligPad || AUTH_UITGEZONDERD.has(pad) || pad.startsWith('/api/i18n/')) return next();
   if (INTERNAL_API_TOKEN && req.get('X-Internal-Token') === INTERNAL_API_TOKEN) return next();
   if (!req.session || !req.session.accountId || !readAccounts().some((a) => a.id === req.session.accountId)) {
     return res.status(401).json({ error: 'niet ingelogd' });
@@ -223,11 +263,14 @@ app.delete('/api/accounts/:id', (req, res) => {
 // handler zou fragiel zijn (een fout daarin zou stil te strict óf te soepel kunnen verifiëren). In
 // plaats daarvan: dit endpoint (loopt wél door de gewone auth-middleware hierboven, dus al
 // geverifieerd) geeft een kortlevend, willekeurig ticket terug; de browser plakt dat als
-// querystring-param achter de /mqtt-URL, de upgrade-handler valideert alleen dát ticket. Niet
-// eenmalig gemaakt (bewust, zie MQTT_TICKET_TTL_MS): mqtt.js herverbindt na een netwerkonderbreking
-// automatisch met dezelfde URL, dus hetzelfde ticket moet dat kort na uitgifte nog kunnen dragen.
+// querystring-param achter de /mqtt-URL, de upgrade-handler valideert alleen dát ticket.
+// vervolgticket-toegang-van-buitenaf.md §4: eenmalig bruikbaar (verwijderd bij gebruik, zie de
+// upgrade-handler hieronder) en een korte TTL — `mqtt.js` vraagt tegenwoordig zelf een vers ticket
+// op bij elke (her)verbinding i.p.v. hetzelfde ticket te laten hergebruiken door mqtt.js' ingebouwde
+// reconnect-logica (die zou na 15 minuten of een webapp-herstart eindeloos tegen een verlopen/
+// niet-meer-bestaand ticket aan blijven lopen zonder dat de gebruiker iets ziet gebeuren).
 const mqttTickets = new Map(); // ticket -> { accountId, verlooptOm }
-const MQTT_TICKET_TTL_MS = 15 * 60 * 1000;
+const MQTT_TICKET_TTL_MS = 30 * 1000;
 app.get('/api/mqtt-ticket', (req, res) => {
   const nu = Date.now();
   Array.from(mqttTickets.entries()).forEach(([tk, v]) => { if (v.verlooptOm < nu) mqttTickets.delete(tk); });
@@ -246,6 +289,12 @@ function readLocaties() {
 function writeLocaties(data) { fs.writeFileSync(LOCATIES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
 
 app.get('/api/locaties', (req, res) => res.json(readLocaties()));
+// vervolgticket-toegang-van-buitenaf.md §7: milde SSRF-noot — dit endpoint (alleen ingelogd
+// bereikbaar) accepteert elke http(s)-URL en /api/hq-locaties-status fetcht die server-side. Bewust
+// niet verder dichtgetimmerd (geen allowlist/geen block op interne IP-ranges): het is precies de
+// bedoeling dat een operator hier een willekeurig, zelf gekozen locatie-adres invoert, en de respons
+// blijft sowieso beperkt tot online/offline + tellingen (zie /api/hq-status) — laag risico, alleen
+// door een al-ingelogde editor te misbruiken.
 app.post('/api/locaties', (req, res) => {
   const { naam, url } = req.body || {};
   if (!naam || typeof naam !== 'string' || !naam.trim() || !url || typeof url !== 'string') {
@@ -273,7 +322,7 @@ app.delete('/api/locaties/:id', (req, res) => {
 // alleen (leest de browser's eigen MQTT-liveData); dit endpoint berekent 'm hier opnieuw server-side
 // via de laatste bekende meting per kast in InfluxDB (een venster van 10 minuten: recent genoeg om
 // "huidige status" te heten, ruim genoeg om een gemiste meting niet meteen als "geen data" te tonen).
-app.get('/api/hq-status', async (req, res) => {
+app.get('/api/hq-status', hqStatusLimiter, async (req, res) => {
   try {
     const data = readTopo();
     const kastIds = data.kasten.map((k) => k.id).filter(veiligeTagWaarde);
@@ -299,7 +348,10 @@ app.get('/api/hq-status', async (req, res) => {
     });
     res.json({ kasten: data.kasten.length, amberRood, ts: Date.now() });
   } catch (e) {
-    res.status(502).json({ error: e.message });
+    // vervolgticket-toegang-van-buitenaf.md §6: geen ruwe Influx-foutmelding naar een anonieme
+    // aanroeper lekken (dit endpoint is bewust ongeauthenticeerd) — wel gewoon loggen server-side
+    console.error('fout in /api/hq-status:', e.message);
+    res.status(502).json({ error: 'status tijdelijk niet beschikbaar' });
   }
 });
 
@@ -2101,6 +2153,10 @@ async function bouwBackupZip(bestandspad, meetdataPeriode) {
     archive.pipe(output);
 
     archive.append(JSON.stringify(readTopo(), null, 2), { name: 'topologie.json' });
+    // vervolgticket-toegang-van-buitenaf.md §7: accounts/locaties hoorden nog niet bij de back-up —
+    // zonder dit zijn ze weg bij een restore/volume-verlies, net zo erg als de topologie kwijtraken
+    if (fs.existsSync(ACCOUNTS_FILE)) archive.file(ACCOUNTS_FILE, { name: 'accounts.json' });
+    if (fs.existsSync(LOCATIES_FILE)) archive.file(LOCATIES_FILE, { name: 'locaties.json' });
     const kaartBestand = bestaandAfbeeldingsbestand(MAP_BASENAME);
     if (kaartBestand) archive.file(kaartBestand, { name: 'plattegrond' + path.extname(kaartBestand) });
     const logoBestand = bestaandAfbeeldingsbestand(LOGO_BASENAME);
@@ -2204,6 +2260,13 @@ async function voerHerstelUit(modus, zip, lpRegels) {
     if (!Array.isArray(data.kasten) || !Array.isArray(data.generators)) throw new Error('topologie.json in de back-up is ongeldig');
     writeTopo(data);
     onderdelen.push('topologie');
+
+    // optioneel: een back-up van vóór deze feature heeft deze entries niet, dan gewoon overslaan
+    // i.p.v. het hele herstel te blokkeren (zelfde soort "sla over, geen harde eis"-patroon als media)
+    const accountsEntry = zip.getEntries().find((e) => e.entryName === 'accounts.json');
+    if (accountsEntry) { writeAccounts(JSON.parse(zip.readAsText(accountsEntry))); onderdelen.push('accounts'); }
+    const locatiesEntry = zip.getEntries().find((e) => e.entryName === 'locaties.json');
+    if (locatiesEntry) { writeLocaties(JSON.parse(zip.readAsText(locatiesEntry))); onderdelen.push('locaties'); }
 
     let mediaTeruggezet = false;
     ['plattegrond', 'logo'].forEach((naam) => {
@@ -2554,15 +2617,18 @@ const server = app.listen(PORT, () => {
 
 // websocket-upgrades lopen buiten Express' request-pipeline om (zie de toelichting bij
 // /api/mqtt-ticket hierboven) — hier expliciet het ticket uit de querystring valideren vóórdat de
-// upgrade naar mosquitto wordt doorgezet.
+// upgrade naar mosquitto wordt doorgezet. vervolgticket-toegang-van-buitenaf.md §5: exacte
+// padvergelijking i.p.v. startsWith (dat matchte ook op bijv. /mqttfoo).
 server.on('upgrade', (req, socket, head) => {
-  if (!req.url.startsWith('/mqtt')) { socket.destroy(); return; }
-  const ticket = new URL(req.url, 'http://localhost').searchParams.get('ticket');
+  const url = new URL(req.url, 'http://localhost');
+  if (url.pathname !== '/mqtt') { socket.destroy(); return; }
+  const ticket = url.searchParams.get('ticket');
   const record = ticket && mqttTickets.get(ticket);
   if (!record || record.verlooptOm < Date.now()) {
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     socket.destroy();
     return;
   }
+  mqttTickets.delete(ticket); // vervolgticket §4: eenmalig bruikbaar, zie ook de kortere TTL hierboven
   mqttProxy.upgrade(req, socket, head);
 });

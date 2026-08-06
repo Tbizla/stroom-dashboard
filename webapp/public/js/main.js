@@ -84,7 +84,7 @@ document.getElementById('importFile').onchange = (ev)=>{
   reader.readAsText(file);
 };
 
-// alles hieronder raakt de (nu login-gegateде) /api/*-laag — pas starten zodra er een geldige
+// alles hieronder raakt de (nu login-gegate) /api/*-laag — pas starten zodra er een geldige
 // sessie is, anders krijgt een uitgelogde bezoeker een scherm vol 401-fouten onder de login-overlay
 // i.p.v. gewoon de overlay zelf (zie auth.js). De addEventListener-registraties hierboven (upload/
 // export/import) zijn zelf harmless zonder sessie — ze doen pas iets bij een klik, en de overlay

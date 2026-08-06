@@ -21,9 +21,15 @@ import { verwerkAnomalyDetectie } from './anomaly.js';
 import { verwerkGrafiekenLiveMessage } from './grafieken.js';
 import { maxFaseStroom } from './topology.js';
 
+// vervolgticket-toegang-van-buitenaf.md §4: een ticket is eenmalig bruikbaar en maar 30s geldig
+// (server.js) — mqtt.js' eigen ingebouwde reconnect-logica zou na de eerste onderbreking blijven
+// hangen op hetzelfde (dan al verlopen/verbruikte) ticket, dus reconnectPeriod:0 en zelf een verse
+// ticket + nieuwe verbinding opzetten bij elke 'close'. Zonder dit bleef live-monitoring na een
+// netwerkstoring of webapp-herstart eindeloos 401'en tot een handmatige pagina-ververs.
+let reconnectTimer = null;
+
 // aangeroepen zodra de Live-tab geopend wordt of vanuit een QR-deeplink (kaststatus.js) — een
-// tweede aanroep terwijl er al een client is/wordt opgezet is een no-op, mqtt.js herverbindt zelf
-// automatisch bij een netwerkonderbreking (geen los "Verbind"-knop meer nodig)
+// tweede aanroep terwijl er al een client is/wordt opgezet is een no-op
 export async function verbindMqtt(){
   if(state.mqttClient) return;
   const dot = document.getElementById('connDot');
@@ -34,20 +40,45 @@ export async function verbindMqtt(){
     ({ ticket } = await apiCall('/api/mqtt-ticket', 'GET'));
   }catch(e){
     dot.className='dot err'; label.textContent=t('header.connFout')+e.message;
+    planHerverbinding();
     return;
   }
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const url = protocol+'://'+location.host+'/mqtt?ticket='+encodeURIComponent(ticket);
   try{
-    state.mqttClient = mqtt.connect(url);
-    state.mqttClient.on('connect', ()=>{
+    const client = mqtt.connect(url, { reconnectPeriod: 0, connectTimeout: 8000 });
+    state.mqttClient = client;
+    // reconnectPeriod:0 blijkt in de praktijk niet te voorkomen dat mqtt.js' onderliggende
+    // websocket-stream zelf op transportniveau blijft doorproberen met DEZELFDE (dan al verlopen)
+    // ticket, zonder ooit een 'error'/'close'-event op de client te vuren (bevestigd tijdens het
+    // testen: na een webapp-herstart bleef de browser urenlang tegen hetzelfde ticket aan lopen,
+    // zichtbaar in de netwerktab maar onzichtbaar voor client.on('error'/'close')). Vandaar een
+    // eigen watchdog die de client hoe dan ook na een paar seconden hard afsluit en zelf, met een
+    // vers ticket, opnieuw begint — vertrouwt niet op mqtt.js' eigen events voor de mislukt-paden.
+    let afgehandeld = false;
+    const opnieuw = ()=>{
+      if(afgehandeld) return;
+      afgehandeld = true;
+      clearTimeout(watchdog);
+      try{ client.end(true); }catch(e){}
+      if(state.mqttClient === client) state.mqttClient = null;
+      dot.className='dot'; label.textContent=t('header.connNietVerbonden');
+      planHerverbinding();
+    };
+    const watchdog = setTimeout(opnieuw, 10000);
+    client.on('connect', ()=>{
+      // een late 'connect' van een client die de watchdog inmiddels al heeft afgesloten (en dus al
+      // vervangen is door een nieuwere poging) mag deze niet alsnog als "verbonden" tonen
+      if(afgehandeld || state.mqttClient !== client) return;
+      afgehandeld = true;
+      clearTimeout(watchdog);
       dot.className='dot ok'; label.textContent=t('header.connVerbonden');
-      state.mqttClient.subscribe('site/+/+/status/em:0');
-      state.mqttClient.subscribe('site/+/+/status/emdata:0');
+      client.subscribe('site/+/+/status/em:0');
+      client.subscribe('site/+/+/status/emdata:0');
     });
-    state.mqttClient.on('error', (e)=>{ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; });
-    state.mqttClient.on('close', ()=>{ dot.className='dot'; label.textContent=t('header.connNietVerbonden'); });
-    state.mqttClient.on('message', (topic, payload)=>{
+    client.on('error', (e)=>{ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; opnieuw(); });
+    client.on('close', opnieuw);
+    client.on('message', (topic, payload)=>{
       const parts = topic.split('/');
       const kastId = parts[2];
       let data;
@@ -66,5 +97,15 @@ export async function verbindMqtt(){
       ververOverzichtLiveWeergave();
       ververKastStatusPagina();
     });
-  }catch(e){ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; state.mqttClient=null; }
+  }catch(e){
+    dot.className='dot err'; label.textContent=t('header.connFout')+e.message; state.mqttClient=null;
+    planHerverbinding();
+  }
+}
+
+// eigen reconnect-debounce (i.p.v. mqtt.js' ingebouwde) — telkens een vers ticket + nieuwe
+// verbinding, nooit hetzelfde (kortlevende, eenmalige) ticket hergebruiken
+function planHerverbinding(){
+  if(reconnectTimer) return;
+  reconnectTimer = setTimeout(()=>{ reconnectTimer = null; verbindMqtt(); }, 3000);
 }

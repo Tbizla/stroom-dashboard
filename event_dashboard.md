@@ -61,7 +61,15 @@ zetten zonder code aan te passen.
 - Optionele `caddy`-service (TLS/reverse-proxy, alleen gestart met
   `docker compose --profile publiek up -d`) voor als deze locatie-instance over het publieke
   internet bereikbaar moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld domein.
-  Lokaal ontwikkelen/testen blijft gewoon rechtstreeks op `http://localhost:8080`
+  Lokaal ontwikkelen/testen blijft gewoon rechtstreeks op `http://localhost:8080`. De sessiecookie
+  wordt automatisch `secure`-only zodra dat domein ingesteld staat
+- Login-gate is hoofdletterongevoelig op elk `/api/*`-pad (incl. `/mqtt`) — een gevonden bug waarbij
+  bijv. `/API/topology` de gate omzeilde is gefixt en met alle hoofdlettervarianten hertest.
+  `SESSION_SECRET` hoeft niet handmatig ingesteld te worden: ontbreekt die, dan genereert de webapp
+  er bij de allereerste opstart zelf één en bewaart 'm. Simpele rate-limiters op het inlogscherm en
+  het publieke HQ-statusendpoint. Live-monitoring herstelt vanzelf na een netwerkstoring of
+  webapp-herstart (een vers, kortlevend MQTT-ticket per herverbinding), zonder handmatige
+  pagina-ververs
 - **Nog niet gebouwd**: rol-onderscheid tussen accounts (alle accounts hebben nu gelijke, volledige
   rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten")
 

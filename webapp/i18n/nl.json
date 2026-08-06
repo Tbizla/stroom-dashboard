@@ -100,6 +100,8 @@
   "backup.plattegrondLogoDesc": "Geüploade plattegrondafbeelding en evenementlogo.",
   "backup.meetdataLbl": "Meetdata (InfluxDB-dump)",
   "backup.meetdataDesc": "Historische stroom-/spanningsdata als CSV. Kan groot worden — kies een periode.",
+  "backup.accountsLbl": "Accounts",
+  "backup.locatiesLbl": "HQ-locatielijst",
   "backup.maakBackup": "Volledige back-up maken",
   "backup.duurHint": "Kan even duren bij meetdata over een lange periode.",
   "backup.bezig": "Back-up wordt samengesteld...",

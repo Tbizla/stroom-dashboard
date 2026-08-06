@@ -5,6 +5,12 @@
 import { apiCall } from './api.js';
 import { t } from './i18n.js';
 
+// vervolgticket-toegang-van-buitenaf.md §7: naam/URL komen van het locatielijst-formulier en gaan
+// hier in innerHTML (en het href-attribuut) — escapen vóór het te renderen (stored-XSS anders)
+function esc(s){
+  return String(s).replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function statusInfo(loc){
   if(loc.offline) return { cls: 'off', tekst: t('locaties.offline') };
   if(!loc.amberRood) return { cls: 'ok', tekst: t('locaties.statusOk') };
@@ -20,13 +26,13 @@ function renderCards(locaties){
   el.innerHTML = locaties.map(loc=>{
     const status = statusInfo(loc);
     return '<div class="loccard">'+
-      '<div class="top"><span class="naam">'+loc.naam+'</span><div class="dot '+status.cls+'"></div></div>'+
+      '<div class="top"><span class="naam">'+esc(loc.naam)+'</span><div class="dot '+status.cls+'"></div></div>'+
       '<div class="metrics">'+
         '<div>'+t('locaties.kasten')+'<b>'+(loc.offline?'—':loc.kasten)+'</b></div>'+
         '<div>'+t('locaties.amberRood')+'<b>'+(loc.offline?'—':loc.amberRood)+'</b></div>'+
       '</div>'+
       '<div class="statuslabel '+status.cls+'">'+status.tekst+'</div>'+
-      '<a class="openbtn" href="'+loc.url+'" target="_blank" rel="noopener">'+t('locaties.beheerOpenen')+' →</a>'+
+      '<a class="openbtn" href="'+esc(loc.url)+'" target="_blank" rel="noopener">'+t('locaties.beheerOpenen')+' →</a>'+
     '</div>';
   }).join('');
 }
@@ -37,7 +43,7 @@ async function renderLocatiesTabel(){
   try{ locaties = await apiCall('/api/locaties', 'GET'); }catch(e){ return []; }
   tabel.innerHTML = '<tr><th>'+t('locaties.naam')+'</th><th>URL</th><th></th></tr>' +
     locaties.map(l=>
-      '<tr><td>'+l.naam+'</td><td style="font-family:var(--mono);color:var(--text2)">'+l.url+'</td>'+
+      '<tr><td>'+esc(l.naam)+'</td><td style="font-family:var(--mono);color:var(--text2)">'+esc(l.url)+'</td>'+
       '<td><button class="danger" data-verwijder="'+l.id+'">'+t('common.verwijderen')+'</button></td></tr>'
     ).join('');
   tabel.querySelectorAll('[data-verwijder]').forEach(btn=>{

@@ -81,7 +81,7 @@ document.getElementById('backupDownloadBtn').onclick = ()=>{ window.location.hre
 // geen los aan-/uitvinkgedrag nodig, alleen tekst/dimming die met de gekozen modus meeverandert.
 let herstelBestand = null;
 let herstelModus = 'volledig';
-const ONDERDEEL_LABEL = { topologie: 'backup.topologieLbl', media: 'backup.plattegrondLogoLbl', meetdata: 'backup.meetdataLbl' };
+const ONDERDEEL_LABEL = { topologie: 'backup.topologieLbl', media: 'backup.plattegrondLogoLbl', meetdata: 'backup.meetdataLbl', accounts: 'backup.accountsLbl', locaties: 'backup.locatiesLbl' };
 
 document.getElementById('herstelBestand').onchange = (ev)=>{
   herstelBestand = ev.target.files[0] || null;

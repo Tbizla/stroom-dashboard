@@ -100,6 +100,8 @@
   "backup.plattegrondLogoDesc": "Uploaded floor plan image and event logo.",
   "backup.meetdataLbl": "Measurement data (InfluxDB dump)",
   "backup.meetdataDesc": "Historical current/voltage data as CSV. Can get large — choose a period.",
+  "backup.accountsLbl": "Accounts",
+  "backup.locatiesLbl": "HQ location list",
   "backup.maakBackup": "Create full backup",
   "backup.duurHint": "May take a while for measurement data over a long period.",
   "backup.bezig": "Assembling backup...",

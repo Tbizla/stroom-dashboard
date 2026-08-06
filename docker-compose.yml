@@ -92,6 +92,13 @@ services:
     depends_on:
       - influxdb
       - telegraf-herstarter
+    # blijft altijd gepubliceerd, ook met de `publiek`-profile (Caddy) actief — nodig voor het
+    # bestaande op-locatie-gebruik (crew-telefoons op hetzelfde festivalnetwerk, zie HOST_LAN_IP/
+    # start.sh en de QR-code-deeplinks), dat is onafhankelijk van internet-toegang via Caddy.
+    # vervolgticket-toegang-van-buitenaf.md §3: zodra deze instance ook publiek (internet) bereikbaar
+    # is, hoort poort 8080 zelf NIET vanaf het publieke internet bereikbaar te zijn (alleen 80/443
+    # via Caddy) — regel dat op netwerkniveau af (firewall/security group), niet hier in compose:
+    # een `ports:`-mapping is altijd aan/uit, kan niet conditioneel per profile.
     ports:
       - "8080:8080"
     environment:
@@ -109,6 +116,9 @@ services:
       - TELEGRAF_HERSTARTER_URL=http://telegraf-herstarter:8090
       - SESSION_SECRET=${SESSION_SECRET}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
+      # gebruikt hier alleen als signaal "draait achter Caddy/TLS" (secure-cookie-vlag, server.js) —
+      # niet voor routering, dat regelt caddy/Caddyfile zelf
+      - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-}
     volumes:
       - webapp-data:/data
 

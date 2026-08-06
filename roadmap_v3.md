@@ -59,9 +59,30 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       omslag van de header-rij.
 - [x] **Toegang van buitenaf (HQ meekijken).** Afgerond — gebouwd conform
       [specs/toegang-van-buitenaf-diagnose.md](specs/toegang-van-buitenaf-diagnose.md) en het
-      technische implementatieplan daar bovenop. Beide blokkerende voorwaarden uit de diagnose
-      opgelost: een login-laag voor de hele app (bevinding #1) én de losse, onbeveiligde
-      MQTT-websocketverbinding (bevinding #2).
+      technische implementatieplan daar bovenop, plus een volledige vervolgticket-ronde
+      (6 augustus 2026) met een **kritieke bug**: de login-laag was met een hoofdletter in het pad
+      te omzeilen (`/API/...` matchte de route wél maar de auth-gate niet, Express routeert
+      standaard case-insensitive) — zonder in te loggen was hiermee o.a. een account aan te maken
+      en de hele Beheer-laag te benaderen. Direct en geïsoleerd gefixt en hertest (hoofdletter-
+      gegate-check op alle varianten) vóórdat aan de rest van het ticket begonnen is. Zes verdere
+      punten meegenomen in dezelfde ronde: `SESSION_SECRET` genereert nu zichzelf bij een
+      ontbrekende `.env`-waarde i.p.v. een hardcoded fallback; sessiecookie krijgt `secure:true`
+      zodra `PUBLIC_DOMEIN` ingesteld is (Caddy/TLS) + `trust proxy`; het MQTT-ticket is nu
+      eenmalig/kortlevend (30s) en `mqtt.js` vraagt een vers ticket per (her)verbinding — tijdens
+      het testen bleek daarbovenop een **tweede, diepere bug**: mqtt.js' `reconnectPeriod:0` bleek
+      in de praktijk niet te voorkomen dat de onderliggende websocket-stream zelf op transportniveau
+      bleef doorproberen met een allang verlopen ticket, zonder ooit een client-event te vuren —
+      opgelost met een eigen watchdog-timer die de client hoe dan ook na 10s hard afsluit en zelf
+      opnieuw begint (geverifieerd met een echte webapp-herstart: live-monitoring herstelt nu
+      vanzelf, zonder handmatige pagina-ververs); `/mqtt` zelf zit nu ook achter de auth-gate (exacte
+      padmatch i.p.v. `startsWith`); simpele rate-limiters op `/api/login` (20/15 min) en
+      `/api/hq-status` (30/min) + een generieke foutmelding i.p.v. de ruwe Influx-fout. Kleinere
+      punten: stored-XSS-escape in `accounts.js`/`hq-locaties.js`, `accounts.json`/`locaties.json`
+      nu ook in de back-up-/restore-flow, `PUBLIC_DOMEIN` in `.env.example`, verouderde
+      `mosquitto.conf`-comment bijgewerkt. Zie
+      [specs/vervolgticket-toegang-van-buitenaf.md](specs/vervolgticket-toegang-van-buitenaf.md).
+      Beide blokkerende voorwaarden uit de diagnose opgelost: een login-laag voor de hele app
+      (bevinding #1) én de losse, onbeveiligde MQTT-websocketverbinding (bevinding #2).
       **Login + accounts**: `cookie-session` (signed+encrypted cookie, geen server-side
       sessieopslag), wachtwoorden gehashed met `bcryptjs`. Eerste-opstart maakt automatisch één
       admin-account aan (wachtwoord eenmalig in de container-log). Nieuwe "Accounts"-sectie in

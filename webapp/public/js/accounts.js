@@ -4,6 +4,12 @@
 import { apiCall } from './api.js';
 import { t, huidigeLocale } from './i18n.js';
 
+// vervolgticket-toegang-van-buitenaf.md §7: naam/e-mail komen van een gebruiker (accountaanmaak-
+// formulier) en gaan hier in innerHTML — escapen vóór het in de tabel te zetten (stored-XSS anders)
+function esc(s){
+  return String(s).replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function fmtLaatstIngelogd(iso){
   return iso ? new Date(iso).toLocaleString(huidigeLocale()) : t('beheer.accountNooitIngelogd');
 }
@@ -22,8 +28,8 @@ async function renderAccountsTabel(){
   tabel.innerHTML = '<tr><th>'+t('beheer.accountNaam')+'</th><th>'+t('beheer.accountEmail')+'</th><th>'+t('beheer.accountLaatstIngelogd')+'</th><th></th></tr>' +
     accounts.map(a=>
       '<tr>'+
-      '<td>'+a.naam+'</td>'+
-      '<td class="dim">'+(a.email || '—')+'</td>'+
+      '<td>'+esc(a.naam)+'</td>'+
+      '<td class="dim">'+(a.email ? esc(a.email) : '—')+'</td>'+
       '<td class="dim">'+fmtLaatstIngelogd(a.laatst_ingelogd)+'</td>'+
       '<td><button data-reset="'+a.id+'">'+t('beheer.accountWachtwoordResetten')+'</button> <button class="danger" data-verwijder="'+a.id+'">'+t('common.verwijderen')+'</button></td>'+
       '</tr>'
