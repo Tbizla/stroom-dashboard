@@ -28,13 +28,21 @@ zwaarst-belaste-fase, compacte Sankey-boomweergave.
 downloaden.
 ![Rapportages - PDF-rapport](screenshots/07-rapportages-pdf.png)
 
-**Rapportages › Back-up** — back-up maken en herstellen (volledige restore of editie toevoegen aan
-archief).
-![Rapportages - Back-up](screenshots/08-rapportages-backup.png)
+**Rapportages › Locaties** — live statusoverzicht van meerdere locatie-instances naast elkaar (HQ
+meekijken), plus de handmatige locatielijst beheren.
+![Rapportages - Locaties](screenshots/09-rapportages-locaties.png)
 
 **Testdata** *(alleen zichtbaar in testmodus)* — testtopologieën laden en de simulator aan/uit
 zetten, zonder Shelly-hardware nodig te hebben.
 ![Testdata](screenshots/06-testdata.png)
+
+**Grafieken** — vrije ad-hoc analyse los van de vaste dashboards: lijn-, staaf-, taart-, heatmap- en
+sankey-diagram, met een live-modus en PNG-export.
+![Grafieken](screenshots/10-grafieken.png)
+
+**Beheer › Back-up** — back-up maken en herstellen (volledige restore of editie toevoegen aan
+archief), en automatische back-ups plannen.
+![Beheer - Back-up](screenshots/08-beheer-backup.png)
 
 ## 1. Eerste installatie op een nieuwe locatie (checklist)
 
@@ -67,7 +75,7 @@ nog niet eerder gebruikte machine.)
    git clone <repo-url>
    cd event_stroom_dashboard
    ```
-   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v2.0.0`) — voor een nieuwe
+   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.0.0`) — voor een nieuwe
    locatie is dat de juiste branch. `dev` bevat nog niet-uitgebrachte ontwikkeling.
 5. **`.env` invullen**:
    ```
@@ -263,7 +271,7 @@ Twee soorten export, voor twee soorten data:
 
 ## 10. Back-up herstellen (restore)
 
-Tab **Rapportages > Back-up**, onder de bestaande "Back-up maken"-sectie: zet een eerder gemaakte
+Tab **Beheer > Back-up**, onder de bestaande "Back-up maken"-sectie: zet een eerder gemaakte
 back-up (zip, met de meetdata-optie aangevinkt) terug, in twee modi:
 
 - **Volledige restore** — voor een verse/lege instance, bijv. na een hardwarewissel op een locatie
