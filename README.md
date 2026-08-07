@@ -56,7 +56,12 @@ nog niet eerder gebruikte machine.)
    queries). Wil je deze instance ook van buiten het lokale netwerk (internet) bereikbaar maken, zie
    §15 — dat vraagt om een aparte, bewuste firewall-afweging, niet zomaar alle poorten open naar
    internet (1883 en 8080 blijven ook dan alléén lokaal netwerk, nooit naar het publieke internet
-   routeren).
+   routeren). *Bestaande installatie die upgradet naar een versie ná de "Toegang van
+   buitenaf"-wijziging?* Poort 1883 was daar tijdelijk niet gepubliceerd (kritieke regressie,
+   inmiddels gefixt) — een gewone `docker compose up -d --build` volstaat, maar controleer na de
+   upgrade wel even dat 1883 daadwerkelijk weer open staat (`docker compose ps` moet
+   `0.0.0.0:1883->1883/tcp` bij `mosquitto` tonen) als er ooit een deploy zonder die poort heeft
+   gedraaid.
 4. **Code ophalen**:
    ```
    git clone <repo-url>
@@ -118,7 +123,17 @@ Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontaine
 
 ## 3. Shelly's instellen (eenmalig, per kast/generator/lid)
 
-Op elke Shelly Pro 3EM: **Settings → MQTT**
+**Aanbevolen: automatisch vanuit Beheer.** Vul eerst het **Shelly-IP**-veld in bij de kast/
+generator/lid (Beheer), dan verschijnt daarnaast een **⚙️ Configureren**-knop (met een
+aanvinkvakje "ook het snelheidsscript installeren", standaard aan) — die zet MQTT aan, vult server
+en het juiste MQTT-topic-prefix in, herstart de Shelly, en installeert optioneel het
+snelheidsscript (zie hieronder), allemaal in één keer. Boven de generatorentabel staat ook **"Alle
+Shelly's configureren"** voor alle apparaten met een ingevuld IP-adres tegelijk (max. 2 tegelijk,
+met een resultaatoverzicht per apparaat). Werkt alleen voor Shelly **Gen2+** (Pro 3EM). Lukt het
+een keer niet (apparaat offline, eigen apparaatwachtwoord ingesteld, ...) dan toont de melding
+waarom — de handmatige route hieronder blijft altijd als fallback werken.
+
+Handmatig (of als automatisch een keer niet werkt): op elke Shelly Pro 3EM: **Settings → MQTT**
 - **Enable MQTT**: aan
 - **Server**: `<IP-adres van deze machine>:1883` (één veld, host:poort samen — dus bijv.
   `192.168.1.50:1883`, niet los een poortveld)
@@ -141,9 +156,9 @@ Na deze stap publiceert elke Shelly automatisch naar o.a.:
 
 ### Optioneel: sneller dan 15s met een Shelly Script
 
-Voor een responsievere Live-weergave in de webapp (die zelf al direct reageert op elk binnenkomend MQTT-bericht, zonder eigen vertraging) kun je het vaste 15s-interval omzeilen met een **Shelly Script** — de ingebouwde scripting-engine van de Shelly, dus géén custom firmware nodig (en dat raden we ook af: Tasmota/ESPHome ondersteunen de Pro 3EM-hardware niet goed en kunnen 'm onbruikbaar maken).
+Voor een responsievere Live-weergave in de webapp (die zelf al direct reageert op elk binnenkomend MQTT-bericht, zonder eigen vertraging) kun je het vaste 15s-interval omzeilen met een **Shelly Script** — de ingebouwde scripting-engine van de Shelly, dus géén custom firmware nodig (en dat raden we ook af: Tasmota/ESPHome ondersteunen de Pro 3EM-hardware niet goed en kunnen 'm onbruikbaar maken). Het "ook het snelheidsscript installeren"-vinkje bij de automatische route hierboven doet dit al voor je — onderstaande stappen zijn alleen nodig bij de handmatige route.
 
-Het script staat kant-en-klaar in [`shelly/em-fast-publish.js`](shelly/em-fast-publish.js) en publiceert elke seconde de actuele meting naar hetzelfde topic, in dezelfde vorm als de standaard-push — dus zonder dat Telegraf of de webapp aangepast hoeven te worden. Installatie per Shelly (identiek script, niets aan te passen):
+Het script staat kant-en-klaar in [`shelly/em-fast-publish.js`](shelly/em-fast-publish.js) en publiceert elke seconde de actuele meting naar hetzelfde topic, in dezelfde vorm als de standaard-push — dus zonder dat Telegraf of de webapp aangepast hoeven te worden. Handmatige installatie per Shelly (identiek script, niets aan te passen):
 1. Stel eerst de "Custom MQTT prefix" in zoals hierboven — het script leest die zelf uit.
 2. Settings > Scripts > "+ Add script", plak de inhoud van `em-fast-publish.js`, Save.
 3. Zet "Run on startup" aan en start het script.

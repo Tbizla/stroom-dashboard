@@ -223,6 +223,15 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .shelly-cell{display:flex;align-items:center;gap:4px}
 .shelly-cell input{flex:1;min-width:0}
 .mqtt-copy-btn{flex-shrink:0;padding:4px 6px!important;font-size:12px!important;line-height:1}
+.shelly-toast{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 40px 14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.35);min-width:240px;max-width:340px}
+.shelly-toast #shellyToastTitel{font-size:12.5px;font-weight:700;margin-bottom:6px}
+.shelly-toast-regel{font-size:12px;color:var(--text2);line-height:1.5}
+.shelly-toast-sluit{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px}
+.shelly-cfg{display:flex;align-items:center;gap:3px}
+.shelly-cfg input[type=checkbox]{width:auto!important;flex-shrink:0}
+.shelly-cfg-btn{padding:4px 6px!important;font-size:12px!important;line-height:1}
+#shellyBulkTabel td{font-size:12px}
+#shellyBulkTabel .status-icoon{font-size:14px}
 .btable button:hover{border-color:var(--accent);color:var(--text)}
 .btable button.danger:hover{border-color:var(--red);color:var(--red)}
 .rating-cell{display:flex;align-items:center;gap:6px}

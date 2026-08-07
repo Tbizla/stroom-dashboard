@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
+const { configureerShelly } = require('./shelly-rpc');
 
 // letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
 // env-var (SESSION_SECRET/INTERNAL_API_TOKEN) — een installatie die 'm per ongeluk laat staan mag
@@ -23,6 +24,9 @@ const LOGO_BASENAME = path.join(DATA_DIR, 'logo');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
 const TEST_TOPO_SIMPEL = path.join(__dirname, 'test_topologie_simpel.json');
 const TEST_TOPO_UITGEBREID = path.join(__dirname, 'test_topologie_uitgebreid.json');
+// specs/shelly-auto-configuratie-plan.md: bind-mount (docker-compose.yml), niet gedupliceerd in
+// webapp/ — één bronbestand, altijd actueel
+const SHELLY_SCRIPT_FILE = '/shelly-script/em-fast-publish.js';
 
 const INFLUX_URL = process.env.INFLUX_URL || 'http://influxdb:8086';
 const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
@@ -1169,6 +1173,57 @@ app.delete('/api/kasten/:id', (req, res) => {
   data.kasten = data.kasten.filter(k => k.id !== req.params.id);
   writeTopo(data);
   res.json({ ok: true });
+});
+
+// specs/shelly-auto-configuratie-plan.md: MQTT-instellingen (+ optioneel het snelheidsscript) in
+// één actie naar een Shelly pushen, i.p.v. de handmatige route uit README §3 (die blijft als
+// fallback bestaan). Bewuste designkeuze: geen shelly_ip/mqtt_topic_prefix in de request-body — de
+// server zoekt die zelf op via readTopo() aan de hand van de meegestuurde id's, nooit een door de
+// client aangeleverd IP-adres direct gebruiken. Voorkomt dat dit endpoint een SSRF-hefboom wordt
+// (anders kan een ingelogde gebruiker de server naar willekeurig welk IP laten posten); met
+// id-lookup kan er hoogstens naar een IP gestuurd worden dat al ergens in de eigen topologie als
+// shelly_ip staat, wat sowieso al door een ingelogde beheerder zelf is ingevuld. Bijkomend voordeel:
+// altijd het actuele, server-berekende mqtt_topic_prefix, nooit een stale client-kopie.
+// Bulk-configuratie is bewust client-side (de browser roept dit endpoint na elkaar aan, max. 2
+// tegelijk) — geen apart bulk-endpoint/streaming-infrastructuur nodig, zie de UI in render-beheer.js.
+app.post('/api/shelly/configureren', async (req, res) => {
+  const { doelType, id, generatorId, script } = req.body || {};
+  const data = readTopo();
+  let doel;
+  if (doelType === 'kast') {
+    doel = data.kasten.find((k) => k.id === id);
+  } else if (doelType === 'generator') {
+    doel = data.generators.find((g) => g.id === id);
+  } else if (doelType === 'lid') {
+    const gen = data.generators.find((g) => g.id === generatorId);
+    doel = gen && (gen.leden || []).find((l) => l.id === id);
+  } else {
+    return res.status(400).json({ error: 'ongeldig doelType' });
+  }
+  if (!doel) return res.status(404).json({ error: 'doel niet gevonden' });
+  if (!doel.shelly_ip) return res.status(400).json({ error: 'dit doel heeft geen Shelly-IP ingevuld' });
+
+  const brokerHost = bepaalHostLanIp();
+  if (!brokerHost) {
+    return res.status(400).json({ error: 'geen LAN-IP bekend (lan-ip-detector-service) — kan geen broker-adres meesturen naar de Shelly' });
+  }
+
+  let scriptCode = null;
+  if (script) {
+    try {
+      scriptCode = fs.readFileSync(SHELLY_SCRIPT_FILE, 'utf8');
+    } catch (e) {
+      return res.status(500).json({ error: 'kon shelly/em-fast-publish.js niet lezen: ' + e.message });
+    }
+  }
+
+  const resultaat = await configureerShelly(doel.shelly_ip, {
+    topicPrefix: doel.mqtt_topic_prefix,
+    brokerHost,
+    metScript: !!script,
+    scriptCode,
+  });
+  res.json(resultaat);
 });
 
 // ---------- alles wissen ----------

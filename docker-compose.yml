@@ -155,6 +155,12 @@ services:
     volumes:
       - webapp-data:/data
       - lan-ip-shared:/shared:ro
+      # specs/shelly-auto-configuratie-plan.md: shelly/em-fast-publish.js staat op de repo-root,
+      # buiten de webapp-service's eigen Docker-build-context (./webapp) — bind-mounten i.p.v.
+      # dupliceren in webapp/, zodat er maar één bronbestand is (deze mount is altijd actueel,
+      # geen los kopietje dat kan verouderen) en /api/shelly/configureren 'm net als de bestaande
+      # README-instructie rechtstreeks kan uitlezen.
+      - ./shelly:/shelly-script:ro
 
   # alleen gestart met `docker compose --profile test up -d` — de webapp herkent zelf of deze
   # service bestaat (DNS-lookup op "simulator", zie isTestMode() in server.js) om de Testdata-tabblad

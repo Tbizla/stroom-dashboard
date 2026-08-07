@@ -246,6 +246,44 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       eronder, geen grid — bruikbaar om direct uit te knippen of op een labelvel te plakken.
       "Alle QR-codes printen" (bulk) blijft ongewijzigd de 4-koloms-sheet. Volledige regressietest
       slaagt voor alle drie punten. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
+- [x] **Shelly's automatisch configureren vanuit Beheer.** Afgerond — gebouwd conform
+      [specs/onderzoek-shelly-auto-configuratie.md](specs/onderzoek-shelly-auto-configuratie.md)
+      (onderzoek, geaccordeerd) en
+      [specs/shelly-auto-configuratie-plan.md](specs/shelly-auto-configuratie-plan.md) (7 augustus
+      2026, Mike). Nieuwe server-side module `webapp/shelly-rpc.js`: alle aanroepen via
+      `POST http://<shelly-ip>/rpc` (Node's ingebouwde fetch, 5s timeout per aanroep) tegen de
+      Shelly Gen2+ lokale RPC-API — `MQTT.SetConfig` (broker + topic-prefix) → `Shelly.Reboot` →
+      pollen op `MQTT.GetStatus` (elke 2s, max 20s, timeout ≠ harde fout) → optioneel het
+      snelheidsscript (`shelly/em-fast-publish.js`) via `Script.List`/`Create`/`Stop`(als al
+      lopend)/`PutCode` (chunks van 1024 bytes, zelfde patroon als Shelly's eigen upload-tooling)/
+      `SetConfig`/`Start`. Nieuw `POST /api/shelly/configureren`-endpoint (`doelType:'kast'|
+      'generator'|'lid'`) — bewust **geen** `shelly_ip`/`mqtt_topic_prefix` in de request-body, de
+      server zoekt die zelf op via `readTopo()` (voorkomt een SSRF-hefboom: nooit een door de
+      client aangeleverd IP-adres direct aanroepen). Broker-host komt uit de bestaande
+      `bepaalHostLanIp()` (lan-ip-detector-bestand); ontbreekt die, dan een duidelijke 400 i.p.v.
+      een zinloze configuratie versturen. Bulk is bewust client-side (de browser roept het endpoint
+      na elkaar aan, max. 2 tegelijk) — geen apart bulk-endpoint/SSE-infrastructuur.
+      **UI**: een ⚙️-knop (+ "ook script"-vinkje, standaard aan) naast elke rij met een ingevuld
+      Shelly-IP (kast/generator/lid), met een klein toastje met een client-side benaderde
+      voortgangstekst (géén echte server-streaming, zie het plan) en het uiteindelijke resultaat
+      (MQTT-/scriptstatus apart). "Alle Shelly's configureren" boven de generatorentabel opent een
+      overlay met een rij per apparaat en een live-bijwerkend statusicoontje.
+      **Kritieke, losstaande bevinding tijdens het uitwerken**: mosquitto-poort 1883 bleek al sinds
+      een eerdere commit niet meer gepubliceerd — apart, met voorrang gefixt (zie het item
+      hierboven in deze roadmap).
+      **Getest** met een gemockte lokale RPC-server (geen fysieke Shelly nodig): volledige
+      happy-path-flow (exacte RPC-volgorde geverifieerd via een call-log, chunked script-upload
+      reconstrueert het bestand byte-perfect), idempotentie (tweede aanroep op een al-geconfigureerd
+      apparaat gebruikt `Script.Stop` + hetzelfde script-id, geen dubbel script), timeout-
+      foutafhandeling (onbereikbaar IP, 5s), ontbrekend-shelly-ip/ongeldig-doelType/onbekend-id
+      (400/404), en het ontbrekend-LAN-IP-scenario (400). UI end-to-end getest met **strikt
+      op naam/id gescopede selectors** (nooit een blinde eerste-match-selector) — een eerdere
+      testrun raakte per ongeluk een echt, fysiek apparaat van Mike (verkeerd broker-adres gezet
+      door de bekende WSL2/Docker-Desktop-lan-ip-detector-beperking) en is ter plekke hersteld en
+      geverifieerd (opnieuw verbonden, live meetdata bevestigd op de broker); nadien is elke
+      testinteractie herbouwd om alleen op een uniek-geïdentificeerde, tijdelijke testrij te kunnen
+      klikken. Volledige regressietest slaagt. Zie event_dashboard.md, Topologiebeheer
+      (Beheer-tabblad).
 - [x] **Bestaande generators samenvoegen tot een groep ("Power Plant").** Afgerond — gebouwd
       conform
       [specs/generator-groep-powerplant-plan.md](specs/generator-groep-powerplant-plan.md). Nieuw

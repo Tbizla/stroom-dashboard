@@ -89,6 +89,117 @@ async function kopieerMqttPrefix(prefix, btnEl){
   setTimeout(()=>{ btnEl.textContent = origineel; }, 1200);
 }
 
+// specs/shelly-auto-configuratie-plan.md: MQTT-instellingen (+ optioneel het snelheidsscript) in
+// één actie naar een Shelly pushen — server doet al het RPC-werk (webapp/shelly-rpc.js), de client
+// stuurt alleen doelType/id/generatorId/script en toont het resultaat.
+async function voerShellyConfiguratieUit(doel, metScript){
+  try{
+    return await apiCall('/api/shelly/configureren', 'POST', { doelType: doel.doelType, id: doel.id, generatorId: doel.generatorId, script: metScript });
+  }catch(e){
+    // apiCall gooit bij een 4xx/5xx (bijv. geen shelly_ip, geen LAN-IP bekend) — dat zijn
+    // request-fouten, geen device-fouten, maar de UI toont ze op dezelfde manier
+    return { ok:false, mqtt:{ ok:false, melding:e.message }, script:null };
+  }
+}
+
+function toonShellyToast(titel){
+  document.getElementById('shellyToastTitel').textContent = titel;
+  document.getElementById('shellyToastRegel1').textContent = '';
+  document.getElementById('shellyToastRegel2').textContent = '';
+  document.getElementById('shellyToast').style.display = 'block';
+}
+function zetShellyToastRegel(regel1, regel2){
+  document.getElementById('shellyToastRegel1').textContent = regel1 || '';
+  document.getElementById('shellyToastRegel2').textContent = regel2 || '';
+}
+
+// géén streaming/SSE vanaf de server (bewuste keuze, zie het plan) — de "live voortgangstekst" is
+// dus een client-side benaderde tijdlijn terwijl de ene, blokkerende serveraanroep loopt, geen
+// echte per-stap-bevestiging. Zodra de aanroep terugkomt, wordt de tijdlijn direct vervangen door
+// het daadwerkelijke resultaat.
+async function startShellyConfiguratie(doel, metScript){
+  toonShellyToast(doel.naam);
+  zetShellyToastRegel(t('beheer.shellyToastVersturen'));
+  const timers = [
+    setTimeout(()=> zetShellyToastRegel(t('beheer.shellyToastHerstart')), 700),
+    setTimeout(()=> zetShellyToastRegel(t('beheer.shellyToastVerbinding')), 1800),
+  ];
+  if(metScript) timers.push(setTimeout(()=> zetShellyToastRegel(t('beheer.shellyToastVerbinding'), t('beheer.shellyToastScript')), 6000));
+  const resultaat = await voerShellyConfiguratieUit(doel, metScript);
+  timers.forEach(clearTimeout);
+  const mqttRegel = resultaat.mqtt ? (resultaat.mqtt.ok?'✅ ':'❌ ') + resultaat.mqtt.melding : '';
+  const scriptRegel = resultaat.script ? (resultaat.script.ok?'✅ ':'❌ ') + resultaat.script.melding : '';
+  zetShellyToastRegel(mqttRegel, scriptRegel);
+  document.getElementById('shellyToastTitel').textContent = (resultaat.ok ? t('beheer.shellyToastKlaar') : t('beheer.shellyToastFout')) + ' — ' + doel.naam;
+}
+document.getElementById('shellyToastSluit').addEventListener('click', ()=>{ document.getElementById('shellyToast').style.display = 'none'; });
+
+// helper voor de kast-rij (DOM-gebouwd, zie kastRij() hieronder) — generator-/lid-rijen zijn
+// string-gebouwd en gebruiken data-shelly-cfg-*-attributen + een gedelegeerde binding in
+// renderBeheer() i.p.v. deze functie, zelfde patroon-verschil als de rest van dit bestand.
+function maakShellyConfigureerControl(doel){
+  const wrap = document.createElement('span');
+  wrap.className = 'shelly-cfg';
+  const scriptChk = document.createElement('input');
+  scriptChk.type = 'checkbox';
+  scriptChk.checked = true;
+  scriptChk.title = t('beheer.shellyConfigureerScriptTitle');
+  const btn = document.createElement('button');
+  btn.className = 'shelly-cfg-btn';
+  btn.textContent = '⚙️';
+  btn.title = t('beheer.shellyConfigureren');
+  btn.onclick = ()=> startShellyConfiguratie(doel, scriptChk.checked);
+  wrap.appendChild(scriptChk);
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+function alleShellyDoelen(){
+  const doelen = [];
+  state.TOPO.kasten.forEach(k=>{ if(k.shelly_ip) doelen.push({doelType:'kast', id:k.id, naam:k.naam, shelly_ip:k.shelly_ip}); });
+  state.TOPO.generators.forEach(g=>{
+    if(g.shelly_ip) doelen.push({doelType:'generator', id:g.id, naam:g.naam, shelly_ip:g.shelly_ip});
+    (g.leden||[]).forEach(l=>{ if(l.shelly_ip && l.id) doelen.push({doelType:'lid', id:l.id, generatorId:g.id, naam:g.naam+' — '+l.naam, shelly_ip:l.shelly_ip}); });
+  });
+  return doelen;
+}
+
+// bulk-run-nummer: voorkomt dat een oude, nog-lopende reeks (overlay dicht, meteen een nieuwe
+// bulk-run gestart) DOM-elementen van een inmiddels heropgebouwde tabel met dezelfde
+// index-gebaseerde id's zou bijwerken — elke werker checkt vóór elke schrijfactie of hij nog bij de
+// actuele run hoort.
+let shellyBulkGeneratie = 0;
+document.getElementById('shellyBulkClose').addEventListener('click', ()=>{ document.getElementById('shellyBulkOverlay').style.display = 'none'; });
+document.getElementById('shellyBulkBtn').addEventListener('click', async ()=>{
+  const doelen = alleShellyDoelen();
+  if(!doelen.length){ alert(t('beheer.shellyBulkGeenApparaten')); return; }
+  const generatie = ++shellyBulkGeneratie;
+
+  document.getElementById('shellyBulkSubtitel').textContent = t('beheer.shellyBulkSubtitel', {n: doelen.length});
+  document.getElementById('shellyBulkTabel').innerHTML = '<tr><th>'+t('beheer.thNaam')+'</th><th>IP</th><th style="width:30px"></th></tr>' +
+    doelen.map((d,i)=>'<tr><td>'+String(d.naam).replace(/</g,'&lt;')+'</td><td>'+d.shelly_ip+'</td>'+
+      '<td class="status-icoon" id="shellyBulkStatus'+i+'" title="'+t('beheer.shellyBulkWachtend')+'">⏳</td></tr>').join('');
+  document.getElementById('shellyBulkOverlay').style.display = 'flex';
+
+  let volgende = 0;
+  const MAX_TEGELIJK = 2;
+  async function werker(){
+    while(volgende < doelen.length){
+      if(generatie !== shellyBulkGeneratie) return;
+      const idx = volgende++;
+      const statusEl = document.getElementById('shellyBulkStatus'+idx);
+      if(statusEl){ statusEl.textContent = '🔄'; statusEl.title = t('beheer.shellyBulkBezig'); }
+      const resultaat = await voerShellyConfiguratieUit(doelen[idx], true);
+      if(generatie !== shellyBulkGeneratie) return;
+      if(statusEl){
+        statusEl.textContent = resultaat.ok ? '✅' : '❌';
+        statusEl.title = [resultaat.mqtt && resultaat.mqtt.melding, resultaat.script && resultaat.script.melding].filter(Boolean).join(' / ');
+      }
+    }
+  }
+  await Promise.all(Array.from({length: Math.min(MAX_TEGELIJK, doelen.length)}, werker));
+});
+
 export function vulGenSelect(select, geselecteerd){
   select.innerHTML = state.TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
 }
@@ -245,6 +356,9 @@ export function renderKastSecties(){
       qrBtn.onclick = ()=> openQrOverlay(k);
       actieWrap.appendChild(qrBtn);
     }
+    if(k.shelly_ip){
+      actieWrap.appendChild(maakShellyConfigureerControl({doelType:'kast', id:k.id, naam:k.naam}));
+    }
     const delBtn = document.createElement('button');
     delBtn.className = 'danger';
     delBtn.textContent = t('common.verwijderen');
@@ -383,8 +497,8 @@ export function renderBeheer(){
   // groepen blijven uitgesloten net als bij de rest van het groepsysteem
   let gh = '<tr>'+(groepeerSelectieActief?'<th style="width:26px"></th>':'')+
     '<th>'+t('beheer.thNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:80px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th>'+
-    '<th style="min-width:120px">'+t('beheer.thShellyIp')+'</th>'+
-    '<th style="min-width:70px">'+t('beheer.thAantalKasten')+'</th><th style="min-width:140px">'+t('beheer.thSoortKoppeling')+'</th><th style="min-width:110px">'+t('beheer.thLeden')+'</th><th style="min-width:80px"></th></tr>';
+    '<th style="min-width:150px">'+t('beheer.thShellyIp')+'</th>'+
+    '<th style="min-width:70px">'+t('beheer.thAantalKasten')+'</th><th style="min-width:140px">'+t('beheer.thSoortKoppeling')+'</th><th style="min-width:110px">'+t('beheer.thLeden')+'</th><th style="min-width:130px"></th></tr>';
   state.TOPO.generators.forEach(g=>{
     const aantal = state.TOPO.kasten.filter(k=>k.generator===g.id).length;
     const type = g.type || 'generator';
@@ -413,11 +527,11 @@ export function renderBeheer(){
         '<option value="hybride"'+(g.groep_soort==='hybride'?' selected':'')+'>'+t('beheer.soortHybride')+'</option>'+
       '</select></td>'+
       '<td>'+(isGroep ? '<button data-groep-toggle="'+g.id+'">'+t('beheer.ledenBtn', {n: g.leden.length})+' '+(expandedGroepen.has(g.id)?'▴':'▾')+'</button>' : '—')+'</td>'+
-      '<td><button data-gen-del="'+g.id+'" class="danger">'+t('common.verwijderen')+'</button></td>'+
+      '<td><div style="display:flex;gap:4px;align-items:center">'+(g.shelly_ip?'<span class="shelly-cfg"><input type="checkbox" class="shelly-cfg-script" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'"><button class="shelly-cfg-btn" data-shelly-cfg-type="generator" data-shelly-cfg-id="'+g.id+'" title="'+t('beheer.shellyConfigureren')+'">⚙️</button></span>':'')+'<button data-gen-del="'+g.id+'" class="danger">'+t('common.verwijderen')+'</button></div></td>'+
       '</tr>';
     if(isGroep && expandedGroepen.has(g.id)){
-      gh += '<tr class="ledenrow"><td colspan="9"><table class="btable ledentable">'+
-        '<tr><th>'+t('beheer.ledenTableThNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:90px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th><th style="min-width:120px">'+t('beheer.thShellyIp')+'</th><th style="min-width:70px"></th></tr>'+
+      gh += '<tr class="ledenrow"><td colspan="'+(groepeerSelectieActief?10:9)+'"><table class="btable ledentable">'+
+        '<tr><th>'+t('beheer.ledenTableThNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:90px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th><th style="min-width:150px">'+t('beheer.thShellyIp')+'</th><th style="min-width:100px"></th></tr>'+
         g.leden.map((l,i)=>
           '<tr>'+
             '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
@@ -427,7 +541,7 @@ export function renderBeheer(){
               '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
             '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle')+'" '+(l.rating_a==null?'disabled':'')+'>'+
               '<button class="mqtt-copy-btn" data-mqtt-copy="'+(l.mqtt_topic_prefix||'')+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button></div></td>'+
-            '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
+            '<td><div style="display:flex;gap:4px;align-items:center">'+(l.shelly_ip?'<span class="shelly-cfg"><input type="checkbox" class="shelly-cfg-script" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'"><button class="shelly-cfg-btn" data-shelly-cfg-type="lid" data-shelly-cfg-id="'+(l.id||'')+'" data-shelly-cfg-generator="'+g.id+'" title="'+t('beheer.shellyConfigureren')+'">⚙️</button></span>':'')+'<button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></div></td>'+
           '</tr>'
         ).join('')+
         '<tr>'+
@@ -444,6 +558,23 @@ export function renderBeheer(){
   genTable.innerHTML = gh;
 
   genTable.querySelectorAll('[data-mqtt-copy]').forEach(el=>el.onclick = ()=> kopieerMqttPrefix(el.dataset.mqttCopy, el));
+
+  genTable.querySelectorAll('[data-shelly-cfg-type]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const type = btn.dataset.shellyCfgType;
+      const id = btn.dataset.shellyCfgId;
+      const generatorId = btn.dataset.shellyCfgGenerator;
+      const scriptChk = btn.parentElement.querySelector('.shelly-cfg-script');
+      let naam = id;
+      if(type==='generator'){ const g = state.TOPO.generators.find(x=>x.id===id); naam = g ? g.naam : id; }
+      if(type==='lid'){
+        const g = state.TOPO.generators.find(x=>x.id===generatorId);
+        const l = g && (g.leden||[]).find(x=>x.id===id);
+        naam = (g?g.naam:'') + (l?' — '+l.naam:'');
+      }
+      startShellyConfiguratie({doelType:type, id, generatorId, naam}, scriptChk ? scriptChk.checked : true);
+    };
+  });
 
   if(groepeerSelectieActief){
     genTable.querySelectorAll('.gen-groepeer-check').forEach(el=>el.onchange = ()=>{
