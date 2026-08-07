@@ -65,6 +65,10 @@
   "subnav.overzicht": "Overview",
   "subnav.pdfRapport": "PDF report",
   "subnav.locaties": "Locations",
+  "subnav.topologie": "Topology",
+  "subnav.instellingen": "Settings",
+  "subnav.accounts": "Accounts",
+  "subnav.backup": "Backup",
 
   "locaties.titel": "Locations",
   "locaties.subtitel": "Live status overview of all known locations. Click \"Open management\" to open the full app for that location (same rights as on-site).",

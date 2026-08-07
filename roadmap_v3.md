@@ -301,6 +301,33 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       testinteractie herbouwd om alleen op een uniek-geïdentificeerde, tijdelijke testrij te kunnen
       klikken. Volledige regressietest slaagt. Zie event_dashboard.md, Topologiebeheer
       (Beheer-tabblad).
+- [x] **Sub-tabbladen voor de Beheer-pagina.** Afgerond — gebouwd conform
+      [specs/beheer-subtabs-plan.md](specs/beheer-subtabs-plan.md) (7 augustus 2026, Mike): het
+      Beheer-tabblad was één lange, doorlopend scrollende pagina met acht secties achter elkaar —
+      opgedeeld in vier sub-tabs, 1-op-1 hergebruik van het bestaande Rapportages-subnav-patroon
+      (`.subnav`-CSS, `toonRapportSubnav()`-klik-logica gekopieerd naar een nieuwe
+      `toonBeheerSubnav()`). **Topologie** (standaard actief — Generators + Kasten + "Alles
+      wissen"), **Instellingen** (Evenementlogo, Systeeminstellingen, Alert-notificaties —
+      eenmalig-per-evenement-dingen), **Accounts** (eigen tab i.p.v. tussen Instellingen en
+      Generators in), **Back-up** (de drie bestaande onderdelen blijven bij elkaar, `#backupPanel`
+      hergebruikt als sub-tab-paneel-id). Dit is een pure DOM-herindeling, geen rebuild: alle
+      bestaande element-id's (`genTable`, `kastSections`, `accountsTable`, `logoFile`,
+      `notifTelegramBotToken`, `resetAllBtn`, enz.) bleven exact hetzelfde, dus al het bestaande
+      JavaScript in `render-beheer.js`/`instellingen.js`/`notificaties.js`/`accounts.js`/
+      `(automatische-)backup.js` werkt ongewijzigd — `display:none` op een voorouder-element breekt
+      geen `getElementById`. Sub-tab-keuze wordt onthouden zolang je in de app blijft (`state.
+      beheerSubnav`, zelfde in-memory-patroon als `state.rapportSubnav`), ook bij wisselen naar een
+      ander hoofdtabblad en terug. **Bug tijdens het bouwen, direct gevonden en gefixt**: de eerste
+      versie zette het nieuwe buiten-wrapper-element `#beheerPanel` standaard op `display:none`
+      (het Rapportages-patroon-klakkeloos-gekopieerd), maar Beheer ís — anders dan Rapportages — de
+      standaard-actieve modus bij het laden van de pagina; zonder een expliciete klik op de
+      Beheer-knop bleef de hele pagina dan leeg. Gefixt door de buiten-wrapper terug op
+      `display:flex` te zetten (de vier sub-panelen zelf regelen onderling wie zichtbaar is).
+      Getest: Topologie is de default sub-tab bij het laden (generatorentabel meteen gevuld), elke
+      sub-tab bevat exact de juiste velden/knoppen, generator aanmaken werkt vanuit de
+      Topologie-sub-tab, en wisselen naar een ander hoofdtabblad (Live) en terug naar Beheer toont
+      weer de laatst-actieve sub-tab (Back-up). Volledige regressietest slaagt. Zie
+      event_dashboard.md, Topologiebeheer (Beheer-tabblad).
 - [x] **Bestaande generators samenvoegen tot een groep ("Power Plant").** Afgerond — gebouwd
       conform
       [specs/generator-groep-powerplant-plan.md](specs/generator-groep-powerplant-plan.md). Nieuw

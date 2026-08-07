@@ -44,7 +44,15 @@
     <span class="hint" id="armedLabel"></span>
   </div>
 
-  <div class="beheer" id="beheerPanel" style="display:flex">
+  <div id="beheerPanel" style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0">
+    <div class="subnav" id="beheerSubnav">
+      <button class="active" id="subnavTopologie" data-i18n="subnav.topologie">Topologie</button>
+      <button id="subnavInstellingen" data-i18n="subnav.instellingen">Instellingen</button>
+      <button id="subnavAccounts" data-i18n="subnav.accounts">Accounts</button>
+      <button id="subnavBackup" data-i18n="subnav.backup">Back-up</button>
+    </div>
+
+    <div class="beheer" id="instellingenPanel" style="display:none">
     <div class="beheercol">
       <h2 data-i18n="beheer.evenementlogo">Evenementlogo</h2>
       <div class="addform">
@@ -155,8 +163,12 @@
       <div id="notifErrorCard" class="addform" style="display:none;margin-top:10px">
         <span id="notifErrorInfo" style="color:var(--red)"></span>
       </div>
+    </div>
+    </div>
 
-      <h2 style="margin-top:22px" data-i18n="beheer.accounts">Accounts</h2>
+    <div class="beheer" id="accountsPanel" style="display:none">
+    <div class="beheercol">
+      <h2 data-i18n="beheer.accounts">Accounts</h2>
       <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="beheer.accountsSubtitel">Losse accounts per persoon — geen gedeeld wachtwoord. Alleen een ingelogde editor kan hier een account aanmaken; geen publieke registratie.</div>
       <table class="btable" id="accountsTable"></table>
       <div class="addform">
@@ -173,8 +185,12 @@
         </div>
         <div class="warn"><b data-i18n="beheer.letOp">Let op:</b> <span data-i18n="beheer.accountWachtwoordWaarschuwing">dit wachtwoord wordt maar één keer getoond. Gebruik "Wachtwoord resetten" als het kwijtraakt vóórdat je het gedeeld hebt.</span></div>
       </div>
+    </div>
+    </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
+    <div class="beheer" id="topologiePanel" style="display:flex">
+    <div class="beheercol">
+      <div style="display:flex;align-items:center;justify-content:space-between">
         <h2 style="margin:0" data-i18n="beheer.generators">Generators</h2>
         <div style="display:flex;gap:8px">
           <button class="collapseall" id="shellyBulkBtn" data-i18n="beheer.alleShellysConfigureren">Alle Shelly's configureren</button>
@@ -223,8 +239,12 @@
       <div style="margin-top:24px">
         <button id="resetAllBtn" style="border-color:var(--red);color:var(--red)" data-i18n="beheer.allesWissen">Alles wissen</button>
       </div>
-      <div id="backupPanel">
-      <h2 style="margin-top:22px" data-i18n="backup.titel">Back-up</h2>
+    </div>
+    </div>
+
+    <div class="beheer" id="backupPanel" style="display:none">
+    <div class="beheercol">
+      <h2 data-i18n="backup.titel">Back-up</h2>
       <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="backup.subtitel">Eén bestand voor een volledige restore op een andere instance.</div>
 
       <div class="optionrow locked">

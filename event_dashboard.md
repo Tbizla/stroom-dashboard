@@ -89,6 +89,13 @@ zetten zonder code aan te passen.
   rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten")
 
 **Topologiebeheer (Beheer-tabblad)**
+- Het Beheer-tabblad heeft een altijd-zichtbare subnav met vier sub-tabs (zelfde patroon als de
+  Rapportages-subnav): **Topologie** (standaard actief — Generators + Kasten + "Alles wissen"),
+  **Instellingen** (Evenementlogo, Systeeminstellingen, Alert-notificaties — dingen die je typisch
+  één keer per evenement instelt), **Accounts**, en **Back-up** (Back-up maken, Automatische
+  back-up, Back-up herstellen, ongewijzigd bij elkaar). Welke sub-tab actief is blijft onthouden
+  zolang je in de app blijft (zelfde gedrag als de Rapportages-subnav), ook bij het wisselen naar
+  een ander hoofdtabblad en terug
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
   **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
   generators/accu's bestaat (bijv. een centrale met meerdere aggregaten + een batterijcontainer die

@@ -20,6 +20,24 @@ function setActiveModeButton(id){
   // MQTT-databalonnetje heeft dan geen ankerpunt meer
   if(state.openPopupKastId){ state.openPopupKastId = null; renderKastPopup(); }
 }
+// specs/beheer-subtabs-plan.md: vier sub-tabs binnen Beheer (Topologie/Instellingen/Accounts/
+// Back-up), zelfde patroon als toonRapportSubnav() hieronder — een verhuizing van bestaande
+// content in DOM-structuur, geen enkel formulier/tabel/knop is herbouwd of hernoemd, dus al het
+// bestaande JS in render-beheer.js/instellingen.js/notificaties.js/accounts.js/(automatische-)
+// backup.js blijft ongewijzigd werken zolang de id's intact blijven.
+function toonBeheerSubnav(naam){
+  state.beheerSubnav = naam;
+  ['subnavTopologie','subnavInstellingen','subnavAccounts','subnavBackup'].forEach(id=>document.getElementById(id).classList.toggle('active', id==='subnav'+naam.charAt(0).toUpperCase()+naam.slice(1)));
+  document.getElementById('topologiePanel').style.display = naam==='topologie' ? 'flex' : 'none';
+  document.getElementById('instellingenPanel').style.display = naam==='instellingen' ? 'flex' : 'none';
+  document.getElementById('accountsPanel').style.display = naam==='accounts' ? 'flex' : 'none';
+  document.getElementById('backupPanel').style.display = naam==='backup' ? 'flex' : 'none';
+}
+document.getElementById('subnavTopologie').onclick = ()=>toonBeheerSubnav('topologie');
+document.getElementById('subnavInstellingen').onclick = ()=>toonBeheerSubnav('instellingen');
+document.getElementById('subnavAccounts').onclick = ()=>toonBeheerSubnav('accounts');
+document.getElementById('subnavBackup').onclick = ()=>toonBeheerSubnav('backup');
+
 document.getElementById('modeBeheer').onclick = ()=>{
   state.mode='beheer';
   setActiveModeButton('modeBeheer');
@@ -31,6 +49,7 @@ document.getElementById('modeBeheer').onclick = ()=>{
   document.getElementById('rapportagesPanel').style.display='none';
   document.getElementById('grafiekenPanel').style.display='none';
   document.getElementById('beheerPanel').style.display='flex';
+  toonBeheerSubnav(state.beheerSubnav);
   renderBeheer();
 };
 document.getElementById('modeCal').onclick = ()=>{
