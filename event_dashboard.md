@@ -91,10 +91,12 @@ zetten zonder code aan te passen.
   Testdata verdwijnen volledig uit de header (i.p.v. grijs-met-uitleg getoond te worden), en een
   viewer landt bij het inloggen automatisch op Schema i.p.v. Beheer. Server-side afgedwongen (niet
   alleen de tabbladen client-side verstopt): elke route die bij Beheer/Kalibreren/Testdata hoort
-  geeft een viewer-sessie een 403, ook bij een rechtstreekse API-aanroep buiten de UI om. Bestaande
-  accounts van vóór dit veld tellen automatisch als editor (geen ongevraagde rechten-inkrimping bij
-  de upgrade). Het bootstrap-admin-account is altijd editor. Geen fijnmaziger systeem dan deze twee
-  rollen (geen per-tabblad-matrix)
+  geeft een viewer-sessie een 403, ook bij een rechtstreekse API-aanroep buiten de UI om — dit geldt
+  ook voor het aanmaken/verwijderen van HQ-locaties (`/api/locaties`, GET blijft toegestaan) al zit
+  die functie in de verder wél voor viewers toegankelijke Rapportages-tab. Bestaande accounts van
+  vóór dit veld tellen automatisch als editor (geen ongevraagde rechten-inkrimping bij de upgrade).
+  Het bootstrap-admin-account is altijd editor. Geen fijnmaziger systeem dan deze twee rollen (geen
+  per-tabblad-matrix)
 
 **Topologiebeheer (Beheer-tabblad)**
 - Het Beheer-tabblad heeft een altijd-zichtbare subnav met vier sub-tabs (zelfde patroon als de

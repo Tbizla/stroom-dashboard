@@ -4,6 +4,7 @@
 // locatie-instance, dat voorkomt CORS/mixed-content-gedoe en houdt elke locatie-URL server-side).
 import { apiCall } from './api.js';
 import { t } from './i18n.js';
+import { state } from './state.js';
 
 // vervolgticket-toegang-van-buitenaf.md §7: naam/URL komen van het locatielijst-formulier en gaan
 // hier in innerHTML (en het href-attribuut) — escapen vóór het te renderen (stored-XSS anders)
@@ -41,10 +42,11 @@ async function renderLocatiesTabel(){
   const tabel = document.getElementById('locatiesTable');
   let locaties;
   try{ locaties = await apiCall('/api/locaties', 'GET'); }catch(e){ return []; }
+  const magBewerken = state.rol !== 'viewer';
   tabel.innerHTML = '<tr><th>'+t('locaties.naam')+'</th><th>URL</th><th></th></tr>' +
     locaties.map(l=>
       '<tr><td>'+esc(l.naam)+'</td><td style="font-family:var(--mono);color:var(--text2)">'+esc(l.url)+'</td>'+
-      '<td><button class="danger" data-verwijder="'+l.id+'">'+t('common.verwijderen')+'</button></td></tr>'
+      '<td>'+(magBewerken?'<button class="danger" data-verwijder="'+l.id+'">'+t('common.verwijderen')+'</button>':'')+'</td></tr>'
     ).join('');
   tabel.querySelectorAll('[data-verwijder]').forEach(btn=>{
     btn.onclick = async ()=>{
@@ -81,5 +83,10 @@ document.getElementById('addLocatieBtn').onclick = async ()=>{
 
 // aangeroepen vanuit modes.js zodra de Locaties-subtab getoond wordt
 export async function toonLocaties(){
+  // vervolgticket-rolverdeling-locaties-gap.md: puur cosmetisch, de echte gate is server-side
+  // (isEditorOnlyRoute() in server.js) — hier alleen het formulier weghalen zodat een viewer niet
+  // eens de knop ziet.
+  const form = document.getElementById('locatieAddForm');
+  if(form) form.style.display = state.rol === 'viewer' ? 'none' : '';
   await ververLocaties();
 }

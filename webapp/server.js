@@ -300,9 +300,10 @@ const EDITOR_ONLY_PREFIXEN = [
   '/api/simulator', // Testdata
   '/api/metingen/reset', // Testdata
   '/api/backup', // Beheer/Back-up
+  '/api/locaties', // Rapportages/Locaties — aanmaken/verwijderen (GET blijft hieronder expliciet uitgezonderd)
 ];
 function isEditorOnlyRoute(req, pad) {
-  if ((pad === '/api/map' || pad === '/api/logo') && req.method === 'GET') return false;
+  if ((pad === '/api/map' || pad === '/api/logo' || pad === '/api/locaties') && req.method === 'GET') return false;
   return EDITOR_ONLY_PREFIXEN.some((prefix) => pad === prefix || pad.startsWith(prefix + '/'));
 }
 app.use((req, res, next) => {

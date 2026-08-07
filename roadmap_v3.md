@@ -521,6 +521,26 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       de automatische Schema-landing voor een viewer-sessie, zonder console-errors; editor-sessies
       blijven volledig ongewijzigd. Volledige regressietest slaagt. Zie event_dashboard.md,
       Login & toegangsbeheer.
+- [x] **Vervolgticket op commit 0dcb15f (Rolverdeling — gat bij Locaties-beheren).** Afgerond —
+      [specs/vervolgticket-rolverdeling-locaties-gap.md](specs/vervolgticket-rolverdeling-locaties-gap.md).
+      Code-review van de Rolverdeling-commit hierboven signaleerde één gemiste route:
+      `POST`/`DELETE /api/locaties` (HQ-locatie toevoegen/verwijderen) stond niet in
+      `EDITOR_ONLY_PREFIXEN`, terwijl de bijbehorende UI (Rapportages → Locaties → "Locaties
+      beheren") in een tabblad zit dat voor viewers wél open blijft — een viewer-sessie kon dus via
+      de gewone UI (en sowieso via een rechtstreekse API-aanroep) HQ-locaties toevoegen/verwijderen.
+      Gefixt met hetzelfde patroon als de bestaande `/api/map`/`/api/logo`-uitzondering: `/api/locaties`
+      toegevoegd aan `EDITOR_ONLY_PREFIXEN` mét een expliciete GET-uitzondering in
+      `isEditorOnlyRoute()` (lezen blijft voor iedereen, alleen schrijven wordt editor-only).
+      Frontend: het aanmaakformulier en de verwijderknoppen in `hq-locaties.js` verbergen zich nu
+      voor `state.rol==='viewer'` (puur cosmetisch bovenop de echte server-side gate, zelfde aanpak
+      als `verbergEditorOnlyTabsVoorViewer()`). Geverifieerd met een los aangemaakt tijdelijk editor-
+      en viewer-testaccount (nooit tegen de echte admin/bestaande accounts getest, achteraf weer
+      verwijderd): viewer-sessie krijgt 200 op `GET /api/locaties` en `GET /api/hq-locaties-status`,
+      403 op zowel `POST` als `DELETE /api/locaties` (curl én een rechtstreekse `fetch()` vanuit de
+      browsersessie zelf); Playwright bevestigt dat `#locatieAddForm` en alle
+      `[data-verwijder]`-knoppen niet in de DOM-zichtbaarheid staan voor een viewer, terwijl een
+      editor-sessie ze ongewijzigd blijft zien. Overige routes nagelopen tegen de volledige
+      routelijst — verder geen gaten gevonden.
 - [x] **Vervolgticket op commit 37d57ff (logo/Shelly/QR-code/anomaly-detectie).** Afgerond — alle
       zes bugfixes uit de code-review doorgevoerd: anomaly-detectie-badge blijft nu correct
       zichtbaar tijdens een aanhoudende storing (de baseline wordt bij het triggermoment bevroren
