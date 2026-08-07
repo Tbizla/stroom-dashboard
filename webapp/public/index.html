@@ -174,13 +174,21 @@
         <div class="warn"><b data-i18n="beheer.letOp">Let op:</b> <span data-i18n="beheer.accountWachtwoordWaarschuwing">dit wachtwoord wordt maar één keer getoond. Gebruik "Wachtwoord resetten" als het kwijtraakt vóórdat je het gedeeld hebt.</span></div>
       </div>
 
-      <h2 style="margin-top:22px" data-i18n="beheer.generators">Generators</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
+        <h2 style="margin:0" data-i18n="beheer.generators">Generators</h2>
+        <button class="collapseall" id="genGroeperenBtn" data-i18n="beheer.generatorsGroeperen">Generators groeperen</button>
+      </div>
       <table class="btable" id="genTable"></table>
       <div class="addform">
         <input id="newGenNaam" data-i18n-placeholder="beheer.newGenNaamPlaceholder" placeholder="Naam, bijv. Generator zuid">
         <input id="newGenKva" type="number" data-i18n-placeholder="beheer.kvaPlaceholder" placeholder="kVA" style="width:80px">
         <input id="newGenRating" type="number" data-i18n-placeholder="beheer.ratingOptioneelPlaceholder" placeholder="Rating (A), optioneel" style="width:130px">
         <button id="addGenBtn" data-i18n="beheer.addGenerator">+ Generator</button>
+      </div>
+      <div id="genGroepeerActiebalk" class="genbox" style="display:none">
+        <span id="genGroepeerAantal"></span>
+        <button id="genGroepeerOpenDialoogBtn" data-i18n="beheer.samenvoegenTotGroep">Samenvoegen tot groep</button>
+        <button id="genGroepeerAnnulerenBtn" data-i18n="common.annuleren">Annuleren</button>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
@@ -718,6 +726,36 @@
     <div class="qroverlay-btns">
       <button id="qrOverlayDownload" data-i18n="beheer.qrDownloaden">Downloaden (PNG)</button>
       <button id="qrOverlayPrint" data-i18n="beheer.qrPrinten">Printen</button>
+    </div>
+  </div>
+</div>
+
+<!-- specs/generator-groep-powerplant-plan.md: bevestigingsdialoog voor het samenvoegen van
+     geselecteerde generators tot één groep — hergebruikt de .qroverlay-stijl, geen nieuw ontwerp -->
+<div class="qroverlay" id="groepeerOverlay" style="display:none">
+  <div class="qroverlay-panel" style="width:340px">
+    <div class="qroverlay-close" id="groepeerOverlayClose">✕</div>
+    <h2 style="margin:0 0 12px" data-i18n="beheer.groepeerDialoogTitel">Generators samenvoegen tot groep</h2>
+    <div class="field">
+      <label data-i18n="beheer.groepeerNaamLabel">Naam van de nieuwe groep</label>
+      <input id="groepeerNaam" data-i18n-placeholder="beheer.groepeerNaamPlaceholder" placeholder="Power Plant Noord">
+    </div>
+    <div class="field" style="margin-top:8px">
+      <label data-i18n="beheer.thSoortKoppeling">Soort koppeling</label>
+      <select id="groepeerSoort">
+        <option value="" data-i18n="beheer.soortLeeg">—</option>
+        <option value="parallel" data-i18n="beheer.soortParallel">Parallel (load-sharing)</option>
+        <option value="backup" data-i18n="beheer.soortBackup">N+1 backup (auto-start)</option>
+        <option value="hybride" data-i18n="beheer.soortHybride">Hybride (gen. + opslag)</option>
+      </select>
+    </div>
+    <div class="genbox" style="margin-top:12px;padding:10px 12px">
+      <div class="warn" style="margin-top:0"><b data-i18n="beheer.letOp">Let op:</b> <span id="groepeerWaarschuwing"></span></div>
+    </div>
+    <div class="errbox" id="groepeerErr"></div>
+    <div class="qroverlay-btns">
+      <button id="groepeerBevestigenBtn" data-i18n="beheer.samenvoegenTotGroep">Samenvoegen tot groep</button>
+      <button id="groepeerAnnulerenBtn" data-i18n="common.annuleren">Annuleren</button>
     </div>
   </div>
 </div>

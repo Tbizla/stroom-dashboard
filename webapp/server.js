@@ -1036,6 +1036,61 @@ app.delete('/api/generators/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// specs/generator-groep-powerplant-plan.md: bestaande, losse generators samenvoegen tot één nieuwe
+// groep — de kasten die eronder hingen verhuizen mee (kast.generator wijst voortaan naar de
+// groep-id), de samengevoegde generators zelf worden leden van de groep. Eén atomaire aanroep i.p.v.
+// losse create/update/delete-rondjes vanuit de client, en één writeTopo() aan het einde i.p.v. stap
+// voor stap — voorkomt een half-gemigreerde toestand als er halverwege iets misgaat (bijv. een
+// ongeldig id ertussen): alle validatie gebeurt vóórdat er iets aan `data` verandert.
+app.post('/api/generators/groeperen', (req, res) => {
+  const { naam, vermogen_kva, groep_soort, generator_ids } = req.body || {};
+  if (!naam || typeof naam !== 'string' || !naam.trim()) return res.status(400).json({ error: 'naam is verplicht' });
+  if (!Array.isArray(generator_ids) || generator_ids.length < 2) return res.status(400).json({ error: 'minstens 2 generators nodig om te groeperen' });
+  if (groep_soort && !GROEP_SOORTEN.includes(groep_soort)) return res.status(400).json({ error: 'ongeldig groep_soort' });
+
+  const data = readTopo();
+  const teGroeperen = [];
+  for (const id of generator_ids) {
+    const gen = data.generators.find(g => g.id === id);
+    if (!gen) return res.status(400).json({ error: 'onbekende generator: ' + id });
+    if (gen.type === 'groep') return res.status(400).json({ error: 'generator ' + gen.naam + ' is zelf al een groep — geneste groepen worden niet ondersteund' });
+    teGroeperen.push(gen);
+  }
+  if (new Set(generator_ids).size !== generator_ids.length) return res.status(400).json({ error: 'dezelfde generator staat meerdere keren in de selectie' });
+
+  const teGroeperenIds = new Set(generator_ids);
+  const alleIds = [...data.generators.map(g => g.id), ...data.kasten.map(k => k.id)];
+  const groepId = uniekeId(slugify(naam), alleIds);
+  const totaalKva = teGroeperen.reduce((som, g) => som + (Number(g.vermogen_kva) || 0), 0);
+  const groep = {
+    id: groepId, naam: naam.trim(),
+    vermogen_kva: vermogen_kva ? Number(vermogen_kva) : totaalKva,
+    positie: { x_pct: null, y_pct: null },
+    type: 'groep', groep_soort: groep_soort || null,
+    leden: teGroeperen.map(g => ({
+      naam: g.naam, type: g.type === 'batterij' ? 'batterij' : 'generator',
+      vermogen_kva: g.vermogen_kva != null ? Number(g.vermogen_kva) : null,
+      rating_a: g.rating_a != null ? Number(g.rating_a) : null,
+      shelly_ip: g.shelly_ip || null,
+    })),
+    rating_a: null, shelly_ip: null,
+    mqtt_topic_prefix: mqttPrefix(groepId, groepId),
+  };
+  voorzieLedenVanIdEnPrefix(groep, data);
+
+  data.generators = data.generators.filter(g => !teGroeperenIds.has(g.id));
+  data.generators.push(groep);
+  data.kasten.forEach(k => {
+    if (teGroeperenIds.has(k.generator)) {
+      k.generator = groepId;
+      k.mqtt_topic_prefix = mqttPrefix(groepId, k.id);
+    }
+  });
+
+  writeTopo(data);
+  res.json({ ok: true, generator: groep });
+});
+
 // ---------- kasten beheren ----------
 // een kast is normaal een verdeelkast, maar kan ook een batterij/piekscheerder zijn die tussen een
 // generator(groep) en de eronder hangende kasten in zit (parent/child werkt al precies zo). Bij overbelasting

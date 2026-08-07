@@ -6,6 +6,77 @@ import { loadTopology } from './topology.js';
 import { t } from './i18n.js';
 import { openQrOverlay } from './qrcodes.js';
 
+// specs/generator-groep-powerplant-plan.md: selectiemodus-state voor "generators groeperen" — puur
+// een transiente UI-toestand van deze pagina (net als de andere module-level `let`s in dit bestand),
+// hoeft dus niet in state.js/beheerState (dat overleeft een page-reload, dit hoeft niet)
+let groepeerSelectieActief = false;
+let groepeerGeselecteerd = new Set();
+
+function ververGroepeerActiebalk(){
+  const balk = document.getElementById('genGroepeerActiebalk');
+  const aantal = groepeerGeselecteerd.size;
+  if(!groepeerSelectieActief || aantal < 2){
+    balk.style.display = 'none';
+    return;
+  }
+  balk.style.display = 'flex';
+  document.getElementById('genGroepeerAantal').textContent = t('beheer.groepeerAantalGeselecteerd', {n: aantal});
+}
+
+document.getElementById('genGroeperenBtn').addEventListener('click', ()=>{
+  groepeerSelectieActief = !groepeerSelectieActief;
+  groepeerGeselecteerd.clear();
+  document.getElementById('genGroeperenBtn').classList.toggle('active', groepeerSelectieActief);
+  ververGroepeerActiebalk();
+  renderBeheer();
+});
+document.getElementById('genGroepeerAnnulerenBtn').addEventListener('click', ()=>{
+  groepeerSelectieActief = false;
+  groepeerGeselecteerd.clear();
+  document.getElementById('genGroeperenBtn').classList.remove('active');
+  ververGroepeerActiebalk();
+  renderBeheer();
+});
+
+function toonGroepeerDialoog(){
+  document.getElementById('groepeerNaam').value = '';
+  document.getElementById('groepeerSoort').value = '';
+  const errEl = document.getElementById('groepeerErr');
+  errEl.textContent = '';
+  errEl.classList.remove('show');
+  const aantalKasten = state.TOPO.kasten.filter(k=>groepeerGeselecteerd.has(k.generator)).length;
+  document.getElementById('groepeerWaarschuwing').textContent = t('beheer.groepeerWaarschuwing', {n: aantalKasten});
+  document.getElementById('groepeerOverlay').style.display = 'flex';
+}
+function verbergGroepeerDialoog(){
+  document.getElementById('groepeerOverlay').style.display = 'none';
+}
+document.getElementById('genGroepeerOpenDialoogBtn').addEventListener('click', toonGroepeerDialoog);
+document.getElementById('groepeerOverlayClose').addEventListener('click', verbergGroepeerDialoog);
+document.getElementById('groepeerAnnulerenBtn').addEventListener('click', verbergGroepeerDialoog);
+document.getElementById('groepeerBevestigenBtn').addEventListener('click', async ()=>{
+  const naam = document.getElementById('groepeerNaam').value.trim();
+  const groep_soort = document.getElementById('groepeerSoort').value || undefined;
+  const errEl = document.getElementById('groepeerErr');
+  if(!naam){
+    errEl.textContent = t('beheer.groepeerNaamVerplicht');
+    errEl.classList.add('show');
+    return;
+  }
+  try{
+    await apiCall('/api/generators/groeperen', 'POST', { naam, groep_soort, generator_ids: Array.from(groepeerGeselecteerd) });
+    verbergGroepeerDialoog();
+    groepeerSelectieActief = false;
+    groepeerGeselecteerd.clear();
+    document.getElementById('genGroeperenBtn').classList.remove('active');
+    ververGroepeerActiebalk();
+    await loadTopology();
+  }catch(e){
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  }
+});
+
 export function vulGenSelect(select, geselecteerd){
   select.innerHTML = state.TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
 }
@@ -278,7 +349,11 @@ document.querySelectorAll('#beheerPanel .chip[data-kfilter]').forEach(chip=>{
 export function renderBeheer(){
   // generators-tabel
   const genTable = document.getElementById('genTable');
-  let gh = '<tr><th>'+t('beheer.thNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:80px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th>'+
+  // specs/generator-groep-powerplant-plan.md: selectiemodus voegt een checkbox-kolom vooraan toe
+  // (alleen zichtbaar tijdens het selecteren) — groep-rijen zelf zijn niet selecteerbaar, geneste
+  // groepen blijven uitgesloten net als bij de rest van het groepsysteem
+  let gh = '<tr>'+(groepeerSelectieActief?'<th style="width:26px"></th>':'')+
+    '<th>'+t('beheer.thNaam')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th><th style="min-width:80px">'+t('beheer.thKva')+'</th><th style="min-width:90px">'+t('beheer.thRating')+'</th>'+
     '<th style="min-width:120px">'+t('beheer.thShellyIp')+'</th>'+
     '<th style="min-width:70px">'+t('beheer.thAantalKasten')+'</th><th style="min-width:140px">'+t('beheer.thSoortKoppeling')+'</th><th style="min-width:110px">'+t('beheer.thLeden')+'</th><th style="min-width:80px"></th></tr>';
   state.TOPO.generators.forEach(g=>{
@@ -287,6 +362,9 @@ export function renderBeheer(){
     const isGroep = type === 'groep';
     if(!Array.isArray(g.leden)) g.leden = []; // oudere generators (van vóór dit veld bestond) missen 'leden' nog
     gh += '<tr>'+
+      (groepeerSelectieActief ? '<td>'+(isGroep
+        ? '<span style="color:var(--text3)" title="'+t('beheer.groepeerNietSelecteerbaar')+'">—</span>'
+        : '<input type="checkbox" class="gen-groepeer-check" data-gen-id="'+g.id+'" '+(groepeerGeselecteerd.has(g.id)?'checked':'')+'>')+'</td>' : '')+
       '<td><input value="'+g.naam.replace(/"/g,'&quot;')+'" data-gen-naam="'+g.id+'"></td>'+
       '<td><select data-gen-type="'+g.id+'">'+
         '<option value="generator"'+(type==='generator'?' selected':'')+'>'+t('beheer.typeGenerator')+'</option>'+
@@ -333,6 +411,14 @@ export function renderBeheer(){
     }
   });
   genTable.innerHTML = gh;
+
+  if(groepeerSelectieActief){
+    genTable.querySelectorAll('.gen-groepeer-check').forEach(el=>el.onchange = ()=>{
+      const id = el.dataset.genId;
+      if(el.checked) groepeerGeselecteerd.add(id); else groepeerGeselecteerd.delete(id);
+      ververGroepeerActiebalk();
+    });
+  }
 
   // stuurt de volledige ledenlijst van een groep naar de server; edits zelf blijven index-gebaseerd
   // (simpelste manier om vanuit deze tabel te muteren), maar huidigeLeden() kopieert ook het

@@ -97,6 +97,16 @@ zetten zonder code aan te passen.
   automatisch gegenereerde `mqtt_topic_prefix` en optionele rating (A) — alleen relevant als dat lid
   ook echt een eigen Shelly+CT-klem heeft. Leden zijn nog steeds geen losse topologie-node (niet los
   te plaatsen op de plattegrond)
+- **Bestaande generators samenvoegen tot een groep**: "Generators groeperen"-knop boven de
+  generatorentabel zet een selectiemodus aan (checkbox per rij, groepen zelf niet selecteerbaar —
+  geen geneste groepen); bij ≥2 geselecteerd verschijnt een actiebalk met een bevestigingsdialoog
+  (naam + optioneel soort koppeling + een waarschuwing hoeveel kasten geraakt worden). De
+  geselecteerde generators worden leden van een nieuwe groep (kVA opgeteld als default), hun kasten
+  verhuizen automatisch mee. **Let op**: dit wijzigt het MQTT-topic van elke meeverhuisde kast (en
+  van de samengevoegde generators zelf) — de bijbehorende Shelly's moeten na het samenvoegen
+  opnieuw ingesteld worden op het nieuwe topic, anders stopt live data binnenkomen (historische
+  InfluxDB-data blijft gewoon staan, een grafiek toont vanaf dat moment een gat). Eén atomaire
+  serveraanroep: een ongeldige selectie wijzigt niets (geen half-gemigreerde toestand)
 - Kasten aanmaken/bewerken/verwijderen (naam, afkorting, ampèrage, gekoppelde generator/groep), met
   een type: gewone **kast**, of **batterij** (piekscheerder die tussen een generator(groep) en de
   eronder hangende kasten in zit, met optioneel een bypass-vlag voor als 'm bij overbelasting

@@ -202,6 +202,31 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       LAN-adres van de Windows-host — de daadwerkelijke juistheid van het gedetecteerde adres is dus
       pas op de échte Linux-productiemachine te bevestigen (de mechaniek zelf — detecteren, wegschrijven,
       uitlezen, tonen — is wel volledig geverifieerd).
+- [x] **Bestaande generators samenvoegen tot een groep ("Power Plant").** Afgerond — gebouwd
+      conform
+      [specs/generator-groep-powerplant-plan.md](specs/generator-groep-powerplant-plan.md). Nieuw
+      `POST /api/generators/groeperen`-endpoint: neemt ≥2 bestaande, niet-al-groep generator-ids +
+      een naam (en optioneel vermogen_kva/groep_soort), maakt daar één nieuwe `type:'groep'`-
+      generator van (de geselecteerde generators worden leden, hun kVA's opgeteld als default), en
+      verhuist elke kast die eronder hing mee naar de nieuwe groep (`kast.generator` + herberekende
+      `mqtt_topic_prefix`, hergebruikt hetzelfde patroon als `PUT /api/kasten/:id`). Alle validatie
+      (onbekend id, dubbel id, al-een-groep, <2 selectie) gebeurt vóórdat er iets aan de data
+      verandert, en alles wordt in één `writeTopo()`-call weggeschreven — een mislukte aanvraag
+      (bijv. een ongeldig id ertussen) wijzigt daardoor niets, geen half-gemigreerde toestand.
+      UI in Beheer boven de generatorentabel: "Generators groeperen"-knop zet een selectiemodus aan
+      (checkbox per rij, groepen zelf tonen een niet-klikbare "—" i.p.v. een checkbox — geen
+      geneste groepen), een actiebalk verschijnt zodra ≥2 aangevinkt zijn, en een bevestigingsdialoog
+      (hergebruikt de bestaande `.qroverlay`-stijl) toont een verplichte waarschuwing over hoeveel
+      kasten van MQTT-topic wisselen vóórdat er bevestigd kan worden. Getest tegen de live stack met
+      losse, tijdelijke test-generators/-kasten (nooit tegen Mike's echte topologie): een
+      2-generator-samenvoeging met elk een eigen kast eronder — beide kasten hangen ná het
+      samenvoegen onder de nieuwe groep met bijgewerkt `mqtt_topic_prefix`, de oude generator-ids
+      bestaan niet meer, kVA-optelling klopt (100+200=300), zowel het te-korte-selectie- als het
+      onbekend-id-foutscenario wijzigen niets; en de volledige UI-flow (generators aanmaken →
+      selecteren → dialoog → bevestigen → nieuwe groep verschijnt met "2 leden ▾") zonder
+      console-errors. Volledige regressietest slaagt. Ongroeperen (terug uitsplitsen) en geneste
+      groepen zijn bewust niet meegenomen, net als in de spec. Zie event_dashboard.md,
+      Topologiebeheer (Beheer-tabblad).
 - [x] **Eerste admin-login: standaard admin:admin + verplichte wachtwoordwijziging.** Afgerond —
       gebouwd conform
       [specs/eerste-admin-standaardwachtwoord-plan.md](specs/eerste-admin-standaardwachtwoord-plan.md).

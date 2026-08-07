@@ -176,6 +176,7 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 .collapseall{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:var(--sans)}
 .collapseall:hover{border-color:var(--accent);color:var(--text)}
+.collapseall.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 .listfilters .collapseall{margin-left:auto}
 
 .badges{display:flex;gap:4px}
@@ -249,6 +250,7 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 /* ---------- Accounts (specs/toegang-van-buitenaf-diagnose.md) ---------- */
 .btable td.dim{color:var(--text3);font-size:11.5px}
 .genbox{margin-top:16px;background:rgba(79,209,197,.08);border:1px solid var(--accent);border-radius:8px;padding:14px 16px}
+#genGroepeerActiebalk{align-items:center;gap:10px;font-size:12.5px}
 .genbox .lbl{font-size:11.5px;color:var(--accent);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .genbox .pwrow{display:flex;align-items:center;gap:8px}
 .genbox .pw{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:14px;letter-spacing:.03em;flex:1}
