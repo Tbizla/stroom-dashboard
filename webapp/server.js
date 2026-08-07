@@ -166,6 +166,11 @@ function readAccounts() {
   return JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'));
 }
 function writeAccounts(data) { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+// specs/rolverdeling-plan.md: bestaande accounts van vóór dit veld migreren naar 'editor' als
+// default — niemands bestaande rechten mogen ongevraagd inkrimpen bij deze upgrade. Toegepast bij
+// elke lezing i.p.v. een eenmalige schrijf-migratie (zelfde stijl als de al bestaande
+// groep_soort/leden-defaults elders in dit bestand).
+function bepaalRol(account) { return account.rol === 'viewer' ? 'viewer' : 'editor'; }
 
 // leesbaar, willekeurig wachtwoord (bijv. "bK4-mQz9-Rvt2", zie de accounts-beheer-mockup) —
 // crypto.randomBytes i.p.v. Math.random, geen onderling verwarrende tekens (0/O/l/1) om
@@ -192,6 +197,9 @@ if (readAccounts().length === 0) {
     email: '',
     wachtwoord_hash: bcrypt.hashSync('admin', 10),
     moet_wachtwoord_wijzigen: true,
+    // specs/rolverdeling-plan.md: het enige account bij een verse installatie, moet alles kunnen
+    // instellen
+    rol: 'editor',
     aangemaakt: new Date().toISOString(),
     laatst_ingelogd: null,
   }]);
@@ -217,13 +225,13 @@ app.post('/api/login', loginLimiter, (req, res) => {
   const idx = accounts.findIndex((a) => a.id === account.id);
   accounts[idx].laatst_ingelogd = new Date().toISOString();
   writeAccounts(accounts);
-  res.json({ ok: true, naam: account.naam, moet_wachtwoord_wijzigen: !!account.moet_wachtwoord_wijzigen });
+  res.json({ ok: true, naam: account.naam, moet_wachtwoord_wijzigen: !!account.moet_wachtwoord_wijzigen, rol: bepaalRol(account) });
 });
 app.post('/api/logout', (req, res) => { req.session = null; res.json({ ok: true }); });
 app.get('/api/session', (req, res) => {
   const account = req.session && req.session.accountId ? readAccounts().find((a) => a.id === req.session.accountId) : null;
   if (!account) return res.status(401).json({ error: 'niet ingelogd' });
-  res.json({ naam: account.naam, email: account.email, moet_wachtwoord_wijzigen: !!account.moet_wachtwoord_wijzigen });
+  res.json({ naam: account.naam, email: account.email, moet_wachtwoord_wijzigen: !!account.moet_wachtwoord_wijzigen, rol: bepaalRol(account) });
 });
 
 // gate alle /api/*-routes hierna (én /mqtt zelf, zie vervolgticket-toegang-van-buitenaf.md §5)
@@ -269,6 +277,34 @@ function heeftGeldigInternToken(req) {
 // de login al gaf rechtstreeks andere /api/...-routes aanroepen, wat de hele maatregel zinloos zou
 // maken.
 const WACHTWOORDWIJZIGING_UITGEZONDERD = new Set(['/api/logout', '/api/session', '/api/wachtwoord-wijzigen']);
+// specs/rolverdeling-plan.md: routes die horen bij de vier Beheer-sub-tabs, Kalibreren en Testdata
+// — een viewer-rol mag deze nooit bereiken, ook niet via een rechtstreekse API-aanroep buiten de UI
+// om. Gate per "eigenaar-tabblad", niet per HTTP-methode (geen granulaire matrix, zie de spec) —
+// GET /api/map en GET /api/logo zijn de enige twee uitzonderingen: die tónen alleen de plattegrond/
+// het logo (nodig in Live/Schema, en het logo ook gewoon in de header voor iedereen), alleen de
+// POST-upload-varianten (Kalibreren resp. Instellingen) zijn editor-only.
+const EDITOR_ONLY_PREFIXEN = [
+  '/api/generators', // aanmaken/wijzigen/verwijderen/groeperen — Beheer/Topologie
+  '/api/kasten', // Beheer/Topologie
+  '/api/reset', // "Alles wissen" — Beheer/Topologie
+  '/api/shelly/configureren', // Beheer/Topologie
+  '/api/instellingen', // Systeeminstellingen/Alert-notificaties/Automatische back-up — Beheer/Instellingen
+  '/api/accounts', // Beheer/Accounts
+  '/api/logo', // upload — Beheer/Instellingen (GET blijft hieronder expliciet uitgezonderd)
+  '/api/map', // upload — Kalibreren (GET blijft hieronder expliciet uitgezonderd)
+  '/api/export', // Kalibreren-header
+  '/api/import', // Kalibreren-header
+  '/api/topology/positie', // Kalibreren
+  '/api/topology/knikpunten', // Kalibreren
+  '/api/topology/test-data', // Testdata
+  '/api/simulator', // Testdata
+  '/api/metingen/reset', // Testdata
+  '/api/backup', // Beheer/Back-up
+];
+function isEditorOnlyRoute(req, pad) {
+  if ((pad === '/api/map' || pad === '/api/logo') && req.method === 'GET') return false;
+  return EDITOR_ONLY_PREFIXEN.some((prefix) => pad === prefix || pad.startsWith(prefix + '/'));
+}
 app.use((req, res, next) => {
   const pad = req.path.toLowerCase();
   // ronde2 §5: /mqtt zelf mount als prefix (createProxyMiddleware), dus ook een trailing-slash-
@@ -282,15 +318,20 @@ app.use((req, res, next) => {
   if (account.moet_wachtwoord_wijzigen && !WACHTWOORDWIJZIGING_UITGEZONDERD.has(pad) && !pad.startsWith('/api/i18n/')) {
     return res.status(403).json({ error: 'wachtwoord_wijzigen_vereist' });
   }
+  if (bepaalRol(account) !== 'editor' && isEditorOnlyRoute(req, pad)) {
+    return res.status(403).json({ error: 'onvoldoende rechten' });
+  }
   next();
 });
 
+const ROLLEN = ['editor', 'viewer'];
 app.get('/api/accounts', (req, res) => {
-  res.json(readAccounts().map(({ wachtwoord_hash, ...rest }) => rest));
+  res.json(readAccounts().map(({ wachtwoord_hash, ...rest }) => ({ ...rest, rol: bepaalRol(rest) })));
 });
 app.post('/api/accounts', (req, res) => {
-  const { naam, email } = req.body || {};
+  const { naam, email, rol } = req.body || {};
   if (!naam || typeof naam !== 'string' || !naam.trim()) return res.status(400).json({ error: 'naam is verplicht' });
+  if (!ROLLEN.includes(rol)) return res.status(400).json({ error: 'rol is verplicht (editor of viewer)' });
   const accounts = readAccounts();
   // naam is de inlog-identifier (zie /api/login: find op naam) — een dubbele naam zou onvoorspelbaar
   // altijd het eerst-aangemaakte account raken, de nieuwere zou nooit meer inlogbaar zijn
@@ -299,12 +340,25 @@ app.post('/api/accounts', (req, res) => {
   }
   const wachtwoord = genereerWachtwoord();
   accounts.push({
-    id: crypto.randomUUID(), naam: naam.trim(), email: (email || '').trim(),
+    id: crypto.randomUUID(), naam: naam.trim(), email: (email || '').trim(), rol,
     wachtwoord_hash: bcrypt.hashSync(wachtwoord, 10),
     aangemaakt: new Date().toISOString(), laatst_ingelogd: null,
   });
   writeAccounts(accounts);
   res.json({ ok: true, wachtwoord });
+});
+// specs/rolverdeling-plan.md: rol van een bestaand account wijzigen (het accountsbeheer-mockup
+// toont een inline-bewerkbare rol-dropdown per rij, niet alleen bij het aanmaken)
+app.put('/api/accounts/:id', (req, res) => {
+  const { rol } = req.body || {};
+  if (!ROLLEN.includes(rol)) return res.status(400).json({ error: 'ongeldige rol' });
+  const accounts = readAccounts();
+  const idx = accounts.findIndex((a) => a.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'account niet gevonden' });
+  accounts[idx].rol = rol;
+  writeAccounts(accounts);
+  const { wachtwoord_hash, ...rest } = accounts[idx];
+  res.json({ ok: true, account: rest });
 });
 app.post('/api/accounts/:id/reset-wachtwoord', (req, res) => {
   const accounts = readAccounts();

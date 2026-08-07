@@ -5,6 +5,7 @@
 // (zelfde aanpak als kaststatus.js voor de mobiele kaststatuspagina).
 import { apiCall } from './api.js';
 import { t } from './i18n.js';
+import { state } from './state.js';
 
 function verbergAlles(){
   document.querySelector('.app').style.display = 'none';
@@ -78,9 +79,25 @@ export async function controleerSessie(){
     const account = await apiCall('/api/session', 'GET');
     if(account.moet_wachtwoord_wijzigen){ toonWachtwoordWijzigenOverlay(); return false; }
     document.getElementById('sessieNaam').textContent = account.naam;
+    state.rol = account.rol || 'editor';
+    verbergEditorOnlyTabsVoorViewer();
     return true;
   }catch(e){
     toonOverlay();
     return false;
   }
+}
+
+// specs/rolverdeling-plan.md: Beheer/Kalibreren/Testdata verdwijnen volledig uit de mode-switch
+// voor een viewer (i.p.v. grijs-met-uitleg) — puur cosmetisch/vroeg, geen data-afhankelijkheid, dus
+// hier meteen na het bepalen van de rol al veilig te doen (het daadwerkelijk wegklikken van Beheer
+// als standaard-actieve tab gebeurt apart in main.js, ná loadTopology(), zie de toelichting daar).
+// De server-side gate (auth-gate in server.js, isEditorOnlyRoute()) is de échte afdwinging — dit is
+// alleen UI-opschoning, geen beveiliging op zich.
+function verbergEditorOnlyTabsVoorViewer(){
+  if(state.rol === 'editor') return;
+  ['modeBeheer','modeCal','modeTest'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
 }

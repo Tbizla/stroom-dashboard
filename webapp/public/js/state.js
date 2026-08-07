@@ -4,6 +4,7 @@
 export const state = {
   TOPO: { generators: [], kasten: [] },
   mode: 'beheer',
+  rol: 'editor', // specs/rolverdeling-plan.md: 'editor' | 'viewer' — gezet door controleerSessie() in auth.js, bepaalt welke tabbladen zichtbaar zijn
   armedId: null,
   selectedId: null,
   mqttClient: null,

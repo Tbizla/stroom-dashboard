@@ -487,13 +487,40 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       kastpopup/aside-detail/QR-statuspagina (alleen zichtbaar als het veld ingevuld is), met een
       tekstnoot dat dit alleen op het evenement-netwerk werkt. Zie event_dashboard.md,
       Topologiebeheer (Beheer-tabblad).
-- [ ] **Rolverdeling/rechten.** Geaccordeerd (3 augustus 2026, vanuit de "Ideeën van Claude"-
-      sectie gehaald) — daarmee is de "Ideeën van Claude"-sectie leeg. Nu heeft iedereen die de
-      webapp-URL heeft volledige Beheer-rechten; dit voegt een viewer/editor-onderscheid toe
-      (viewer ziet alleen Schema/Live/Rapportages, geen Back-up-sectie in Beheer). **Bouwt
-      inhoudelijk voort op de accounts-/login-fundering uit "Toegang van buitenaf" hierboven** —
-      kan pas na die basis gebouwd worden, niet onafhankelijk daarvan. Spec + mockup: zie
-      [specs/rolverdeling-plan.md](specs/rolverdeling-plan.md).
+- [x] **Rolverdeling/rechten.** Afgerond — gebouwd conform
+      [specs/rolverdeling-plan.md](specs/rolverdeling-plan.md) (geaccordeerd 3 augustus 2026, spec
+      bijgewerkt 8 augustus 2026 voor het Grafieken-tabblad en de Beheer-subtabs-herindeling die
+      er in de tussentijd bijkwamen). Bouwde voort op de accounts-/login-fundering uit "Toegang van
+      buitenaf" hierboven. **Twee rollen, geen fijnmaziger systeem**: Editor (huidig gedrag,
+      ongewijzigd) en Viewer (alleen kijken). Elk account krijgt een `rol`-veld
+      (`'editor'|'viewer'`), verplicht bij het aanmaken (rol-dropdown in het aanmaakformulier),
+      inline te wijzigen per bestaand account via een nieuwe `PUT /api/accounts/:id`-route +
+      rol-dropdown in de Accounts-tabel. Bestaande accounts van vóór dit veld (geen schrijf-
+      migratie, een `bepaalRol()`-fallback bij elke lezing — zelfde stijl als andere
+      default-toepassingen elders in dit bestand) tellen als `editor`, zodat niemands rechten
+      ongevraagd inkrimpen bij de upgrade — geverifieerd met de twee bestaande accounts uit eerdere
+      ticketrondes (beiden zonder `rol`-veld in `accounts.json`), die na deze upgrade correct als
+      Editor tonen. Het bootstrap-admin-account krijgt altijd `rol:'editor'`.
+      **Server-side afgedwongen** (niet alleen de tabbladen client-side verstopt — een viewer-
+      sessie kan een editor-only-route dus ook niet via een rechtstreekse API-aanroep buiten de UI
+      om bereiken): een nieuwe `isEditorOnlyRoute()`-check in de bestaande auth-gate, als derde
+      voorwaarde ná de sessie-/`moet_wachtwoord_wijzigen`-checks. Gate per "eigenaar-tabblad"
+      (Beheer's vier sub-tabs, Kalibreren, Testdata), niet per HTTP-methode — bewust geen
+      granulaire matrix, met twee met-opzet-geëxpliciteerde uitzonderingen (`GET /api/map`/
+      `GET /api/logo` blijven viewer-toegankelijk, alleen de POST-upload-varianten zijn editor-
+      only, want de plattegrond/het logo worden ook getoond in viewer-toegankelijke tabbladen resp.
+      de header voor iedereen). **Frontend**: de mode-switch toont voor een viewer alleen Schema/
+      Live/Rapportages/Grafieken (Beheer/Kalibreren/Testdata volledig verborgen i.p.v. grijs-met-
+      uitleg); een viewer landt bij het inloggen automatisch op Schema i.p.v. de statische
+      Beheer-default (ná `loadTopology()`, zodat `renderSchema()` niet op nog-lege data draait).
+      Geverifieerd: server-side gate blokkeert een viewer-sessie op alle editor-only-routes (403,
+      curl getest tegen `/api/kasten`, `/api/accounts`, `/api/instellingen`, `/api/topology/positie`,
+      `/api/backup/genereer`, `/api/shelly/configureren`) terwijl viewer-toegankelijke routes
+      (`/api/topology`, `/api/map`/`/api/logo` GET, `/api/mqtt-ticket`, Rapportages-/Grafieken-
+      endpoints) gewoon 200 blijven geven; UI-flow bevestigt de juiste mode-switch-zichtbaarheid en
+      de automatische Schema-landing voor een viewer-sessie, zonder console-errors; editor-sessies
+      blijven volledig ongewijzigd. Volledige regressietest slaagt. Zie event_dashboard.md,
+      Login & toegangsbeheer.
 - [x] **Vervolgticket op commit 37d57ff (logo/Shelly/QR-code/anomaly-detectie).** Afgerond — alle
       zes bugfixes uit de code-review doorgevoerd: anomaly-detectie-badge blijft nu correct
       zichtbaar tijdens een aanhoudende storing (de baseline wordt bij het triggermoment bevroren

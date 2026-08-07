@@ -122,6 +122,11 @@ async function bootstrapApp(){
     // automatisch — geen algemene router, alleen deze ene deeplink (zie grafieken.js
     // herstelVanUrl()); pas ná loadTopology() zodat de checklist niet leeg begint
     if(new URLSearchParams(location.search).get('mode') === 'grafieken') document.getElementById('modeGrafieken').click();
+    // specs/rolverdeling-plan.md: Beheer (de statische default-actieve tab) is voor een viewer
+    // verborgen — zonder deze wissel zou een viewer op een leeg/onbereikbaar tabblad landen. Alleen
+    // als er geen andere deeplink (hierboven) al een tab koos, en pas ná loadTopology() zodat
+    // renderSchema() niet op nog-lege topologiedata draait.
+    else if(state.rol === 'viewer') document.getElementById('modeSchema').click();
     // QR-code-deeplink (?mode=live&kast=<id>) — zie kaststatus.js: smal scherm krijgt de lichte
     // mobiele statuspagina, breed scherm het bestaande drill-down-gedrag naar Live-modus
     initKastStatusRoute();

@@ -20,20 +20,34 @@ function toonWachtwoord(naam, wachtwoord){
   document.getElementById('accountWachtwoordCard').style.display = 'block';
 }
 
+// specs/rolverdeling-plan.md: twee rollen, geen fijnmaziger systeem — select-opties zijn met opzet
+// hardcoded (editor/viewer), geen los i18n-object nodig voor zo'n klein, vast lijstje
+function rolOpties(huidigeRol){
+  return ['editor','viewer'].map(r=>'<option value="'+r+'"'+(r===huidigeRol?' selected':'')+'>'+
+    (r==='editor'?t('beheer.rolEditor'):t('beheer.rolViewer'))+'</option>').join('');
+}
+
 async function renderAccountsTabel(){
   const tabel = document.getElementById('accountsTable');
   let accounts;
   try{ accounts = await apiCall('/api/accounts', 'GET'); }catch(e){ return; }
   const perId = new Map(accounts.map(a=>[a.id, a]));
-  tabel.innerHTML = '<tr><th>'+t('beheer.accountNaam')+'</th><th>'+t('beheer.accountEmail')+'</th><th>'+t('beheer.accountLaatstIngelogd')+'</th><th></th></tr>' +
+  tabel.innerHTML = '<tr><th>'+t('beheer.accountNaam')+'</th><th>'+t('beheer.accountEmail')+'</th><th>'+t('beheer.accountRol')+'</th><th>'+t('beheer.accountLaatstIngelogd')+'</th><th></th></tr>' +
     accounts.map(a=>
       '<tr>'+
       '<td>'+esc(a.naam)+'</td>'+
       '<td class="dim">'+(a.email ? esc(a.email) : '—')+'</td>'+
+      '<td><select data-rol="'+a.id+'">'+rolOpties(a.rol)+'</select></td>'+
       '<td class="dim">'+fmtLaatstIngelogd(a.laatst_ingelogd)+'</td>'+
       '<td><button data-reset="'+a.id+'">'+t('beheer.accountWachtwoordResetten')+'</button> <button class="danger" data-verwijder="'+a.id+'">'+t('common.verwijderen')+'</button></td>'+
       '</tr>'
     ).join('');
+  tabel.querySelectorAll('[data-rol]').forEach(sel=>{
+    sel.onchange = async ()=>{
+      try{ await apiCall('/api/accounts/'+sel.dataset.rol, 'PUT', { rol: sel.value }); }
+      catch(e){ alert(e.message); await renderAccountsTabel(); }
+    };
+  });
   tabel.querySelectorAll('[data-reset]').forEach(btn=>{
     btn.onclick = async ()=>{
       try{
@@ -54,10 +68,11 @@ async function renderAccountsTabel(){
 document.getElementById('addAccountBtn').onclick = async ()=>{
   const naamInput = document.getElementById('newAccountNaam');
   const emailInput = document.getElementById('newAccountEmail');
+  const rolSelect = document.getElementById('newAccountRol');
   const naam = naamInput.value.trim();
   if(!naam) return alert(t('beheer.alertVulAccountNaam'));
   try{
-    const { wachtwoord } = await apiCall('/api/accounts', 'POST', { naam, email: emailInput.value.trim() });
+    const { wachtwoord } = await apiCall('/api/accounts', 'POST', { naam, email: emailInput.value.trim(), rol: rolSelect.value });
     naamInput.value = ''; emailInput.value = '';
     toonWachtwoord(naam, wachtwoord);
     await renderAccountsTabel();

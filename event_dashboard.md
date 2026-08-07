@@ -85,8 +85,16 @@ zetten zonder code aan te passen.
   moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld `PUBLIC_DOMEIN`, websocket-
   upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config. De sessiecookie wordt
   automatisch `secure`-only zodra verkeer via Caddy binnenkomt (volgt `req.secure`)
-- **Nog niet gebouwd**: rol-onderscheid tussen accounts (alle accounts hebben nu gelijke, volledige
-  rechten) — aparte, latere roadmap-stap ("Rolverdeling/rechten")
+- **Rolverdeling (Editor/Viewer)**: elk account heeft een rol, in te stellen via een dropdown in de
+  Accounts-tabel. **Editor** = huidig gedrag, ongewijzigd (volledige rechten). **Viewer** = alleen
+  kijken — de mode-switch toont dan alleen Schema/Live/Rapportages/Grafieken; Beheer, Kalibreren en
+  Testdata verdwijnen volledig uit de header (i.p.v. grijs-met-uitleg getoond te worden), en een
+  viewer landt bij het inloggen automatisch op Schema i.p.v. Beheer. Server-side afgedwongen (niet
+  alleen de tabbladen client-side verstopt): elke route die bij Beheer/Kalibreren/Testdata hoort
+  geeft een viewer-sessie een 403, ook bij een rechtstreekse API-aanroep buiten de UI om. Bestaande
+  accounts van vóór dit veld tellen automatisch als editor (geen ongevraagde rechten-inkrimping bij
+  de upgrade). Het bootstrap-admin-account is altijd editor. Geen fijnmaziger systeem dan deze twee
+  rollen (geen per-tabblad-matrix)
 
 **Topologiebeheer (Beheer-tabblad)**
 - Het Beheer-tabblad heeft een altijd-zichtbare subnav met vier sub-tabs (zelfde patroon als de
