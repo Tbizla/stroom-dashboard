@@ -77,6 +77,18 @@ document.getElementById('groepeerBevestigenBtn').addEventListener('click', async
   }
 });
 
+// specs/mqtt-configuratie-plan.md: MQTT-topic-prefix kopiëren (kast/generator/lid) — zelfde
+// stil-falen-patroon als de bestaande wachtwoord-kopieerknop in accounts.js
+// (navigator.clipboard.writeText, de waarde staat toch al zichtbaar in het veld ernaast). Korte
+// visuele bevestiging (icoon wisselt even naar een vinkje) i.p.v. een aparte toast/melding.
+async function kopieerMqttPrefix(prefix, btnEl){
+  try{ await navigator.clipboard.writeText(prefix); }catch(e){ /* klembord geblokkeerd, prefix staat al zichtbaar */ }
+  if(!btnEl) return;
+  const origineel = btnEl.textContent;
+  btnEl.textContent = '✓';
+  setTimeout(()=>{ btnEl.textContent = origineel; }, 1200);
+}
+
 export function vulGenSelect(select, geselecteerd){
   select.innerHTML = state.TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
 }
@@ -200,7 +212,16 @@ export function renderKastSecties(){
     shellyInput.placeholder = t('beheer.shellyIpPlaceholder');
     shellyInput.title = t('beheer.shellyIpTitle');
     shellyInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {shelly_ip: shellyInput.value.trim() || null}); await loadTopology(); } catch(e){ alert(e.message); } };
-    kastVeld(tr, shellyInput, {style:'min-width:120px'});
+    const shellyWrap = document.createElement('div');
+    shellyWrap.className = 'shelly-cell';
+    shellyWrap.appendChild(shellyInput);
+    const mqttCopyBtn = document.createElement('button');
+    mqttCopyBtn.className = 'mqtt-copy-btn';
+    mqttCopyBtn.textContent = '📋';
+    mqttCopyBtn.title = t('beheer.mqttKopieerTitle');
+    mqttCopyBtn.onclick = ()=> kopieerMqttPrefix(k.mqtt_topic_prefix, mqttCopyBtn);
+    shellyWrap.appendChild(mqttCopyBtn);
+    kastVeld(tr, shellyWrap, {style:'min-width:150px'});
 
     const genSel = document.createElement('select');
     vulGenSelect(genSel, k.generator);
@@ -281,12 +302,20 @@ export function renderKastSecties(){
       const tabel = document.createElement('table');
       tabel.className = 'btable';
       tabel.innerHTML = '<tr><th>'+t('beheer.thNaam')+'</th><th style="min-width:80px">'+t('beheer.thAfk')+'</th><th style="min-width:70px">'+t('beheer.thA')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th>'+
-        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:120px">'+t('beheer.thShellyIp')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
+        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:150px">'+t('beheer.thShellyIp')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
       listChildrenOf(gen).forEach(k=>{
         if(searching && !subtreeMatches(k)) return;
         kastRij(tabel, k, 0);
       });
-      sectie.appendChild(tabel);
+      // vervolgticket-ui-schaal-en-qr-sticker.md §1: .ksectie zelf houdt overflow:hidden (voor de
+      // afgeronde hoeken van de sectie als geheel), maar dat kapte zonder deze wrapper ook alle
+      // tabelinhoud breder dan de sectie hard af zonder scrollbalk — met de huidige kolommen
+      // (ruim 1150px aan expliciete min-widths) paste dat simpelweg niet meer op een kleiner
+      // scherm. Deze losse div regelt de horizontale scroll voor de tabel specifiek.
+      const scrollWrap = document.createElement('div');
+      scrollWrap.style.overflowX = 'auto';
+      scrollWrap.appendChild(tabel);
+      sectie.appendChild(scrollWrap);
 
       const hiddenCount = alleKasten.filter(k=>!kastMatchesFilter(k)).length;
       let verbergReden = null;
@@ -374,7 +403,8 @@ export function renderBeheer(){
       '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
       '<td class="rating-cell"><input type="checkbox" data-gen-heeft-sensor="'+g.id+'" '+(g.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
         '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
-      '<td><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
+      '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle')+'" '+(g.rating_a==null?'disabled':'')+'>'+
+        '<button class="mqtt-copy-btn" data-mqtt-copy="'+g.mqtt_topic_prefix+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button></div></td>'+
       '<td>'+aantal+'</td>'+
       '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+' title="'+(isGroep?'':t('beheer.soortKoppelingDisabledTitle'))+'">'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>'+t('beheer.soortLeeg')+'</option>'+
@@ -395,7 +425,8 @@ export function renderBeheer(){
             '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
             '<td class="rating-cell"><input type="checkbox" data-lid-heeft-sensor="'+g.id+'|'+i+'" '+(l.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
               '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
-            '<td><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
+            '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle')+'" '+(l.rating_a==null?'disabled':'')+'>'+
+              '<button class="mqtt-copy-btn" data-mqtt-copy="'+(l.mqtt_topic_prefix||'')+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button></div></td>'+
             '<td><button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></td>'+
           '</tr>'
         ).join('')+
@@ -411,6 +442,8 @@ export function renderBeheer(){
     }
   });
   genTable.innerHTML = gh;
+
+  genTable.querySelectorAll('[data-mqtt-copy]').forEach(el=>el.onclick = ()=> kopieerMqttPrefix(el.dataset.mqttCopy, el));
 
   if(groepeerSelectieActief){
     genTable.querySelectorAll('.gen-groepeer-check').forEach(el=>el.onchange = ()=>{

@@ -49,7 +49,7 @@ export function openQrOverlay(k){
     a.download = 'qr-' + (k.afkorting || k.id) + '.png';
     a.click();
   };
-  document.getElementById('qrOverlayPrint').onclick = ()=> printKasten([k]);
+  document.getElementById('qrOverlayPrint').onclick = ()=> printEnkeleSticker(k);
   el.style.display = 'flex';
 }
 
@@ -66,6 +66,24 @@ function printKasten(kasten){
     '</style></head><body><div class="sheet">' +
     items.map(it => '<div class="sticker"><img src="'+it.dataUrl+'" alt=""><div class="t">'+it.naam+'</div><div class="a">'+it.afk+'</div></div>').join('') +
     '</div><script>window.onload=()=>window.print()<\/script></body></html>');
+  win.document.close();
+}
+
+// vervolgticket-ui-schaal-en-qr-sticker.md §2: losse, single-sticker-printlayout i.p.v. de
+// 4-koloms-bulk-sheet met daarin maar 1 item (bijna leeg vel, klein sticker'tje in de hoek — niet
+// bruikbaar om direct op stickerpapier/labelvellen te printen). Eén groot, gecentreerd blok, geen
+// grid — bruikbaar om uit te knippen of op een standaard labelvel te plakken.
+function printEnkeleSticker(k){
+  const dataUrl = genereerDataUrl(k.id);
+  const win = window.open('', '_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + t('beheer.qrPrintvelTitel') + '</title><style>' +
+    'body{font-family:sans-serif;margin:0;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;min-height:100vh}' +
+    '.sticker{border:1px dashed #ccc;border-radius:10px;padding:24px;text-align:center}' +
+    '.sticker img{width:350px;max-width:80vw}' +
+    '.sticker .t{font-size:22px;font-weight:700;margin-top:12px}' +
+    '.sticker .a{font-size:14px;color:#555;margin-top:2px}' +
+    '</style></head><body><div class="sticker"><img src="'+dataUrl+'" alt=""><div class="t">'+k.naam+'</div><div class="a">'+(k.afkorting||'')+'</div></div>' +
+    '<script>window.onload=()=>window.print()<\/script></body></html>');
   win.document.close();
 }
 

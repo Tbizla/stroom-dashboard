@@ -118,10 +118,22 @@ Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontaine
 
 ## 3. Shelly's instellen (eenmalig, per kast/generator/lid)
 
-Op elke Shelly Pro 3EM: Settings > MQTT
-- Enable MQTT: aan
-- Server: IP-adres van de machine bij NHQ, poort 1883
-- Custom MQTT prefix: de waarde die de webapp gegenereerd heeft. Zichtbaar door in **Live**-modus op de betreffende pin te klikken (kast, generator, of groep) — de databallon toont 'm onder de naam — of in een export (`/api/export`). Voor een generator die zelf ook uitgelezen wordt geldt hetzelfde (rating (A) invullen bij die generator/groep), en voor een los lid van een groep ook (rating (A) invullen bij dat lid in de ledentabel).
+Op elke Shelly Pro 3EM: **Settings → MQTT**
+- **Enable MQTT**: aan
+- **Server**: `<IP-adres van deze machine>:1883` (één veld, host:poort samen — dus bijv.
+  `192.168.1.50:1883`, niet los een poortveld)
+- **Username/Password**: leeg laten — deze mosquitto-broker vraagt geen inloggegevens
+  (`allow_anonymous true`)
+- **SSL/TLS**: uit laten staan — dit is een platte, onversleutelde lokale verbinding, geen
+  publiek-internet-MQTT
+- **Custom MQTT prefix**: de waarde die de webapp gegenereerd heeft. Kopieer 'm rechtstreeks vanuit
+  **Beheer** (📋-knop naast het Shelly-IP-veld bij de kast/generator/lid) — dat is de makkelijkste
+  weg, ook nog te vinden via **Live**-modus (databallon op de pin) of een export (`/api/export`).
+  Voor een generator die zelf ook uitgelezen wordt geldt hetzelfde (rating (A) invullen bij die
+  generator/groep), en voor een los lid van een groep ook (rating (A) invullen bij dat lid in de
+  ledentabel).
+- Na het opslaan herstart de Shelly zelf automatisch om de nieuwe instellingen actief te maken (dat
+  meldt 'ie zelf in zijn interface) — even wachten tot 'ie terug online is.
 
 Na deze stap publiceert elke Shelly automatisch naar o.a.:
 - `site/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).

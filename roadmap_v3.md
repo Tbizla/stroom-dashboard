@@ -219,6 +219,33 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       naar het publieke internet routeren. Geverifieerd met een echte `mosquitto_pub`/`mosquitto_sub`
       vanaf een los, extern proces (niet vanuit de container) naar `<host>:1883` — publiceren en
       ontvangen werkt weer. Volledige regressietest slaagt.
+- [x] **MQTT-prefix zichtbaar+kopieerbaar + twee kleine UI-bugfixes.** Afgerond — gebouwd conform
+      [specs/mqtt-configuratie-plan.md](specs/mqtt-configuratie-plan.md) en
+      [specs/vervolgticket-ui-schaal-en-qr-sticker.md](specs/vervolgticket-ui-schaal-en-qr-sticker.md)
+      (beide 7 augustus 2026, Mike). Het handmatig *bewerkbaar* maken van het MQTT-prefix is bewust
+      geschrapt (zie de correctie in het eerste document) — met Shelly-auto-configuratie in het
+      vooruitzicht (hieronder) is een losse handmatige-override-route overbodig, dit item dekt
+      alleen zichtbaar+kopieerbaar maken.
+      **MQTT-prefix**: een 📋-knop naast het Shelly-IP-veld bij elke kast/generator/lid kopieert de
+      server-berekende `mqtt_topic_prefix` naar het klembord (`navigator.clipboard`, stil falen als
+      geblokkeerd — de waarde staat toch al zichtbaar in het veld ernaast, zelfde patroon als de
+      account-wachtwoord-kopieerknop). Blijft alleen-lezen. README §3 herschreven met de
+      authenticatie-/SSL-toggle-uitleg die eerder ontbrak (getoetst aan Shelly's officiële
+      Gen2+-API-documentatie) en verwijst nu naar de kopieerknop als makkelijkste weg.
+      **Kasten-tabel-overflow**: root cause gevonden — `.ksectie{overflow:hidden}` (voor de
+      afgeronde hoeken van de sectie) kapte zonder scroll-wrapper ook alle tabelinhoud breder dan de
+      sectie hard af, zonder scrollbalk; met de huidige kolommen (ruim 1150px aan expliciete
+      min-widths) paste dat niet meer op een kleiner scherm, dus juist de latere kolommen (Generator,
+      Gevoed vanaf, Acties) werden afgekapt. Gefixt met een eigen `overflow-x:auto`-wrapper om de
+      tabel specifiek, `.ksectie` zelf hoeft niet te veranderen. Geverifieerd op een 1280px-breed
+      venster: scrollWidth (1190px) > wrapper clientWidth (938px), en na scrollen is de laatste
+      kolomkop (Acties) weer volledig binnen beeld.
+      **Losse QR-sticker**: de bestaande "Printen"-knop in de QR-overlay hergebruikte de 4-koloms-
+      bulk-sheet-layout voor maar 1 item (bijna leeg vel, klein stickertje in de hoek). Nieuwe
+      `printEnkeleSticker()`-functie: één groot (350px), gecentreerd QR-blok met naam/afkorting
+      eronder, geen grid — bruikbaar om direct uit te knippen of op een labelvel te plakken.
+      "Alle QR-codes printen" (bulk) blijft ongewijzigd de 4-koloms-sheet. Volledige regressietest
+      slaagt voor alle drie punten. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
 - [x] **Bestaande generators samenvoegen tot een groep ("Power Plant").** Afgerond — gebouwd
       conform
       [specs/generator-groep-powerplant-plan.md](specs/generator-groep-powerplant-plan.md). Nieuw

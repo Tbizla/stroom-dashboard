@@ -182,7 +182,14 @@ zetten zonder code aan te passen.
   plattegrond →"-link naar de volledige Live-modus. Een verwijderde kast toont een duidelijke
   "bestaat niet meer"-melding i.p.v. een kale foutmelding. QR-generatie gebeurt met een lokaal
   meegeleverde library (`webapp/public/js/vendor/qrcode.min.js`, geen CDN) — werkt dus ook zonder
-  internet op locatie
+  internet op locatie. De losse "Printen"-knop in de QR-overlay geeft een eigen, groot gecentreerd
+  single-sticker-printvoorbeeld (geen 4-koloms-sheet-layout meer voor maar 1 item) — bruikbaar om
+  direct uit te knippen of op een labelvel te plakken; "Alle QR-codes printen" blijft de
+  4-koloms-bulk-sheet voor alle kasten tegelijk
+- **MQTT-topic-prefix zichtbaar + kopieerbaar**: bij elke kast/generator/lid staat naast het
+  Shelly-IP-veld een 📋-knop die de `mqtt_topic_prefix` rechtstreeks naar het klembord kopieert
+  (blijft alleen-lezen, geen bewerkbaar veld) — scheelt de omweg via Live-modus of een export op
+  het moment dat je in Beheer een Shelly aan het instellen bent
 - **Back-up** (eigen sectie onderaan de Beheer-kolom, ná Kasten — verhuisd vanuit de
   Rapportages-tab, puur een locatiewijziging): één zip-bestand voor een volledige restore op een
   andere instance. Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te

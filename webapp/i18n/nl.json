@@ -366,6 +366,7 @@
   "beheer.thBypass": "Bypass",
   "beheer.thShellyIp": "Shelly IP",
   "beheer.shellyIpTitle": "Lokaal IP-adres van de Shelly, voor de \"Open Shelly\"-knop bij de status",
+  "beheer.mqttKopieerTitle": "MQTT-topic-prefix kopiëren (Custom MQTT prefix in de Shelly-instellingen)",
   "beheer.shellyIpPlaceholder": "bijv. 192.168.1.50",
   "beheer.thGenerator": "Generator",
   "beheer.thGevoedVanaf": "Gevoed vanaf",
