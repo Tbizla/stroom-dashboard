@@ -13,6 +13,12 @@
   "login.inloggen": "Log in",
   "login.uitloggen": "Log out",
   "login.footnote": "Access restricted to authorized accounts",
+  "login.wijzigenSubtitel": "Choose your own password to continue",
+  "login.nieuwWachtwoord": "New password",
+  "login.herhaalWachtwoord": "Repeat new password",
+  "login.wachtwoordInstellen": "Set password",
+  "login.wijzigenFootnote": "This is a mandatory first step for a new/default account",
+  "login.wachtwoordenOngelijk": "Passwords don't match",
 
   "grafieken.selectieTitel": "Boxes & generators",
   "grafieken.geenKastenPlaceholder": "No generators/boxes yet. Add them via \"Manage\".",

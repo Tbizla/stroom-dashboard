@@ -79,11 +79,17 @@ nog niet eerder gebruikte machine.)
    de webapp terug op alleen `localhost` in de logs en zoek je het IP zelf op met
    `ip addr`/`ipconfig`.
 
-   Open `http://<getoonde-ip>:8080`, laad een testtopologie (**Testdata**-tabblad), start de
-   simulator, controleer de **Live**-tab, en probeer één PDF-rapport te genereren (§11) — dat dekt
-   in één keer de hele pijplijn (MQTT → Telegraf → InfluxDB → Grafana → render → webapp). Dit is
-   ook hét moment om machine-specifieke verrassingen te ontdekken (bijv. of alle images op deze
-   hardware/CPU-architectuur draaien) — niet pas op de dag van het evenement zelf.
+   Open `http://<getoonde-ip>:8080` — de allereerste keer log je in met **`admin`/`admin`**, en
+   wordt meteen (verplicht, geen "later doen"-knop) om een nieuw wachtwoord gevraagd. Doe dit zo
+   snel mogelijk na het opstarten: zolang het nog op `admin`/`admin` staat kan iedereen met toegang
+   tot deze instance (lokaal netwerk, of internet als Caddy actief is, zie §15) inloggen. Maak
+   daarna via Beheer → Accounts een eigen account per crewlid aan.
+
+   Laad een testtopologie (**Testdata**-tabblad), start de simulator, controleer de **Live**-tab, en
+   probeer één PDF-rapport te genereren (§11) — dat dekt in één keer de hele pijplijn (MQTT →
+   Telegraf → InfluxDB → Grafana → render → webapp). Dit is ook hét moment om
+   machine-specifieke verrassingen te ontdekken (bijv. of alle images op deze hardware/
+   CPU-architectuur draaien) — niet pas op de dag van het evenement zelf.
 7. **Testmodus uit, echte topologie invoeren**:
    ```
    docker compose up -d --build

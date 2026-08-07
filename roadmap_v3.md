@@ -202,6 +202,29 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       LAN-adres van de Windows-host — de daadwerkelijke juistheid van het gedetecteerde adres is dus
       pas op de échte Linux-productiemachine te bevestigen (de mechaniek zelf — detecteren, wegschrijven,
       uitlezen, tonen — is wel volledig geverifieerd).
+- [x] **Eerste admin-login: standaard admin:admin + verplichte wachtwoordwijziging.** Afgerond —
+      gebouwd conform
+      [specs/eerste-admin-standaardwachtwoord-plan.md](specs/eerste-admin-standaardwachtwoord-plan.md).
+      Het bootstrap-admin-account (bij een lege `accounts.json`) gebruikt voortaan een vast
+      `admin`/`admin` i.p.v. een willekeurig gegenereerd wachtwoord dat eenmalig in de container-log
+      verscheen — makkelijker te onthouden/documenteren, aanvaardbaar omdat de verplichte wijziging
+      na de eerste login **server-side** afgedwongen wordt (nieuwe check in de bestaande auth-gate,
+      niet alleen een overslaanbaar UI-schermpje): elke `/api/*`-aanroep behalve
+      `/api/logout`/`/api/session`/`/api/wachtwoord-wijzigen` geeft 403
+      `wachtwoord_wijzigen_vereist` totdat het account zelf een nieuw wachtwoord gezet heeft via het
+      nieuwe `POST /api/wachtwoord-wijzigen`-endpoint (minstens 8 tekens, niet `admin`). Nieuwe
+      `#wachtwoordWijzigenOverlay` in de frontend (zelfde stijl als het bestaande loginscherm,
+      hergebruikt), getoond zowel direct na een `admin/admin`-login als bij een latere page-reload
+      terwijl de wijziging nog niet gebeurd is (`/api/session` geeft dezelfde vlag terug). Getest
+      tegen een volledig losse, verse container (nooit tegen Mike's echte data): bootstrap-log toont
+      `admin / admin`, elke andere route geeft 403 vóór de wijziging, het wijzig-formulier weigert
+      een te kort wachtwoord en ongelijke velden, na het wijzigen werkt het oude `admin`/`admin` niet
+      meer en het nieuwe wachtwoord wel, en een page-reload tijdens de verplichte stap toont opnieuw
+      het wijzigscherm (niet de app, niet een leeg scherm). Bevestigd dat een bestaande installatie
+      (met al een `accounts.json`, zoals de huidige live-instance) hier niets van merkt —
+      `moet_wachtwoord_wijzigen` ontbreekt op bestaande accounts, telt dus als `false`. Nieuwe
+      accounts/resets via Beheer → Accounts blijven ongewijzigd een willekeurig wachtwoord geven.
+      Zie event_dashboard.md, Login & toegangsbeheer.
 - [x] **Bugreport: dropdown/kastnamen op Beheer-pagina.** Afgerond — gebouwd conform
       [specs/vervolgticket-beheer-dropdown-namen.md](specs/vervolgticket-beheer-dropdown-namen.md).
       Twee gemelde punten, gereproduceerd tegen de live stack (met een losse, tijdelijke

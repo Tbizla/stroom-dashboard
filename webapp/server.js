@@ -174,21 +174,25 @@ function genereerWachtwoord() {
 
 // eerste-opstart-bootstrap: zonder dit is er geen kip-of-ei-uitweg — er bestaat bewust geen publiek
 // registratieformulier, alleen een al-ingelogde editor kan via het Accounts-scherm een account
-// aanmaken (zie specs/toegang-van-buitenaf-diagnose.md)
+// aanmaken (zie specs/toegang-van-buitenaf-diagnose.md). specs/eerste-admin-standaardwachtwoord-
+// plan.md: vast admin/admin i.p.v. een willekeurig wachtwoord in de container-log — makkelijker te
+// onthouden/documenteren, met als bewuste afweging dat dit een publiek bekend, geraden default-
+// wachtwoord is zolang het nog niet gewijzigd is (vergelijkbaar met veel apparaten/routers). Dat is
+// alleen aanvaardbaar omdat moet_wachtwoord_wijzigen hieronder server-side (niet alleen een
+// overslaanbaar UI-schermpje) afgedwongen wordt tot het admin-account een eigen wachtwoord heeft.
+// Bestaande installaties met al een accounts.json raakt dit niet (length===0-check).
 if (readAccounts().length === 0) {
-  const wachtwoord = genereerWachtwoord();
   writeAccounts([{
     id: crypto.randomUUID(),
     naam: 'admin',
     email: '',
-    wachtwoord_hash: bcrypt.hashSync(wachtwoord, 10),
+    wachtwoord_hash: bcrypt.hashSync('admin', 10),
+    moet_wachtwoord_wijzigen: true,
     aangemaakt: new Date().toISOString(),
     laatst_ingelogd: null,
   }]);
-  console.log('Geen accounts gevonden — eerste admin-account aangemaakt:');
-  console.log('  gebruikersnaam: admin');
-  console.log('  wachtwoord:     ' + wachtwoord);
-  console.log('  (dit wordt maar één keer getoond — maak na de eerste keer inloggen een eigen account aan)');
+  console.log('Geen accounts gevonden — eerste admin-account aangemaakt: admin / admin');
+  console.log('  Verplicht bij de eerste keer inloggen: er wordt direct om een nieuw wachtwoord gevraagd.');
 }
 
 // vervolgticket-toegang-van-buitenaf.md §6: simpele rate-limiters op de twee routes die straks ook
@@ -209,13 +213,13 @@ app.post('/api/login', loginLimiter, (req, res) => {
   const idx = accounts.findIndex((a) => a.id === account.id);
   accounts[idx].laatst_ingelogd = new Date().toISOString();
   writeAccounts(accounts);
-  res.json({ ok: true, naam: account.naam });
+  res.json({ ok: true, naam: account.naam, moet_wachtwoord_wijzigen: !!account.moet_wachtwoord_wijzigen });
 });
 app.post('/api/logout', (req, res) => { req.session = null; res.json({ ok: true }); });
 app.get('/api/session', (req, res) => {
   const account = req.session && req.session.accountId ? readAccounts().find((a) => a.id === req.session.accountId) : null;
   if (!account) return res.status(401).json({ error: 'niet ingelogd' });
-  res.json({ naam: account.naam, email: account.email });
+  res.json({ naam: account.naam, email: account.email, moet_wachtwoord_wijzigen: !!account.moet_wachtwoord_wijzigen });
 });
 
 // gate alle /api/*-routes hierna (én /mqtt zelf, zie vervolgticket-toegang-van-buitenaf.md §5)
@@ -255,6 +259,12 @@ function heeftGeldigInternToken(req) {
   if (req.get('X-Internal-Token') === INTERNAL_API_TOKEN) return true;
   return req.get('Authorization') === 'Bearer ' + INTERNAL_API_TOKEN;
 }
+// specs/eerste-admin-standaardwachtwoord-plan.md: routes die zelfs een net-ingelogd, nog-op-admin/
+// admin-staand account moet kunnen bereiken om van de verplichte-wijziging af te komen (of uit te
+// loggen) — zonder dit zou iemand het wijzigingsscherm gewoon kunnen negeren en met de sessie die
+// de login al gaf rechtstreeks andere /api/...-routes aanroepen, wat de hele maatregel zinloos zou
+// maken.
+const WACHTWOORDWIJZIGING_UITGEZONDERD = new Set(['/api/logout', '/api/session', '/api/wachtwoord-wijzigen']);
 app.use((req, res, next) => {
   const pad = req.path.toLowerCase();
   // ronde2 §5: /mqtt zelf mount als prefix (createProxyMiddleware), dus ook een trailing-slash-
@@ -262,8 +272,11 @@ app.use((req, res, next) => {
   const gevoeligPad = pad.startsWith('/api/') || pad === '/mqtt' || pad.startsWith('/mqtt/');
   if (!gevoeligPad || AUTH_UITGEZONDERD.has(pad) || pad.startsWith('/api/i18n/')) return next();
   if (heeftGeldigInternToken(req)) return next();
-  if (!req.session || !req.session.accountId || !readAccounts().some((a) => a.id === req.session.accountId)) {
-    return res.status(401).json({ error: 'niet ingelogd' });
+  if (!req.session || !req.session.accountId) return res.status(401).json({ error: 'niet ingelogd' });
+  const account = readAccounts().find((a) => a.id === req.session.accountId);
+  if (!account) return res.status(401).json({ error: 'niet ingelogd' });
+  if (account.moet_wachtwoord_wijzigen && !WACHTWOORDWIJZIGING_UITGEZONDERD.has(pad) && !pad.startsWith('/api/i18n/')) {
+    return res.status(403).json({ error: 'wachtwoord_wijzigen_vereist' });
   }
   next();
 });
@@ -297,6 +310,27 @@ app.post('/api/accounts/:id/reset-wachtwoord', (req, res) => {
   accounts[idx].wachtwoord_hash = bcrypt.hashSync(wachtwoord, 10);
   writeAccounts(accounts);
   res.json({ ok: true, wachtwoord });
+});
+// specs/eerste-admin-standaardwachtwoord-plan.md: zelf-service wachtwoord wijzigen — werkt altijd op
+// het eigen, ingelogde account (req.session.accountId), geen los :id-pad-argument nodig, dus geen
+// apart autorisatievraagstuk (iedereen mag alleen zijn eigen wachtwoord op deze manier zetten). Dit
+// is de route waarmee een net met admin/admin ingelogd account van de verplichte-wijziging-gate
+// hieronder afkomt.
+app.post('/api/wachtwoord-wijzigen', (req, res) => {
+  const { wachtwoord } = req.body || {};
+  if (!wachtwoord || typeof wachtwoord !== 'string' || wachtwoord.length < 8) {
+    return res.status(400).json({ error: 'wachtwoord moet minstens 8 tekens zijn' });
+  }
+  if (wachtwoord.toLowerCase() === 'admin') {
+    return res.status(400).json({ error: 'kies een ander wachtwoord dan het standaardwachtwoord' });
+  }
+  const accounts = readAccounts();
+  const idx = accounts.findIndex((a) => a.id === req.session.accountId);
+  if (idx === -1) return res.status(401).json({ error: 'niet ingelogd' });
+  accounts[idx].wachtwoord_hash = bcrypt.hashSync(wachtwoord, 10);
+  accounts[idx].moet_wachtwoord_wijzigen = false;
+  writeAccounts(accounts);
+  res.json({ ok: true });
 });
 app.delete('/api/accounts/:id', (req, res) => {
   const accounts = readAccounts();

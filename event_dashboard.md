@@ -51,8 +51,14 @@ zetten zonder code aan te passen.
 - Nieuwe "Accounts"-sectie in Beheer: naam/e-mail/laatst-ingelogd per account, wachtwoord resetten,
   verwijderen. Alleen een al-ingelogde editor kan een account aanmaken (geen publieke registratie);
   het gegenereerde wachtwoord wordt eenmalig getoond, daarna nergens meer op te vragen (alleen te
-  resetten). Bij de allereerste opstart wordt automatisch één admin-account aangemaakt, met het
-  wachtwoord eenmalig in de container-log
+  resetten)
+- Bij de allereerste opstart wordt automatisch één admin-account aangemaakt met een vast
+  `admin`/`admin`-inlog (bewust makkelijk te onthouden/documenteren i.p.v. een willekeurig
+  wachtwoord dat je uit de container-log moet vissen) — na de eerste succesvolle login wordt
+  **verplicht** (server-side afgedwongen, geen overslaanbaar schermpje) om een eigen wachtwoord
+  gevraagd vóórdat de rest van de app te gebruiken is. Bestaande installaties merken hier niets van
+  (alleen relevant bij een écht lege `accounts.json`). Nieuwe accounts via Beheer → Accounts
+  aanmaken/resetten blijven gewoon een willekeurig gegenereerd wachtwoord geven zoals altijd
 - Live-monitoring (MQTT) valt onder dezelfde login-laag: de browser verbindt niet meer rechtstreeks
   met de MQTT-broker, maar via een eigen websocket-proxy op de webapp zelf (`/mqtt`), die een
   sessie-gebonden ticket vereist vóór 'ie doorverbindt — de broker zelf is niet meer van buiten het

@@ -744,6 +744,29 @@
   </div>
 </div>
 
+<!-- specs/eerste-admin-standaardwachtwoord-plan.md: verplichte stap ná een geslaagde login met een
+     account waarvan moet_wachtwoord_wijzigen aanstaat (het admin/admin-bootstrap-account) — zelfde
+     kaart-stijl als #loginOverlay, geen nieuw ontwerp nodig. -->
+<div id="wachtwoordWijzigenOverlay" class="login-overlay" style="display:none">
+  <div class="loginbox">
+    <h1>Stroom-<span>Dashboard</span></h1>
+    <div class="sub" data-i18n="login.wijzigenSubtitel">Kies een eigen wachtwoord om verder te gaan</div>
+    <form id="wachtwoordWijzigenForm">
+      <div class="field">
+        <label data-i18n="login.nieuwWachtwoord">Nieuw wachtwoord</label>
+        <input type="password" id="wwNieuw" autocomplete="new-password" minlength="8" required>
+      </div>
+      <div class="field">
+        <label data-i18n="login.herhaalWachtwoord">Herhaal nieuw wachtwoord</label>
+        <input type="password" id="wwHerhaal" autocomplete="new-password" minlength="8" required>
+      </div>
+      <button type="submit" class="loginbtn" data-i18n="login.wachtwoordInstellen">Wachtwoord instellen</button>
+    </form>
+    <div class="errbox" id="wachtwoordWijzigenErr"></div>
+    <div class="footnote" data-i18n="login.wijzigenFootnote">Dit is een verplichte eerste stap voor een nieuw/standaard account</div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="https://unpkg.com/chart.js@4.4.4/dist/chart.umd.js"></script>
 <script src="js/vendor/qrcode.min.js"></script>
