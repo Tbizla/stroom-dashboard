@@ -240,6 +240,23 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       tabel specifiek, `.ksectie` zelf hoeft niet te veranderen. Geverifieerd op een 1280px-breed
       venster: scrollWidth (1190px) > wrapper clientWidth (938px), en na scrollen is de laatste
       kolomkop (Acties) weer volledig binnen beeld.
+      **Vervolgronde (7 augustus 2026)**: Mike meldde met screenshot dat de tabel op zijn scherm
+      nog steeds hard afgekapt werd, zonder scrollbalk — de wrapper-fix hierboven klopte op
+      zichzelf, maar miste een laag hoger. Gebouwd conform
+      [specs/vervolgticket-ui-schaal-ronde2.md](specs/vervolgticket-ui-schaal-ronde2.md):
+      `.beheer` is een flex-item in een rij-layout (`.body`) zonder `min-width:0` — een flex-item
+      krijgt standaard `min-width:auto`, dus mag nooit smaller worden dan de intrinsieke breedte
+      van zijn inhoud. Met de brede kasten-tabel als inhoud werd `.beheer` zelf breder dan de
+      viewport geduwd, waardoor de `overflow-x:auto`-wrapper om de tabel niets had om tegen te
+      scrollen (die meet t.o.v. `.beheer`'s al te brede breedte, niet t.o.v. de viewport) — zelfde
+      onderliggende mechanisme als de bestaande `.body`/`.grafbody`-`min-height:0`-toepassingen,
+      hier alleen gemist voor de horizontale variant. Eén regel gefixt: `min-width:0` (+ expliciete
+      `overflow-x:auto`) op `.beheer` zelf. Geverifieerd op een écht verkleind browservenster
+      (1280px, geen devtools-emulatie): `.beheer` groeit niet meer mee met de tabel
+      (scrollWidth = clientWidth = viewportWidth = 1280), de tabel-wrapper scrollt weer correct
+      (1211px inhoud binnen een 938px wrapper), en de laatste kolomkop (Acties) valt na scrollen
+      volledig binnen de viewport. Accounts-tabel en generatorentabel blijven ongewijzigd zonder
+      onnodige scroll op normale breedte. Volledige regressietest slaagt.
       **Losse QR-sticker**: de bestaande "Printen"-knop in de QR-overlay hergebruikte de 4-koloms-
       bulk-sheet-layout voor maar 1 item (bijna leeg vel, klein stickertje in de hoek). Nieuwe
       `printEnkeleSticker()`-functie: één groot (350px), gecentreerd QR-blok met naam/afkorting

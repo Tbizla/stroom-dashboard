@@ -209,7 +209,13 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
-.beheer{flex:1;overflow-y:auto;padding:22px 26px;display:none}
+/* vervolgticket-ui-schaal-ronde2.md: .beheer is een flex-item in een rij-layout (.body) zonder
+   min-width:0 — een flex-item krijgt standaard min-width:auto, dus mag nooit smaller worden dan de
+   intrinsieke breedte van zijn inhoud. Met de brede kasten-tabel (>1150px aan kolom-min-widths) werd
+   .beheer zelf breder dan de viewport geduwd, waardoor de overflow-x:auto-wrapper om de tabel (vorige
+   ronde) niets had om tegen te scrollen — die meet t.o.v. .beheer's al te brede breedte, niet t.o.v.
+   de viewport. Zelfde patroon als .body/.grafbody's bestaande min-height:0, hier de horizontale variant. */
+.beheer{flex:1;overflow-y:auto;overflow-x:auto;min-width:0;padding:22px 26px;display:none}
 .beheercol{max-width:940px}
 .ledenrow>td{padding:0 8px 10px 24px !important;border-bottom:1px solid var(--border)}
 .ledentable{background:var(--panel2);border-radius:8px;padding:4px 8px}
