@@ -48,13 +48,15 @@ nog niet eerder gebruikte machine.)
 2. **Vast IP-adres**: reserveer een vaste DHCP-lease (of een statische configuratie) voor deze
    machine — dat adres komt terug in elke Shelly-config (§3) en in elke browser-bookmark van de
    crew, dus niet iets om halverwege een editie te wijzigen.
-3. **Firewall**: zorg dat poort 8080 (webapp) bereikbaar is vanaf het lokale netwerk — dat is het
-   enige adres dat crew nodig heeft (incl. QR-code-deeplinks). Poort 3000 (Grafana) en 8086
-   (InfluxDB) zijn alleen nodig als je die rechtstreeks wilt benaderen (dashboards bewerken,
-   directe queries); MQTT (1883/9001) is sinds de login-laag niet meer naar de host gepubliceerd —
-   die loopt altijd via de webapp's eigen `/mqtt`-proxy. Wil je deze instance ook van buiten het
-   lokale netwerk (internet) bereikbaar maken, zie §15 — dat vraagt om een aparte, bewuste firewall-
-   afweging, niet zomaar alle poorten open naar internet.
+3. **Firewall**: zorg dat poorten 8080 (webapp) en 1883 (MQTT) bereikbaar zijn vanaf het lokale
+   netwerk — 8080 is wat crew nodig heeft (incl. QR-code-deeplinks), 1883 is waar de fysieke
+   Shelly's rechtstreeks naar publiceren (geen browser gaat hier meer overheen, dat loopt via de
+   webapp's eigen `/mqtt`-proxy — poort 9001 hoeft dus niet open). Poort 3000 (Grafana) en 8086
+   (InfluxDB) zijn alleen nodig als je die rechtstreeks wilt benaderen (dashboards bewerken, directe
+   queries). Wil je deze instance ook van buiten het lokale netwerk (internet) bereikbaar maken, zie
+   §15 — dat vraagt om een aparte, bewuste firewall-afweging, niet zomaar alle poorten open naar
+   internet (1883 en 8080 blijven ook dan alléén lokaal netwerk, nooit naar het publieke internet
+   routeren).
 4. **Code ophalen**:
    ```
    git clone <repo-url>
@@ -351,10 +353,11 @@ die TLS-terminatie + reverse-proxy naar de webapp verzorgt.
      de IP-gebaseerde rate-limiters op `/api/login`/`/api/hq-status` blijven wél correct werken
      (`trust proxy` vertrouwt specifiek Caddy als enige hop, geen vervalsbare header via een
      rechtstreekse 8080-verbinding).
-   - Poorten 3000 (Grafana) en 8086 (InfluxDB) horen **niet** naar het publieke internet open te
-     staan — die hebben geen eigen rate-limiting/hardening tegen internet-blootstelling en zijn
-     niet nodig voor de HQ-Locaties-/Live-functionaliteit (die loopt via de webapp zelf). Alleen
-     lokaal netwerk, net als vóór deze feature.
+   - Poorten 3000 (Grafana), 8086 (InfluxDB) en 1883 (MQTT) horen **niet** naar het publieke
+     internet open te staan — die hebben geen eigen rate-limiting/hardening tegen internet-
+     blootstelling (1883 heeft zelfs `allow_anonymous true`, bedoeld voor het vertrouwde lokale
+     festivalnetwerk) en zijn niet nodig voor de HQ-Locaties-/Live-functionaliteit (die loopt via de
+     webapp zelf). Alleen lokaal netwerk.
 5. Elke locatie-instance krijgt zijn eigen Caddy/`PUBLIC_DOMEIN` in dezelfde stack — er is geen
    gedeelde HQ-infrastructuur; "Beheer openen" vanaf de HQ-Locaties-pagina (Rapportages-tabblad)
    opent gewoon het eigen loginscherm van die andere instance.

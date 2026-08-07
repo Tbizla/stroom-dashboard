@@ -1,13 +1,21 @@
 services:
-  # sinds de webapp's eigen /mqtt-websocket-proxy (specs/toegang-van-buitenaf-diagnose.md
-  # bevinding #2) verbindt niets meer rechtstreeks met mosquitto van buiten het docker-netwerk —
-  # de browser gaat altijd via de webapp (poort 8080), de simulator via het interne
-  # mqtt://mosquitto:1883-adres. Geen ports: meer nodig, allow_anonymous true in mosquitto.conf is
-  # daardoor weer veilig (niet meer extern bereikbaar, net als InfluxDB/Grafana hieronder).
+  # specs/shelly-auto-configuratie-plan.md (kritieke bevinding, 7 augustus 2026): sinds de webapp's
+  # eigen /mqtt-websocket-proxy (specs/toegang-van-buitenaf-diagnose.md bevinding #2) verbindt de
+  # BROWSER niet meer rechtstreeks met mosquitto — die gaat terecht via de webapp (poort 8080). Maar
+  # een fysieke Shelly is geen browser: die praat gewoon rechtstreeks TCP/MQTT naar <host>:1883 en
+  # kan onmogelijk via een sessie-gegate websocketproxy in de webapp. Poort 1883 hoort dus WEL naar
+  # de host gepubliceerd te blijven — alleen 9001 (websockets) is terecht vervangen door de
+  # webapp-proxy en blijft dicht. Zonder 1883 was er sinds commit 721172c domweg geen enkele fysieke
+  # Shelly meer bereikbaar voor de broker (door geen van de drie latere code-review-rondes op
+  # "Toegang van buitenaf" opgemerkt — die waren gericht op auth/security van de webapp zelf, niet
+  # op de fysieke-apparaten-kant van de pijplijn). allow_anonymous true blijft een bewuste,
+  # geaccepteerde keuze (zelfde vertrouwensmodel als nu al voor poort 8080 op het lokale netwerk).
   mosquitto:
     build: ./mosquitto
     container_name: mosquitto
     restart: unless-stopped
+    ports:
+      - "1883:1883"
     volumes:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log

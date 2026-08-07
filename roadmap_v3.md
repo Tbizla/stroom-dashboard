@@ -202,6 +202,23 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       LAN-adres van de Windows-host — de daadwerkelijke juistheid van het gedetecteerde adres is dus
       pas op de échte Linux-productiemachine te bevestigen (de mechaniek zelf — detecteren, wegschrijven,
       uitlezen, tonen — is wel volledig geverifieerd).
+- [x] **Kritieke regressie: fysieke Shelly's konden niet meer met de broker verbinden.** Afgerond —
+      gevonden tijdens het uitwerken van
+      [specs/shelly-auto-configuratie-plan.md](specs/shelly-auto-configuratie-plan.md) (7 augustus
+      2026), los van die feature. Sinds commit `721172c` ("Toegang van buitenaf") had
+      `docker-compose.yml`'s `mosquitto`-service geen `ports:`-mapping meer — bedoeld om de browser
+      niet meer rechtstreeks met mosquitto te laten verbinden (die gaat terecht via de webapp's
+      `/mqtt`-proxy), maar een **fysieke Shelly is geen browser**: die praat rechtstreeks TCP/MQTT
+      naar `<host>:1883` en kan onmogelijk via een sessie-gegate websocketproxy. Met 1883 dicht was
+      er sinds die commit domweg geen enkele fysieke Shelly meer bereikbaar — niet opgemerkt door de
+      drie latere code-review-rondes op "Toegang van buitenaf" (die waren gericht op auth/security
+      van de webapp zelf, niet op de fysieke-apparaten-kant). Gefixt: `1883:1883` weer gepubliceerd
+      (bewust **niet** 9001/websockets, die blijft terecht dicht — dat is nu de webapp-proxy).
+      `allow_anonymous true` blijft ongewijzigd, zelfde vertrouwensmodel als poort 8080. README's
+      firewall-paragrafen (§1, §15) behandelen 1883 nu hetzelfde als 8080: lokaal-netwerk-only, nooit
+      naar het publieke internet routeren. Geverifieerd met een echte `mosquitto_pub`/`mosquitto_sub`
+      vanaf een los, extern proces (niet vanuit de container) naar `<host>:1883` — publiceren en
+      ontvangen werkt weer. Volledige regressietest slaagt.
 - [x] **Bestaande generators samenvoegen tot een groep ("Power Plant").** Afgerond — gebouwd
       conform
       [specs/generator-groep-powerplant-plan.md](specs/generator-groep-powerplant-plan.md). Nieuw
