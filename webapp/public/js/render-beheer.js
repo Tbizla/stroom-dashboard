@@ -92,7 +92,13 @@ export function renderKastSecties(){
     naamInput.style.flex = '1';
     naamInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {naam: naamInput.value}); await loadTopology(); } catch(e){ alert(e.message); } };
     naamWrap.appendChild(naamInput);
-    kastVeld(tr, naamWrap);
+    // vervolgticket-beheer-dropdown-namen.md: expliciete min-width nodig, net als de overige
+    // kolommen hieronder — zonder dit computet de browser's auto-table-layout de intrinsieke
+    // breedte van deze kolom via de flex-child (naamInput.style.flex='1' = flex-basis:0%), wat
+    // vrijwel geen bijdrage aan de preferred column width levert. Resultaat: de naamkolom stortte
+    // in tot een paar pixels breed (kastnaam onzichtbaar) zodra de overige, wél expliciet
+    // gebreedte kolommen samen al bijna de volledige tabelbreedte opeisten.
+    kastVeld(tr, naamWrap, {style:'min-width:180px'});
 
     const afkInput = document.createElement('input');
     afkInput.value = k.afkorting || '';
@@ -292,7 +298,7 @@ export function renderBeheer(){
         '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
       '<td><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
       '<td>'+aantal+'</td>'+
-      '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+'>'+
+      '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+' title="'+(isGroep?'':t('beheer.soortKoppelingDisabledTitle'))+'">'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>'+t('beheer.soortLeeg')+'</option>'+
         '<option value="parallel"'+(g.groep_soort==='parallel'?' selected':'')+'>'+t('beheer.soortParallel')+'</option>'+
         '<option value="backup"'+(g.groep_soort==='backup'?' selected':'')+'>'+t('beheer.soortBackup')+'</option>'+

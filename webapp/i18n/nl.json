@@ -326,6 +326,7 @@
   "beheer.ratingTitle": "Alleen invullen als deze generator/groep zelf ook uitgelezen wordt (native of via Shelly+CT-klem)",
   "beheer.ledenRatingTitle": "Alleen invullen als dit lid zelf ook uitgelezen wordt (eigen Shelly+CT-klem)",
   "beheer.heeftSensorTitle": "Heeft sensor — aanvinken als er meetdata van deze generator/dit lid beschikbaar is",
+  "beheer.soortKoppelingDisabledTitle": "Alleen in te stellen als het type op \"Groep\" staat",
   "beheer.soortLeeg": "—",
   "beheer.soortParallel": "Parallel (load-sharing)",
   "beheer.soortBackup": "N+1 backup (auto-start)",

@@ -202,6 +202,23 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       LAN-adres van de Windows-host — de daadwerkelijke juistheid van het gedetecteerde adres is dus
       pas op de échte Linux-productiemachine te bevestigen (de mechaniek zelf — detecteren, wegschrijven,
       uitlezen, tonen — is wel volledig geverifieerd).
+- [x] **Bugreport: dropdown/kastnamen op Beheer-pagina.** Afgerond — gebouwd conform
+      [specs/vervolgticket-beheer-dropdown-namen.md](specs/vervolgticket-beheer-dropdown-namen.md).
+      Twee gemelde punten, gereproduceerd tegen de live stack (met een losse, tijdelijke
+      test-generator/-kast, nooit tegen de echte topologiedata): (1) "generator-dropdown werkt niet"
+      bleek **geen bug** — het "soort koppeling"-veld is met opzet `disabled` tenzij het type al op
+      "Groep" staat (de type-dropdown zelf functioneerde gewoon correct, inclusief de save-roundtrip
+      en het verschijnen van de leden-knop na omzetten). Kleine UX-verbetering toegevoegd: een
+      tooltip op het disabled-veld die uitlegt waarom. (2) "kastnamen niet zichtbaar" was wél een
+      echte bug: de naamkolom in de kasten-tabel gebruikt een flex-wrapper
+      (`naamInput.style.flex='1'` = `flex-basis:0%`) zonder expliciete `min-width` op de `<td>` —
+      anders dan de overige kolommen, die dat wel hebben. Browsers berekenen de intrinsieke
+      (auto-table-layout-)breedte van een flex-child met `flex-basis:0` als vrijwel nul, waardoor de
+      naamkolom instortte tot een paar pixels breed zodra de overige, wél expliciet gebreedte
+      kolommen samen al bijna de volledige tabelbreedte opeisten — geverifieerd: 14,77px vóór de fix,
+      144px erna (`min-width:180px` op de cel, zelfde patroon als de andere kolommen). Alleen de
+      kasten-tabel had dit (de generatorentabel gebruikt een simpele `<input>` zonder flex-wrapper,
+      dus was nooit geraakt). Regressietest slaagt.
 - [x] **Vinkje "meetdata beschikbaar" per generator/lid.** Afgerond — gebouwd conform
       [specs/generator-meetdata-vinkje-plan.md](specs/generator-meetdata-vinkje-plan.md): expliciete
       "Heeft sensor"-checkbox naast het rating-veld in Beheer (generatorrij + ledentabel), en een
