@@ -75,7 +75,7 @@ nog niet eerder gebruikte machine.)
    git clone <repo-url>
    cd event_stroom_dashboard
    ```
-   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.0.0`) — voor een nieuwe
+   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.3.0`) — voor een nieuwe
    locatie is dat de juiste branch. `dev` bevat nog niet-uitgebrachte ontwikkeling.
 5. **`.env` invullen**:
    ```
@@ -98,7 +98,10 @@ nog niet eerder gebruikte machine.)
    wordt meteen (verplicht, geen "later doen"-knop) om een nieuw wachtwoord gevraagd. Doe dit zo
    snel mogelijk na het opstarten: zolang het nog op `admin`/`admin` staat kan iedereen met toegang
    tot deze instance (lokaal netwerk, of internet als Caddy actief is, zie §15) inloggen. Maak
-   daarna via Beheer → Accounts een eigen account per crewlid aan.
+   daarna via Beheer → Accounts een eigen account per crewlid aan, met een rol erbij: **Editor**
+   (volledige rechten, zelfde als nu) voor wie ook mag beheren/kalibreren/testen, **Viewer** (alleen
+   Schema/Live/Rapportages/Grafieken, geen Beheer/Kalibreren/Testdata) voor wie alleen hoeft mee te
+   kijken.
 
    Laad een testtopologie (**Testdata**-tabblad), start de simulator, controleer de **Live**-tab, en
    probeer één PDF-rapport te genereren (§11) — dat dekt in één keer de hele pijplijn (MQTT →
@@ -324,16 +327,28 @@ alleen in bij het *aanmaken* van zijn container, niet bij een gewone restart. Da
 via het kleine `telegraf-herstarter`-servicetje (zie sectie 4): dat heeft de Docker-socket, de
 webapp zelf niet.
 
-## 13. Alarmering (Grafana Alerting)
+## 13. Alarmering (Grafana Alerting + Alert-notificaties in Beheer)
 
-Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 7 hierboven — gebruik hiervoor niet `total_current`). De alert-regels kun je nu al aanmaken; het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je pas te koppelen als je een keuze hebt gemaakt.
+Grafana kan per paneel een alert-regel krijgen die afgaat zodra de zwaarst belaste fase boven de 90%-drempel van `rating_a` komt (zie sectie 7 hierboven — gebruik hiervoor niet `total_current`). Deze alert-*regels* (de query/conditie zelf) maak je nog altijd handmatig aan in Grafana — dat is niet vanuit de webapp te doen.
 
 Voorbeeld alert-conditie in Grafana (per kast-paneel):
 - Query: `a_current`, `b_current` en `c_current` van de betreffende kast, laatste 1 minuut, met een `max()`-transform (of Flux `pivot` + `map` om per timestamp de hoogste fase te berekenen) zodat je één "hoogste fase"-reeks overhoudt
 - Conditie: `is above` [90% van rating_a]
 - For: 30s (voorkomt vals alarm bij een korte piek)
 
-Zodra je een kanaal kiest, voeg je die toe onder Alerting > Contact points, en koppel je 'm aan een notification policy. Ondersteunde opties: Telegram, Pushover, ntfy.sh, e-mail, Slack, webhook, en meer.
+Het **notificatiekanaal** (waar het bericht naartoe gestuurd wordt) hoef je daarna niet meer los in
+Grafana's Alerting > Contact points in te richten — dat gaat via **Beheer → Instellingen →
+Alert-notificaties** in de webapp zelf. Per kanaal (Telegram, Pushover, ntfy.sh, e-mail — meerdere
+tegelijk aan mag) een eigen kaart met aan/uit-toggle, de kanaalvelden (bijv. bot-token + chat-ID
+voor Telegram, API-token + user-key voor Pushover, topic + server-URL voor ntfy, SMTP-gegevens voor
+e-mail) en een "Stuur testbericht"-knop. Op "Wijzigingen doorvoeren" klikken slaat de instellingen
+op én schrijft Grafana's contact-point-/notification-policy-provisioning-API automatisch bij
+(Telegram/Pushover/e-mail als Grafana-native contact-point-types onder één gedeeld contact point
+"Stroomdashboard"; ntfy heeft geen native Grafana-type en loopt via een webhook terug naar de
+webapp — daarvoor moet `INTERNAL_API_TOKEN` in `.env` een eigen waarde hebben, zie §15 punt 2,
+anders blijft dat kanaal 401'en). Al eerder ingevulde geheimen (bot-token, API-token,
+SMTP-wachtwoord) worden nooit teruggelezen in de UI — een leeg gelaten geheim veld bij het opslaan
+laat de bestaande waarde ongewijzigd, een expliciete "Wissen"-link per veld verwijdert 'm.
 
 ## 14. Migreren van een bestaande `fest`/`festival`-instance naar `site`
 
@@ -370,9 +385,13 @@ die TLS-terminatie + reverse-proxy naar de webapp verzorgt.
 1. **DNS**: een domein/subdomein dat al naar het publieke IP van deze machine wijst (nodig vóórdat
    Caddy een Let's Encrypt-certificaat kan aanvragen).
 2. **`.env`**: vul `PUBLIC_DOMEIN` in (bijv. `nieuwehaven.stroomdash.nl`) en zorg dat
-   `SESSION_SECRET`/`INTERNAL_API_TOKEN` allebei een eigen, echte random string hebben — niet de
-   placeholder uit `.env.example` laten staan (de webapp weigert die expliciet en logt daar een
-   waarschuwing over; zie vervolgticket-toegang-van-buitenaf-ronde2.md §1).
+   `INTERNAL_API_TOKEN` een eigen, echte random string heeft — niet de placeholder uit
+   `.env.example` laten staan (die wordt genegeerd en telt als "niet ingesteld", waardoor de
+   `simulator` en een aangezet ntfy-notificatiekanaal blijven 401'en; zie
+   vervolgticket-toegang-van-buitenaf-ronde2.md §1). `SESSION_SECRET` mag wél leeg/op de placeholder
+   blijven staan: dan genereert de webapp er bij de allereerste opstart zelf één en bewaart 'm in
+   `DATA_DIR` — alleen invullen als je 'm zelf wil vastleggen (bijv. om 'm gelijk te houden over een
+   herinstallatie heen).
 3. **Starten met de `publiek`-profile erbij**:
    ```
    docker compose --profile publiek up -d --build
