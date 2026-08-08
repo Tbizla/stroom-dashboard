@@ -9,53 +9,54 @@
      puur zwart leest slecht op dit donkere thema, dus antraciet i.p.v. #000 voor fase 2 */
   --fase1:#8a5a3a; --fase2:#6b7280; --fase3:#b9bec7;
 }
+html{font-size:clamp(14px, 10px + 0.36vw, 19px)}
 *{box-sizing:border-box}
 /* basisstijl voor alle knoppen (en upload-"knoppen", die een <label> zijn) — zorgt dat een
    kale <button> zonder eigen container-klasse er niet als onbehandelde browser-knop of kale
    tekst uitziet. Specifiekere regels hieronder (modeswitch, zoomctl, chip, addform, btable)
    overschrijven dit bewust voor knoppen met een andere rol (tab, icoon, filter, primaire actie). */
 button, .uploadbtn{background:var(--panel2);border:1px solid var(--border);color:var(--text);
-  border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  border-radius:0.375rem;padding:0.3125rem 0.625rem;font-size:0.75rem;cursor:pointer;font-family:var(--sans)}
 button:hover, .uploadbtn:hover{border-color:var(--accent)}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden}
 .app{display:flex;flex-direction:column;height:100vh}
 
-header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
-header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;color:var(--text)}
+header{display:flex;align-items:center;gap:1rem;padding:0.625rem 1.125rem;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+header h1{font-size:0.9375rem;font-weight:600;margin:0;letter-spacing:.02em;color:var(--text)}
 header h1 span{color:var(--accent)}
-.modeswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
-.modeswitch button{border:none;background:transparent;color:var(--text2);padding:6px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.modeswitch{display:flex;background:var(--panel2);border-radius:0.5rem;padding:0.1875rem;gap:0.125rem}
+.modeswitch button{border:none;background:transparent;color:var(--text2);padding:0.375rem 0.875rem;border-radius:0.375rem;font-size:0.78125rem;font-weight:600;cursor:pointer;font-family:var(--sans)}
 .modeswitch button.active{background:var(--accent);color:#0b1210}
 
-.connbar{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:var(--text2);flex-wrap:wrap}
-.connbar input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-family:var(--mono);font-size:12px;width:130px}
+.connbar{display:flex;align-items:center;gap:0.5rem;margin-left:auto;font-size:0.75rem;color:var(--text2);flex-wrap:wrap}
+.connbar input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.3125rem 0.5rem;font-family:var(--mono);font-size:0.75rem;width:8.125rem}
 
 /* taalkeuze-toggle, zelfde visuele familie als .modeswitch —
    twee altijd-zichtbare knoppen, geen dropdown/popup. .connbar claimt margin-left:auto al, dus deze
    pill volgt er gewoon achteraan mee naar de rechterkant van de header. */
-.langswitch{display:flex;background:var(--panel2);border-radius:8px;padding:3px;gap:2px}
-.langswitch button{border:none;background:transparent;color:var(--text2);padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.langswitch{display:flex;background:var(--panel2);border-radius:0.5rem;padding:0.1875rem;gap:0.125rem}
+.langswitch button{border:none;background:transparent;color:var(--text2);padding:0.375rem 0.75rem;border-radius:0.375rem;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:var(--sans)}
 .langswitch button.active{background:var(--accent);color:#0b1210}
 
 /* ---------- login (specs/toegang-van-buitenaf-diagnose.md) ---------- */
-.sessiebar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3)}
-.sessiebar #logoutBtn{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer}
+.sessiebar{display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text3)}
+.sessiebar #logoutBtn{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:0.375rem;padding:0.3125rem 0.625rem;font-size:0.75rem;cursor:pointer}
 .sessiebar #logoutBtn:hover{border-color:var(--accent);color:var(--text)}
 .login-overlay{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center}
-.login-overlay .loginbox{width:340px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:32px 28px;text-align:center}
-.login-overlay .loginbox h1{font-size:16px;font-weight:600;margin:0 0 4px;letter-spacing:.02em;color:var(--text)}
+.login-overlay .loginbox{width:21.25rem;background:var(--panel);border:1px solid var(--border);border-radius:0.625rem;padding:2rem 1.75rem;text-align:center}
+.login-overlay .loginbox h1{font-size:1rem;font-weight:600;margin:0 0 0.25rem;letter-spacing:.02em;color:var(--text)}
 .login-overlay .loginbox h1 span{color:var(--accent)}
-.login-overlay .sub{font-size:12px;color:var(--text3);margin-bottom:24px}
-.login-overlay .field{text-align:left;margin-bottom:14px}
-.login-overlay .field label{display:block;font-size:11px;color:var(--text2);margin-bottom:5px}
-.login-overlay .field input{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:9px 10px;font-size:13px;font-family:var(--sans)}
+.login-overlay .sub{font-size:0.75rem;color:var(--text3);margin-bottom:1.5rem}
+.login-overlay .field{text-align:left;margin-bottom:0.875rem}
+.login-overlay .field label{display:block;font-size:0.6875rem;color:var(--text2);margin-bottom:0.3125rem}
+.login-overlay .field input{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.5625rem 0.625rem;font-size:0.8125rem;font-family:var(--sans)}
 .login-overlay .field input:focus{outline:none;border-color:var(--accent)}
-.login-overlay .loginbtn{width:100%;margin-top:8px;background:var(--accent);color:#0b1210;border:none;border-radius:6px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.login-overlay .loginbtn{width:100%;margin-top:0.5rem;background:var(--accent);color:#0b1210;border:none;border-radius:0.375rem;padding:0.625rem;font-size:0.8125rem;font-weight:700;cursor:pointer;font-family:var(--sans)}
 .login-overlay .loginbtn:hover{opacity:.92}
-.login-overlay .errbox{margin-top:14px;font-size:12px;color:var(--red);display:none}
+.login-overlay .errbox{margin-top:0.875rem;font-size:0.75rem;color:var(--red);display:none}
 .login-overlay .errbox.show{display:block}
-.login-overlay .footnote{margin-top:20px;font-size:11px;color:var(--text3)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--grey);flex-shrink:0}
+.login-overlay .footnote{margin-top:1.25rem;font-size:0.6875rem;color:var(--text3)}
+.dot{width:0.5rem;height:0.5rem;border-radius:50%;background:var(--grey);flex-shrink:0}
 .dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
 .dot.err{background:var(--red)}
 .dot.busy{background:var(--amber)}
@@ -63,22 +64,22 @@ header h1 span{color:var(--accent)}
 .body{display:flex;flex:1;min-height:0;position:relative}
 .mapwrap{flex:1;position:relative;overflow:auto;background:#0b0d10}
 .mapinner{position:relative;display:inline-block;transform-origin:top left;flex-shrink:0}
-.zoomctl{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:4px;align-items:center;
-  background:rgba(18,21,26,.9);border:1px solid var(--border);border-radius:8px;padding:4px 6px}
+.zoomctl{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:0.25rem;align-items:center;
+  background:rgba(18,21,26,.9);border:1px solid var(--border);border-radius:0.5rem;padding:0.25rem 0.375rem}
 .zoomctl button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
-  border-radius:5px;width:24px;height:24px;font-size:15px;cursor:pointer;line-height:1;padding:0}
+  border-radius:0.3125rem;width:1.5rem;height:1.5rem;font-size:0.9375rem;cursor:pointer;line-height:1;padding:0}
 .zoomctl button:hover{border-color:var(--accent)}
-.zoomctl .zoomlabel{font-size:11px;color:var(--text2);font-family:var(--mono);min-width:40px;
+.zoomctl .zoomlabel{font-size:0.6875rem;color:var(--text2);font-family:var(--mono);min-width:2.5rem;
   text-align:center;cursor:pointer;user-select:none}
 .mapinner img{display:block;max-width:none}
-.noMap{color:var(--text3);padding:60px;text-align:center;font-size:13px}
+.noMap{color:var(--text3);padding:3.75rem;text-align:center;font-size:0.8125rem}
 .blankcanvas{position:relative;width:4800px;height:3000px;background-color:#0b0d10;cursor:crosshair;
   background-image:radial-gradient(circle, var(--border) 1px, transparent 1px);background-size:32px 32px}
 .blankcanvas-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;
   color:var(--text3);font-size:13px;text-align:center;pointer-events:none}
 #svgoverlay{position:absolute;top:0;left:0;pointer-events:none}
 #schemaSvg{display:block;transform-origin:top left;flex-shrink:0}
-.schemawrap{padding:30px}
+.schemawrap{padding:1.875rem}
 .pin{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
      border:2px solid #0b0d10;cursor:pointer;background:var(--grey);z-index:5;
      box-shadow:0 0 0 2px rgba(255,255,255,.15)}
@@ -103,280 +104,280 @@ header h1 span{color:var(--accent)}
 /* rechtsklik-mini-menu, momenteel alleen gebruikt door de knikpunten-lijninteractie op Kalibreren
    (zie render-pins.js) — position:fixed + clientX/clientY zodat 'm los staat van mapwrap's eigen
    scroll/zoom-transform */
-.ctxmenu{position:fixed;background:var(--panel);border:1px solid var(--border);border-radius:8px;
-  box-shadow:0 8px 24px rgba(0,0,0,.4);padding:4px;font-size:12.5px;min-width:190px;z-index:50}
-.ctxmenu .item{padding:8px 10px;border-radius:5px;cursor:pointer;color:var(--text)}
+.ctxmenu{position:fixed;background:var(--panel);border:1px solid var(--border);border-radius:0.5rem;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);padding:0.25rem;font-size:0.78125rem;min-width:11.875rem;z-index:50}
+.ctxmenu .item{padding:0.5rem 0.625rem;border-radius:0.3125rem;cursor:pointer;color:var(--text)}
 .ctxmenu .item:hover{background:var(--panel2);color:var(--accent)}
 .ctxmenu .item.danger:hover{color:var(--red)}
 
-.kastpopup{position:absolute;z-index:30;width:270px;background:var(--panel);border:1px solid var(--border);
-  border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.45);padding:12px 14px;font-size:12px;
+.kastpopup{position:absolute;z-index:30;width:16.875rem;background:var(--panel);border:1px solid var(--border);
+  border-radius:0.625rem;box-shadow:0 10px 28px rgba(0,0,0,.45);padding:0.75rem 0.875rem;font-size:0.75rem;
   transform:translate(-50%,calc(-100% - 14px))}
-.kastpopup-arrow{position:absolute;left:50%;width:11px;height:11px;background:var(--panel);
+.kastpopup-arrow{position:absolute;left:50%;width:0.6875rem;height:0.6875rem;background:var(--panel);
   border-right:1px solid var(--border);border-bottom:1px solid var(--border);
   transform:translateX(-50%) rotate(45deg);bottom:-6px}
 .kastpopup.onder .kastpopup-arrow{bottom:auto;top:-6px;border-right:none;border-bottom:none;
   border-left:1px solid var(--border);border-top:1px solid var(--border)}
-.kastpopup-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text3);font-size:13px;line-height:1}
+.kastpopup-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text3);font-size:0.8125rem;line-height:1}
 .kastpopup-close:hover{color:var(--text)}
-.kastpopup-head{display:flex;align-items:center;gap:7px;padding-right:16px}
-.kastpopup-head .naam{font-weight:700;color:var(--text);font-size:13px}
-.kastpopup-sub{color:var(--text3);font-size:10.5px;line-height:1.5;margin:3px 0 9px}
-.kastpopup table{width:100%;border-collapse:collapse;margin-bottom:8px}
-.kastpopup table th{text-align:right;font-size:9px;color:var(--text3);font-weight:600;padding:2px 3px;text-transform:uppercase}
+.kastpopup-head{display:flex;align-items:center;gap:0.4375rem;padding-right:1rem}
+.kastpopup-head .naam{font-weight:700;color:var(--text);font-size:0.8125rem}
+.kastpopup-sub{color:var(--text3);font-size:0.65625rem;line-height:1.5;margin:0.1875rem 0 0.5625rem}
+.kastpopup table{width:100%;border-collapse:collapse;margin-bottom:0.5rem}
+.kastpopup table th{text-align:right;font-size:0.5625rem;color:var(--text3);font-weight:600;padding:0.125rem 0.1875rem;text-transform:uppercase}
 .kastpopup table th:first-child{text-align:left}
-.kastpopup table td{text-align:right;font-family:var(--mono);font-size:11px;padding:2px 3px;color:var(--text2)}
+.kastpopup table td{text-align:right;font-family:var(--mono);font-size:0.6875rem;padding:0.125rem 0.1875rem;color:var(--text2)}
 .kastpopup table td:first-child{text-align:left;color:var(--text3);font-family:var(--sans)}
-.kastpopup .kprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
-  padding:4px 0;border-top:1px dashed var(--border);color:var(--text2)}
+.kastpopup .kprow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.6875rem;
+  padding:0.25rem 0;border-top:1px dashed var(--border);color:var(--text2)}
 .kastpopup .kprow .k{font-family:var(--sans);color:var(--text3)}
-.kastpopup .laatste{font-size:10px;color:var(--text3);margin-top:7px;text-align:right}
-.kastpopup .geendata{padding:6px 0;color:var(--text3);font-style:italic}
-.shellylink{display:block;font-size:11.5px;color:var(--accent);text-decoration:none;margin-top:6px;text-align:right}
+.kastpopup .laatste{font-size:0.625rem;color:var(--text3);margin-top:0.4375rem;text-align:right}
+.kastpopup .geendata{padding:0.375rem 0;color:var(--text3);font-style:italic}
+.shellylink{display:block;font-size:0.71875rem;color:var(--accent);text-decoration:none;margin-top:0.375rem;text-align:right}
 .shellylink:hover{text-decoration:underline}
-.netnote{font-size:9.5px;color:var(--text3);margin-top:2px;text-align:right}
+.netnote{font-size:0.59375rem;color:var(--text3);margin-top:0.125rem;text-align:right}
 /* fasekleuren-swatch: klein rond vlakje vóór een fase-label (kastpopup-tabelkop A/B/C, aside-detail
    Fase A/B/C-rijen) */
-.faseswatch{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.faseswatch{display:inline-block;width:0.4375rem;height:0.4375rem;border-radius:50%;margin-right:0.25rem;vertical-align:1px}
 
-aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.listhead{padding:12px 14px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}
+aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.listhead{padding:0.75rem 0.875rem 0.5rem;font-size:0.6875rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}
 .list{overflow-y:auto;flex:1}
-.genrow{padding:8px 14px;background:var(--panel2);font-size:12.5px;font-weight:700;color:var(--accent);
-        display:flex;flex-direction:column;gap:4px;position:sticky;top:0;cursor:pointer}
-.genrow-top{display:flex;gap:8px;align-items:center}
+.genrow{padding:0.5rem 0.875rem;background:var(--panel2);font-size:0.78125rem;font-weight:700;color:var(--accent);
+        display:flex;flex-direction:column;gap:0.25rem;position:sticky;top:0;cursor:pointer}
+.genrow-top{display:flex;gap:0.5rem;align-items:center}
 .genrow .name{flex:1}
-.genrow .val{font-family:var(--mono);font-weight:400;color:var(--text2);font-size:12px}
+.genrow .val{font-family:var(--mono);font-weight:400;color:var(--text2);font-size:0.75rem}
 .genrow.selected{box-shadow:inset 0 0 0 2px var(--accent)}
 /* onderste regel van een generatorrij: maakt expliciet dat de badges hier over de onderliggende
    kasten gaan, niet over de generator/groep zelf (die heeft de stip bovenin) */
-.genrow-sub{display:flex;align-items:center;gap:6px;padding-left:22px}
-.taglabel{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
-.row{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:9px;font-size:13px}
+.genrow-sub{display:flex;align-items:center;gap:0.375rem;padding-left:1.375rem}
+.taglabel{font-size:0.59375rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.row{padding:0.5625rem 0.875rem;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:0.5625rem;font-size:0.8125rem}
 .row:hover{background:var(--panel2)}
 .row.selected{background:var(--accent-dim)}
-.dot2{width:9px;height:9px;border-radius:50%;background:var(--grey);flex-shrink:0}
+.dot2{width:0.5625rem;height:0.5625rem;border-radius:50%;background:var(--grey);flex-shrink:0}
 .dot2.status-green{background:var(--green)}
 .dot2.status-amber{background:var(--amber)}
 .dot2.status-red{background:var(--red)}
 .row .name{flex:1}
-.row .val{font-family:var(--mono);color:var(--text2);font-size:12px}
-.row .sub2{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
-.geen-sensor-label{font-family:var(--sans);color:var(--text3);font-size:11px;white-space:nowrap}
+.row .val{font-family:var(--mono);color:var(--text2);font-size:0.75rem}
+.row .sub2{font-family:var(--sans);color:var(--text3);font-size:0.6875rem;white-space:nowrap}
+.geen-sensor-label{font-family:var(--sans);color:var(--text3);font-size:0.6875rem;white-space:nowrap}
 
-.chev{width:14px;flex-shrink:0;text-align:center;color:var(--text3);font-size:10px;cursor:pointer;user-select:none}
+.chev{width:0.875rem;flex-shrink:0;text-align:center;color:var(--text3);font-size:0.625rem;cursor:pointer;user-select:none}
 .genrow .chev{color:var(--accent)}
 
-.listtools{padding:0 14px 10px;display:flex;flex-direction:column;gap:8px}
-.listtools input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:var(--sans);width:100%}
+.listtools{padding:0 0.875rem 0.625rem;display:flex;flex-direction:column;gap:0.5rem}
+.listtools input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.375rem 0.5625rem;font-size:0.78125rem;font-family:var(--sans);width:100%}
 .listtools input:focus{outline:none;border-color:var(--accent)}
-.listfilters{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.chip{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:12px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--sans)}
+.listfilters{display:flex;align-items:center;gap:0.375rem;flex-wrap:wrap}
+.chip{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:0.75rem;padding:0.25rem 0.625rem;font-size:0.6875rem;cursor:pointer;font-family:var(--sans)}
 .chip:hover{border-color:var(--accent)}
 .chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-.collapseall{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:var(--sans)}
+.collapseall{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:0.375rem;padding:0.25rem 0.5625rem;font-size:0.6875rem;cursor:pointer;font-family:var(--sans)}
 .collapseall:hover{border-color:var(--accent);color:var(--text)}
 .collapseall.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 .listfilters .collapseall{margin-left:auto}
 
-.badges{display:flex;gap:4px}
-.badge{font-family:var(--mono);font-size:10px;border-radius:8px;padding:1px 6px;font-weight:600}
+.badges{display:flex;gap:0.25rem}
+.badge{font-family:var(--mono);font-size:0.625rem;border-radius:0.5rem;padding:0.0625rem 0.375rem;font-weight:600}
 .badge-green{background:rgba(62,207,106,.16);color:var(--green)}
 .badge-amber{background:rgba(245,166,35,.16);color:var(--amber)}
 .badge-red{background:rgba(229,72,77,.16);color:var(--red)}
 
-.detail{border-top:1px solid var(--border);padding:16px;max-height:46%;overflow-y:auto;flex-shrink:0}
-.detail h2{font-size:15px;margin:0 0 3px}
-.detail .sub{font-size:12px;color:var(--text2);margin-bottom:12px}
-.metric{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--border)}
+.detail{border-top:1px solid var(--border);padding:1rem;max-height:46%;overflow-y:auto;flex-shrink:0}
+.detail h2{font-size:0.9375rem;margin:0 0 0.1875rem}
+.detail .sub{font-size:0.75rem;color:var(--text2);margin-bottom:0.75rem}
+.metric{display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.78125rem;padding:0.25rem 0;border-bottom:1px dashed var(--border)}
 .metric .k{color:var(--text2);display:flex;align-items:center}
-.barwrap{height:6px;background:var(--panel2);border-radius:3px;margin-top:10px;overflow:hidden}
+.barwrap{height:0.375rem;background:var(--panel2);border-radius:0.1875rem;margin-top:0.625rem;overflow:hidden}
 .barwrap .bar{height:100%;background:var(--green);width:0%;transition:width .3s}
 
 /* per-lid live rijen onder een groep in de aside-detail */
-.ledenblok{margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.ledenblok-head{padding:6px 10px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;background:var(--panel2)}
-.lidrow{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:12px;border-top:1px solid var(--border)}
+.ledenblok{margin-top:0.625rem;border:1px solid var(--border);border-radius:0.5rem;overflow:hidden}
+.ledenblok-head{padding:0.375rem 0.625rem;font-size:0.625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;background:var(--panel2)}
+.lidrow{display:flex;align-items:center;gap:0.5rem;padding:0.4375rem 0.625rem;font-size:0.75rem;border-top:1px solid var(--border)}
 .lidrow .naam{flex:1;color:var(--text)}
-.lidrow .val{font-family:var(--mono);color:var(--text2);font-size:11.5px}
-.lidrow-shelly,.lidtabel .lidrow-shelly{color:var(--accent);text-decoration:none;font-size:11px;margin-left:4px}
-.empty{color:var(--text3);font-size:12.5px;padding:20px 14px}
+.lidrow .val{font-family:var(--mono);color:var(--text2);font-size:0.71875rem}
+.lidrow-shelly,.lidtabel .lidrow-shelly{color:var(--accent);text-decoration:none;font-size:0.6875rem;margin-left:0.25rem}
+.empty{color:var(--text3);font-size:0.78125rem;padding:1.25rem 0.875rem}
 
-.calbar{padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.calbar{padding:0.625rem 0.875rem;background:var(--panel2);border-bottom:1px solid var(--border);font-size:0.75rem;color:var(--text2);display:flex;gap:0.625rem;align-items:center;flex-wrap:wrap}
 .calbar b{color:var(--text)}
 .calbar .hint{color:var(--accent)}
 
-::-webkit-scrollbar{width:8px;height:8px}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar{width:0.5rem;height:0.5rem}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:0.25rem}
 
 /* vervolgticket-ui-schaal-ronde2.md: .beheer is een flex-item in een rij-layout (.body) zonder
    min-width:0 — een flex-item krijgt standaard min-width:auto, dus mag nooit smaller worden dan de
-   intrinsieke breedte van zijn inhoud. Met de brede kasten-tabel (>1150px aan kolom-min-widths) werd
+   intrinsieke breedte van zijn inhoud. Met de brede kasten-tabel (>71.875rem aan kolom-min-widths) werd
    .beheer zelf breder dan de viewport geduwd, waardoor de overflow-x:auto-wrapper om de tabel (vorige
    ronde) niets had om tegen te scrollen — die meet t.o.v. .beheer's al te brede breedte, niet t.o.v.
    de viewport. Zelfde patroon als .body/.grafbody's bestaande min-height:0, hier de horizontale variant. */
-.beheer{flex:1;overflow-y:auto;overflow-x:auto;min-width:0;padding:22px 26px;display:none}
-.beheercol{max-width:940px}
-.ledenrow>td{padding:0 8px 10px 24px !important;border-bottom:1px solid var(--border)}
-.ledentable{background:var(--panel2);border-radius:8px;padding:4px 8px}
+.beheer{flex:1;overflow-y:auto;overflow-x:auto;min-width:0;padding:1.375rem 1.625rem;display:none}
+.beheercol{max-width:58.75rem}
+.ledenrow>td{padding:0 0.5rem 0.625rem 1.5rem !important;border-bottom:1px solid var(--border)}
+.ledentable{background:var(--panel2);border-radius:0.5rem;padding:0.25rem 0.5rem}
 .ledentable th, .ledentable td{border-bottom:1px solid var(--bg)}
-.beheer h2{font-size:14px;color:var(--accent);margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em}
-.btable{width:100%;border-collapse:collapse;margin-bottom:10px}
-.btable th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border)}
-.btable td{padding:6px 8px;border-bottom:1px solid var(--border);font-size:13px}
-.btable input, .btable select{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 6px;font-size:12.5px;font-family:var(--sans);width:100%}
-.btable button{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer}
-.shelly-cell{display:flex;align-items:center;gap:4px}
+.beheer h2{font-size:0.875rem;color:var(--accent);margin:0 0 0.625rem;text-transform:uppercase;letter-spacing:.06em}
+.btable{width:100%;border-collapse:collapse;margin-bottom:0.625rem}
+.btable th{text-align:left;font-size:0.6875rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:0.375rem 0.5rem;border-bottom:1px solid var(--border)}
+.btable td{padding:0.375rem 0.5rem;border-bottom:1px solid var(--border);font-size:0.8125rem}
+.btable input, .btable select{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:0.3125rem;padding:0.25rem 0.375rem;font-size:0.78125rem;font-family:var(--sans);width:100%}
+.btable button{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:0.3125rem;padding:0.25rem 0.5625rem;font-size:0.75rem;cursor:pointer}
+.shelly-cell{display:flex;align-items:center;gap:0.25rem}
 .shelly-cell input{flex:1;min-width:0}
-.mqtt-copy-btn{flex-shrink:0;padding:4px 6px!important;font-size:12px!important;line-height:1}
-.shelly-toast{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 40px 14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.35);min-width:240px;max-width:340px}
-.shelly-toast #shellyToastTitel{font-size:12.5px;font-weight:700;margin-bottom:6px}
-.shelly-toast-regel{font-size:12px;color:var(--text2);line-height:1.5}
-.shelly-toast-sluit{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px}
-.shelly-cfg{display:flex;align-items:center;gap:3px}
+.mqtt-copy-btn{flex-shrink:0;padding:0.25rem 0.375rem!important;font-size:0.75rem!important;line-height:1}
+.shelly-toast{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--panel);border:1px solid var(--border);border-radius:0.625rem;padding:0.875rem 2.5rem 0.875rem 1rem;box-shadow:0 8px 24px rgba(0,0,0,.35);min-width:15rem;max-width:21.25rem}
+.shelly-toast #shellyToastTitel{font-size:0.78125rem;font-weight:700;margin-bottom:0.375rem}
+.shelly-toast-regel{font-size:0.75rem;color:var(--text2);line-height:1.5}
+.shelly-toast-sluit{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:0.8125rem;padding:0.125rem}
+.shelly-cfg{display:flex;align-items:center;gap:0.1875rem}
 .shelly-cfg input[type=checkbox]{width:auto!important;flex-shrink:0}
-.shelly-cfg-btn{padding:4px 6px!important;font-size:12px!important;line-height:1}
-#shellyBulkTabel td{font-size:12px}
-#shellyBulkTabel .status-icoon{font-size:14px}
+.shelly-cfg-btn{padding:0.25rem 0.375rem!important;font-size:0.75rem!important;line-height:1}
+#shellyBulkTabel td{font-size:0.75rem}
+#shellyBulkTabel .status-icoon{font-size:0.875rem}
 .btable button:hover{border-color:var(--accent);color:var(--text)}
 .btable button.danger:hover{border-color:var(--red);color:var(--red)}
-.rating-cell{display:flex;align-items:center;gap:6px}
+.rating-cell{display:flex;align-items:center;gap:0.375rem}
 .rating-cell input[type=checkbox]{width:auto;flex-shrink:0}
 .rating-cell input[type=number]{flex:1;min-width:0}
 .rating-cell input[type=number]:disabled{opacity:.45}
-.addform{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--panel2);padding:10px;border-radius:8px}
-.addform input, .addform select{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:var(--sans)}
-.addform button{background:var(--accent);border:none;color:#0b1210;border-radius:6px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
-.err{color:var(--red);font-size:12px;margin-top:6px}
+.addform{display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;background:var(--panel2);padding:0.625rem;border-radius:0.5rem}
+.addform input, .addform select{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.375rem 0.5rem;font-size:0.78125rem;font-family:var(--sans)}
+.addform button{background:var(--accent);border:none;color:#0b1210;border-radius:0.375rem;padding:0.375rem 0.75rem;font-size:0.78125rem;font-weight:600;cursor:pointer}
+.err{color:var(--red);font-size:0.75rem;margin-top:0.375rem}
 
 /* ---------- HQ-Locaties (specs/toegang-van-buitenaf-diagnose.md) ---------- */
-.loccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:8px}
-.loccard{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
-.loccard .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
-.loccard .naam{font-size:13.5px;font-weight:600}
-.loccard .metrics{display:flex;gap:16px;margin:10px 0}
-.loccard .metrics div{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.loccard .metrics b{display:block;font-family:var(--mono);font-size:16px;color:var(--text);font-weight:600;margin-top:3px;text-transform:none;letter-spacing:0}
-.loccard .statuslabel{font-size:11px;color:var(--text2)}
+.loccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.875rem;margin-bottom:0.5rem}
+.loccard{background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;padding:0.875rem 1rem}
+.loccard .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;gap:0.5rem}
+.loccard .naam{font-size:0.84375rem;font-weight:600}
+.loccard .metrics{display:flex;gap:1rem;margin:0.625rem 0}
+.loccard .metrics div{font-size:0.65625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.loccard .metrics b{display:block;font-family:var(--mono);font-size:1rem;color:var(--text);font-weight:600;margin-top:0.1875rem;text-transform:none;letter-spacing:0}
+.loccard .statuslabel{font-size:0.6875rem;color:var(--text2)}
 .loccard .statuslabel.ok{color:var(--green)}
 .loccard .statuslabel.amber{color:var(--amber)}
 .loccard .statuslabel.off{color:var(--text3)}
-.loccard a.openbtn{display:block;text-align:center;margin-top:12px;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px;text-decoration:none;cursor:pointer}
+.loccard a.openbtn{display:block;text-align:center;margin-top:0.75rem;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.4375rem;font-size:0.75rem;text-decoration:none;cursor:pointer}
 .loccard a.openbtn:hover{border-color:var(--accent);color:var(--accent)}
 .dot.off{background:var(--grey)}
 
 /* ---------- Accounts (specs/toegang-van-buitenaf-diagnose.md) ---------- */
-.btable td.dim{color:var(--text3);font-size:11.5px}
-.genbox{margin-top:16px;background:rgba(79,209,197,.08);border:1px solid var(--accent);border-radius:8px;padding:14px 16px}
-#genGroepeerActiebalk{align-items:center;gap:10px;font-size:12.5px}
-.genbox .lbl{font-size:11.5px;color:var(--accent);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.genbox .pwrow{display:flex;align-items:center;gap:8px}
-.genbox .pw{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:14px;letter-spacing:.03em;flex:1}
-.genbox .warn{margin-top:8px;font-size:11px;color:var(--text2);line-height:1.5}
+.btable td.dim{color:var(--text3);font-size:0.71875rem}
+.genbox{margin-top:1rem;background:rgba(79,209,197,.08);border:1px solid var(--accent);border-radius:0.5rem;padding:0.875rem 1rem}
+#genGroepeerActiebalk{align-items:center;gap:0.625rem;font-size:0.78125rem}
+.genbox .lbl{font-size:0.71875rem;color:var(--accent);font-weight:600;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.375rem}
+.genbox .pwrow{display:flex;align-items:center;gap:0.5rem}
+.genbox .pw{background:var(--panel2);border:1px solid var(--border);border-radius:0.375rem;padding:0.5rem 0.75rem;font-family:var(--mono);font-size:0.875rem;letter-spacing:.03em;flex:1}
+.genbox .warn{margin-top:0.5rem;font-size:0.6875rem;color:var(--text2);line-height:1.5}
 .genbox .warn b{color:var(--amber)}
 
-.infobox{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:14px}
-.chancard{background:var(--panel2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
-.chancard-head{display:flex;align-items:center;gap:10px;padding:11px 13px}
-.chancard-naam{font-size:13px;font-weight:600;flex:1;color:var(--text)}
-.chancard-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px}
-.toggle{width:34px;height:19px;border-radius:10px;background:var(--border);position:relative;cursor:pointer;flex-shrink:0}
+.infobox{background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;padding:0.625rem 0.875rem;font-size:0.71875rem;color:var(--text2);line-height:1.6;margin-bottom:0.875rem}
+.chancard{background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.625rem;overflow:hidden}
+.chancard-head{display:flex;align-items:center;gap:0.625rem;padding:0.6875rem 0.8125rem}
+.chancard-naam{font-size:0.8125rem;font-weight:600;flex:1;color:var(--text)}
+.chancard-status{font-size:0.6875rem;color:var(--text3);display:flex;align-items:center;gap:0.375rem}
+.toggle{width:2.125rem;height:1.1875rem;border-radius:0.625rem;background:var(--border);position:relative;cursor:pointer;flex-shrink:0}
 .toggle.on{background:var(--accent)}
-.toggle .knob{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s}
+.toggle .knob{position:absolute;top:2px;left:2px;width:0.9375rem;height:0.9375rem;border-radius:50%;background:#fff;transition:.15s}
 .toggle.on .knob{left:17px;background:#0b1210}
-.chancard-body{padding:0 13px 13px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chancard-body{padding:0 0.8125rem 0.8125rem;display:grid;grid-template-columns:1fr 1fr;gap:0.625rem}
 .chancard-body.wide{grid-template-columns:1fr}
 .chancard.off .chancard-body{display:none}
 .chancard.off{opacity:.55}
-.chancard .field{display:flex;flex-direction:column;gap:4px}
-.chancard .field label{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.chancard .field input{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:12.5px;font-family:var(--mono)}
-.testrow{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:2px}
-.testrow button{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer}
+.chancard .field{display:flex;flex-direction:column;gap:0.25rem}
+.chancard .field label{font-size:0.65625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.chancard .field input{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.4375rem 0.5625rem;font-size:0.78125rem;font-family:var(--mono)}
+.testrow{grid-column:1/-1;display:flex;align-items:center;gap:0.625rem;margin-top:0.125rem}
+.testrow button{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.375rem 0.75rem;font-size:0.75rem;cursor:pointer}
 .testrow button:hover{border-color:var(--accent)}
-.testresult{font-size:11.5px;color:var(--text3)}
+.testresult{font-size:0.71875rem;color:var(--text3)}
 .testresult.ok{color:var(--green)}
 .testresult.err{color:var(--red)}
 
-.field{display:flex;flex-direction:column;gap:4px;margin-bottom:0}
-.field label{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
-.field select, .field input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:12.5px;font-family:var(--sans)}
+.field{display:flex;flex-direction:column;gap:0.25rem;margin-bottom:0}
+.field label{font-size:0.65625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.field select, .field input{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:0.375rem;padding:0.4375rem 0.5625rem;font-size:0.78125rem;font-family:var(--sans)}
 .secretfield{position:relative}
-.secretfield input{color:var(--text3);font-style:italic;padding-right:52px}
-.secretfield input::placeholder{font-size:11px}
-.secretfield .wislink{position:absolute;right:8px;top:28px;font-size:10px;color:var(--text3);text-decoration:none;font-style:normal;cursor:pointer;display:none}
+.secretfield input{color:var(--text3);font-style:italic;padding-right:3.25rem}
+.secretfield input::placeholder{font-size:0.6875rem}
+.secretfield .wislink{position:absolute;right:8px;top:28px;font-size:0.625rem;color:var(--text3);text-decoration:none;font-style:normal;cursor:pointer;display:none}
 .secretfield .wislink:hover{color:var(--red)}
 .secretfield.heeft-waarde .wislink{display:inline}
 
-.ksectie{margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.ksectie-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel2);cursor:pointer}
+.ksectie{margin-bottom:0.875rem;border:1px solid var(--border);border-radius:0.5rem;overflow:hidden}
+.ksectie-head{display:flex;align-items:center;gap:0.5rem;padding:0.5625rem 0.75rem;background:var(--panel2);cursor:pointer}
 .ksectie-head .chev{color:var(--accent)}
-.ksectie-head .naam{flex:1;font-weight:700;color:var(--accent);font-size:13px}
-.ksectie-head .kva{font-family:var(--mono);color:var(--text2);font-size:12px}
-.ksectie-head .aantal{font-family:var(--mono);color:var(--text3);font-size:11px;min-width:76px;text-align:right}
+.ksectie-head .naam{flex:1;font-weight:700;color:var(--accent);font-size:0.8125rem}
+.ksectie-head .kva{font-family:var(--mono);color:var(--text2);font-size:0.75rem}
+.ksectie-head .aantal{font-family:var(--mono);color:var(--text3);font-size:0.6875rem;min-width:4.75rem;text-align:right}
 .ksectie .btable{margin:0}
-.ksectie-hidden-note{padding:6px 12px;color:var(--text3);font-size:11.5px;font-style:italic;background:var(--panel)}
-.ksectie-addbtn-wrap{padding:8px 12px;background:var(--panel)}
-.ksectie-addbtn-wrap button{background:transparent;border:1px dashed var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;width:100%}
+.ksectie-hidden-note{padding:0.375rem 0.75rem;color:var(--text3);font-size:0.71875rem;font-style:italic;background:var(--panel)}
+.ksectie-addbtn-wrap{padding:0.5rem 0.75rem;background:var(--panel)}
+.ksectie-addbtn-wrap button{background:transparent;border:1px dashed var(--border);color:var(--text2);border-radius:0.375rem;padding:0.3125rem 0.625rem;font-size:0.75rem;cursor:pointer;width:100%}
 .ksectie-addbtn-wrap button:hover{border-color:var(--accent);color:var(--text)}
-.ktbl-naam{display:flex;align-items:center;gap:6px}
+.ktbl-naam{display:flex;align-items:center;gap:0.375rem}
 
 /* ---------- Rapportages-tab: subnav + Overzicht-subtab + Back-up-subtab (Fase D) ---------- */
-.subnav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
-.subnav button{border:none;background:transparent;color:var(--text2);padding:8px 14px;font-size:12.5px;
+.subnav{display:flex;gap:0.25rem;padding:0.625rem 1.125rem 0;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
+.subnav button{border:none;background:transparent;color:var(--text2);padding:0.5rem 0.875rem;font-size:0.78125rem;
   font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--sans)}
 .subnav button.active{color:var(--accent);border-bottom:2px solid var(--accent)}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px}
-.card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;text-align:left}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem;margin-bottom:1rem}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem 0.875rem;cursor:pointer;text-align:left}
 .card:hover{border-color:var(--accent)}
 .card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.card .lbl{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-.card .val{font-family:var(--mono);font-size:18px;color:var(--text);font-weight:600}
-.card .sub{font-size:10.5px;color:var(--text2);margin-top:4px;display:flex;align-items:center}
-.dotstatus{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0}
+.card .lbl{font-size:0.65625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:0.375rem}
+.card .val{font-family:var(--mono);font-size:1.125rem;color:var(--text);font-weight:600}
+.card .sub{font-size:0.65625rem;color:var(--text2);margin-top:0.25rem;display:flex;align-items:center}
+.dotstatus{width:0.4375rem;height:0.4375rem;border-radius:50%;display:inline-block;margin-right:0.3125rem;flex-shrink:0}
 
-.overzicht-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
-.panel{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:14px;overflow-x:auto}
-.panel .ptitle{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:12px}
-.bars{display:flex;align-items:flex-end;gap:10px;height:140px;padding:0 4px;min-width:min-content}
-.bar{flex:1;min-width:34px;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;cursor:pointer;background:none;border:none;font-family:inherit;padding:0}
-.bar .fill{width:100%;border-radius:3px 3px 0 0;transition:height .3s}
-.bar .name{font-size:9.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px}
-.schemasm{display:flex;align-items:center;gap:0;font-size:10.5px;color:var(--text2);cursor:pointer}
-.node{padding:6px 10px;border-radius:6px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.overzicht-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:1rem}
+.panel{background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;padding:0.875rem;overflow-x:auto}
+.panel .ptitle{font-size:0.78125rem;font-weight:600;color:var(--text);margin-bottom:0.75rem}
+.bars{display:flex;align-items:flex-end;gap:0.625rem;height:8.75rem;padding:0 0.25rem;min-width:min-content}
+.bar{flex:1;min-width:2.125rem;display:flex;flex-direction:column;align-items:center;gap:0.375rem;justify-content:flex-end;height:100%;cursor:pointer;background:none;border:none;font-family:inherit;padding:0}
+.bar .fill{width:100%;border-radius:0.1875rem 0.1875rem 0 0;transition:height .3s}
+.bar .name{font-size:0.59375rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:3.75rem}
+.schemasm{display:flex;align-items:center;gap:0;font-size:0.65625rem;color:var(--text2);cursor:pointer}
+.node{padding:0.375rem 0.625rem;border-radius:0.375rem;font-size:0.65625rem;font-weight:600;white-space:nowrap}
 .node.gen{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent)}
 .node.kast{background:var(--panel);border:1px solid var(--border);color:var(--text2)}
-.conn{width:22px;height:1px;background:var(--border);flex-shrink:0}
-.boomcol{display:flex;flex-direction:column;gap:8px}
+.conn{width:1.375rem;height:0.0625rem;background:var(--border);flex-shrink:0}
+.boomcol{display:flex;flex-direction:column;gap:0.5rem}
 
-.optionrow{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--panel2);
-  border:1px solid var(--border);border-radius:8px;margin-bottom:10px}
-.optionrow input[type=checkbox]{margin-top:2px}
-.optionrow .lbl{font-size:13px;color:var(--text);font-weight:600;display:flex;align-items:center}
-.optionrow .desc{font-size:11.5px;color:var(--text2);margin-top:2px}
+.optionrow{display:flex;align-items:flex-start;gap:0.625rem;padding:0.75rem 0.875rem;background:var(--panel2);
+  border:1px solid var(--border);border-radius:0.5rem;margin-bottom:0.625rem}
+.optionrow input[type=checkbox]{margin-top:0.125rem}
+.optionrow .lbl{font-size:0.8125rem;color:var(--text);font-weight:600;display:flex;align-items:center}
+.optionrow .desc{font-size:0.71875rem;color:var(--text2);margin-top:0.125rem}
 .optionrow.locked{opacity:.85}
-.optionrow .always{font-size:9.5px;color:var(--text3);font-family:var(--mono);margin-left:8px;font-weight:400}
-.periodchips{display:flex;gap:6px;margin-top:10px;padding-left:26px}
+.optionrow .always{font-size:0.59375rem;color:var(--text3);font-family:var(--mono);margin-left:0.5rem;font-weight:400}
+.periodchips{display:flex;gap:0.375rem;margin-top:0.625rem;padding-left:1.625rem}
 
 /* back-up herstellen (restore) */
-.sectiescheiding{border:none;border-top:1px solid var(--border);margin:28px 0 0}
-.modechoice{display:flex;gap:10px;margin-bottom:16px}
-.modecard{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer}
+.sectiescheiding{border:none;border-top:1px solid var(--border);margin:1.75rem 0 0}
+.modechoice{display:flex;gap:0.625rem;margin-bottom:1rem}
+.modecard{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem 0.875rem;cursor:pointer}
 .modecard.active{border-color:var(--accent);background:var(--accent-dim)}
-.modecard .lbl{font-size:13px;font-weight:600;color:var(--text)}
+.modecard .lbl{font-size:0.8125rem;font-weight:600;color:var(--text)}
 .modecard.active .lbl{color:var(--accent)}
-.modecard .desc{font-size:11.5px;color:var(--text2);margin-top:4px;line-height:1.4}
-.warnbox{background:rgba(245,166,35,.1);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;
-  font-size:11.5px;color:var(--amber);margin:10px 0;line-height:1.5}
+.modecard .desc{font-size:0.71875rem;color:var(--text2);margin-top:0.25rem;line-height:1.4}
+.warnbox{background:rgba(245,166,35,.1);border:1px solid var(--amber);border-radius:0.5rem;padding:0.625rem 0.875rem;
+  font-size:0.71875rem;color:var(--amber);margin:0.625rem 0;line-height:1.5}
 
 /* schuifknop (toggle switch): gebruikt voor de PDF-rapport-taalkeuze, los van de UI-taal-toggle
    in de header (.langswitch) — hier bewust een schuifknop i.p.v. een pill-toggle, op verzoek */
-.toggleswitch{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.toggleswitch{position:relative;display:inline-block;width:2.25rem;height:1.25rem;flex-shrink:0}
 .toggleswitch input{opacity:0;width:0;height:0}
 .toggleslider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--panel2);
-  border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:.2s}
-.toggleslider::before{position:absolute;content:"";height:14px;width:14px;left:2px;top:2px;
+  border:1px solid var(--border);border-radius:1.25rem;cursor:pointer;transition:.2s}
+.toggleslider::before{position:absolute;content:"";height:0.875rem;width:0.875rem;left:2px;top:2px;
   background:var(--text2);border-radius:50%;transition:.2s}
 .toggleswitch input:checked + .toggleslider{background:var(--accent-dim);border-color:var(--accent)}
 
@@ -385,70 +386,70 @@ aside{width:320px;flex-shrink:0;background:var(--panel);border-left:1px solid va
    (.grafcol) en het hoofdgebied (grafiek) rechts, omdat de linkerkolom hier de aansturing is
    (welke kasten/metric/fase/periode), niet een los detailpaneel. ---------- */
 .grafbody{display:flex;flex:1;min-height:0}
-.grafcol{width:320px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+.grafcol{width:20rem;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
   display:flex;flex-direction:column;overflow-y:auto}
-.grafcol .list{flex:0 1 auto;max-height:260px;overflow-y:auto}
-.graf-empty-selectie{padding:10px 14px;color:var(--text3);font-size:12px}
-.grafcontrols{padding:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:14px}
-.grafctlgroup{display:flex;flex-direction:column;gap:6px}
-.graflbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700}
+.grafcol .list{flex:0 1 auto;max-height:16.25rem;overflow-y:auto}
+.graf-empty-selectie{padding:0.625rem 0.875rem;color:var(--text3);font-size:0.75rem}
+.grafcontrols{padding:0.875rem;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:0.875rem}
+.grafctlgroup{display:flex;flex-direction:column;gap:0.375rem}
+.graflbl{font-size:0.6875rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700}
 .grafctlgroup select{background:var(--panel2);border:1px solid var(--border);color:var(--text);
-  border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:var(--sans);width:100%}
+  border-radius:0.375rem;padding:0.375rem 0.5rem;font-size:0.78125rem;font-family:var(--sans);width:100%}
 
-.grafmain{flex:1;display:flex;flex-direction:column;min-width:0;padding:14px 18px}
-.graftoolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.grafmain{flex:1;display:flex;flex-direction:column;min-width:0;padding:0.875rem 1.125rem}
+.graftoolbar{display:flex;align-items:center;justify-content:space-between;gap:0.625rem;flex-wrap:wrap;margin-bottom:0.75rem}
 #grafTypeRow button:disabled{opacity:.4;cursor:not-allowed}
 #grafTypeRow button:disabled:hover{border-color:transparent}
 .chip:disabled{opacity:.4;cursor:not-allowed}
 .chip:disabled:hover{border-color:transparent}
-.grafacties{display:flex;gap:8px}
+.grafacties{display:flex;gap:0.5rem}
 .grafchartwrap{position:relative;flex:1;min-height:0;background:var(--panel);border:1px solid var(--border);
-  border-radius:10px;padding:16px}
+  border-radius:0.625rem;padding:1rem}
 .grafchartwrap canvas{width:100% !important;height:100% !important}
 .graf-status{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;color:var(--text3);font-size:13px;text-align:center;padding:20px}
-.graf-checkrow{display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12.5px;cursor:pointer}
+  gap:0.625rem;color:var(--text3);font-size:0.8125rem;text-align:center;padding:1.25rem}
+.graf-checkrow{display:flex;align-items:center;gap:0.5rem;padding:0.375rem 0.875rem;font-size:0.78125rem;cursor:pointer}
 .graf-checkrow:hover{background:var(--panel2)}
 .graf-checkrow input{flex-shrink:0}
-.graf-checkrow .swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.graf-checkrow .swatch{width:0.625rem;height:0.625rem;border-radius:50%;flex-shrink:0}
 .toggleswitch input:checked + .toggleslider::before{transform:translateX(16px);background:var(--accent)}
 
 /* ---------- QR-code per kast (specs/qr-code-plan.md) ---------- */
 .qroverlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:center;justify-content:center}
-.qroverlay-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;
-  max-width:260px;text-align:center;position:relative}
-.qroverlay-close{position:absolute;top:8px;right:10px;color:var(--text3);cursor:pointer;font-size:14px}
-.qroverlay-panel canvas{background:#fff;border-radius:6px;padding:8px}
+.qroverlay-panel{background:var(--panel);border:1px solid var(--border);border-radius:0.625rem;padding:1.25rem;
+  max-width:16.25rem;text-align:center;position:relative}
+.qroverlay-close{position:absolute;top:8px;right:10px;color:var(--text3);cursor:pointer;font-size:0.875rem}
+.qroverlay-panel canvas{background:#fff;border-radius:0.375rem;padding:0.5rem}
 .qroverlay-box{display:flex;justify-content:center}
-.qroverlay-box canvas{background:#fff;border-radius:6px;padding:8px}
-.qroverlay-nm{font-size:14px;font-weight:700;margin-top:10px}
-.qroverlay-afk{font-size:10.5px;color:var(--text3);font-family:var(--mono);word-break:break-all;margin-top:2px}
-.qroverlay-btns{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.qroverlay-box canvas{background:#fff;border-radius:0.375rem;padding:0.5rem}
+.qroverlay-nm{font-size:0.875rem;font-weight:700;margin-top:0.625rem}
+.qroverlay-afk{font-size:0.65625rem;color:var(--text3);font-family:var(--mono);word-break:break-all;margin-top:0.125rem}
+.qroverlay-btns{display:flex;gap:0.5rem;justify-content:center;margin-top:0.875rem}
 
 /* lichte, op-zichzelf-staande statuspagina voor de mobiele QR-deeplink — geen zij-lijst/kaart/
    pan-zoom-chrome, zie "Bevinding" in qr-code-plan.md (bestaande Live-modus is niet mobiel-vriendelijk) */
 .kaststatus{position:fixed;inset:0;background:var(--bg);color:var(--text);font-family:var(--sans);
-  overflow-y:auto;z-index:40;padding:20px 16px}
-.kaststatus-head{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--accent);margin-bottom:18px}
-.kaststatus-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:420px;margin:0 auto}
-.kaststatus-top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.kaststatus-bigdot{width:16px;height:16px;border-radius:50%;background:var(--grey);flex-shrink:0}
+  overflow-y:auto;z-index:40;padding:1.25rem 1rem}
+.kaststatus-head{display:flex;align-items:center;gap:0.5rem;font-size:0.8125rem;font-weight:600;color:var(--accent);margin-bottom:1.125rem}
+.kaststatus-card{background:var(--panel);border:1px solid var(--border);border-radius:0.75rem;padding:1.125rem;max-width:26.25rem;margin:0 auto}
+.kaststatus-top{display:flex;align-items:center;gap:0.625rem;margin-bottom:0.875rem}
+.kaststatus-bigdot{width:1rem;height:1rem;border-radius:50%;background:var(--grey);flex-shrink:0}
 .kaststatus-bigdot.status-groen{background:var(--green);box-shadow:0 0 10px var(--green)}
 .kaststatus-bigdot.status-amber{background:var(--amber);box-shadow:0 0 10px var(--amber)}
 .kaststatus-bigdot.status-rood{background:var(--red);box-shadow:0 0 10px var(--red)}
-.kaststatus-nm{font-size:16px;font-weight:700}
-.kaststatus-afk{font-size:11px;color:var(--text3);font-family:var(--mono)}
-.kaststatus-melding{max-width:420px;margin:60px auto 0;text-align:center;color:var(--text3);font-size:13px}
-.kaststatus .maplink{display:block;text-align:center;margin-top:16px;font-size:12.5px;color:var(--accent);text-decoration:none;max-width:420px;margin-left:auto;margin-right:auto}
+.kaststatus-nm{font-size:1rem;font-weight:700}
+.kaststatus-afk{font-size:0.6875rem;color:var(--text3);font-family:var(--mono)}
+.kaststatus-melding{max-width:26.25rem;margin:3.75rem auto 0;text-align:center;color:var(--text3);font-size:0.8125rem}
+.kaststatus .maplink{display:block;text-align:center;margin-top:1rem;font-size:0.78125rem;color:var(--accent);text-decoration:none;max-width:26.25rem;margin-left:auto;margin-right:auto}
 
 /* ---------- anomaly-detectie (specs/anomaly-detectie-plan.md) — eigen ⚡-badge, los van de
    groen/amber/rood-statusconventie, pulserend in --accent zodat 'ie opvalt naast een status-stip
    die zelf niet per se rood/amber hoeft te zijn ---------- */
 @keyframes anomalypuls{0%,100%{opacity:1}50%{opacity:.4}}
 .anomaly-badge{display:inline-flex;align-items:center;justify-content:center;color:var(--accent);
-  font-size:11px;cursor:pointer;animation:anomalypuls 1.4s ease-in-out infinite;margin-right:2px}
+  font-size:0.6875rem;cursor:pointer;animation:anomalypuls 1.4s ease-in-out infinite;margin-right:0.125rem}
 .pin-anomaly{position:absolute;transform:translate(6px,-16px);color:var(--accent);font-size:13px;
   cursor:pointer;animation:anomalypuls 1.4s ease-in-out infinite;text-shadow:0 0 4px rgba(0,0,0,.6);z-index:5}
 .anomaly-row{cursor:pointer;color:var(--accent)!important}
 .anomaly-row .k{color:var(--accent)!important}
-.anomaly-detail{font-size:11px;color:var(--text3);padding:2px 0 6px;border-bottom:1px dashed var(--border)}
+.anomaly-detail{font-size:0.6875rem;color:var(--text3);padding:0.125rem 0 0.375rem;border-bottom:1px dashed var(--border)}

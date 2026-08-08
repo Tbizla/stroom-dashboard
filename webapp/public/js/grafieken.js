@@ -429,9 +429,20 @@ function toonGrafState(status, foutmelding){
 // een kast/generator-id — vaste kleur (dezelfde als de eerste 3 PALET-kleuren, dus visueel niets
 // nieuws) + "Fase X"-label i.p.v. de normale kleurVoorId()/nodeById()-opzoeking.
 const FASE_KLEUR = { a: PALET[0], b: PALET[1], c: PALET[2] };
+
+// ---------- ui-vloeiende-schaling-plan.md, Fase 3: Chart.js en de eigen Heatmap/Sankey-SVG lezen
+// geen CSS — hun lettergroottes/afmetingen staan als vaste px-getallen in JS en schalen dus niet
+// vanzelf mee met de root-clamp() uit style.css. Root-font-size zelf uitlezen en hier evenredig
+// mee vermenigvuldigen (factor 1 bij de 16px-baseline die style.css als "vrijwel identiek aan nu"-
+// referentiewaarde gebruikt). ----------
+function schaalFactor(){
+  return parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
+}
+
 function tekenChart(series){
   const eenheid = EENHEID_PER_METRIC[metric];
   const isFaseSerie = fase==='alle';
+  const sf = schaalFactor();
   const datasets = series.map(s=>({
     label: isFaseSerie ? t('grafieken.fase'+s.id.toUpperCase()) : (nodeById(s.id) || {naam: s.id}).naam,
     data: s.punten.map(([tijd, waarde])=>({x: tijd, y: waarde})),
@@ -448,12 +459,12 @@ function tekenChart(series){
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       scales: {
-        x: { type: 'linear', ticks: { color: KLEUR_TEXT2, callback: (v)=> new Date(v).toLocaleTimeString(huidigeLocale(), {hour:'2-digit', minute:'2-digit'}) }, grid: { color: KLEUR_BORDER } },
-        y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2 }, ticks: { color: KLEUR_TEXT2 }, grid: { color: KLEUR_BORDER } },
+        x: { type: 'linear', ticks: { color: KLEUR_TEXT2, font: { size: 12*sf }, callback: (v)=> new Date(v).toLocaleTimeString(huidigeLocale(), {hour:'2-digit', minute:'2-digit'}) }, grid: { color: KLEUR_BORDER } },
+        y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2, font: { size: 12*sf } }, ticks: { color: KLEUR_TEXT2, font: { size: 12*sf } }, grid: { color: KLEUR_BORDER } },
       },
       plugins: {
-        legend: { labels: { color: KLEUR_TEXT2 } },
-        tooltip: { callbacks: { title: (items)=> new Date(items[0].parsed.x).toLocaleString(huidigeLocale()) } },
+        legend: { labels: { color: KLEUR_TEXT2, font: { size: 12*sf } } },
+        tooltip: { titleFont: { size: 12*sf }, bodyFont: { size: 12*sf }, callbacks: { title: (items)=> new Date(items[0].parsed.x).toLocaleString(huidigeLocale()) } },
       },
     },
   });
@@ -461,6 +472,7 @@ function tekenChart(series){
 
 function tekenStaafChart(waarden){
   const eenheid = EENHEID_PER_METRIC[metric];
+  const sf = schaalFactor();
   if(fase==='alle'){
     // grafieken-alle-fasen-staaf-taart-plan.md: gegroepeerde balken per fase, meerdere items
     // toegestaan (i.t.t. Lijn/Taart) — per item 3 balken (A/B/C) i.p.v. 1, vaste fasekleur i.p.v.
@@ -487,10 +499,10 @@ function tekenStaafChart(waarden){
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
         scales: {
-          x: { ticks: { color: KLEUR_TEXT2 }, grid: { display: false } },
-          y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2 }, ticks: { color: KLEUR_TEXT2 }, grid: { color: KLEUR_BORDER } },
+          x: { ticks: { color: KLEUR_TEXT2, font: { size: 12*sf } }, grid: { display: false } },
+          y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2, font: { size: 12*sf } }, ticks: { color: KLEUR_TEXT2, font: { size: 12*sf } }, grid: { color: KLEUR_BORDER } },
         },
-        plugins: { legend: { display: true, labels: { color: KLEUR_TEXT2 } } },
+        plugins: { legend: { display: true, labels: { color: KLEUR_TEXT2, font: { size: 12*sf } } } },
       },
     });
     return;
@@ -516,8 +528,8 @@ function tekenStaafChart(waarden){
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       scales: {
-        x: { ticks: { color: KLEUR_TEXT2 }, grid: { display: false } },
-        y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2 }, ticks: { color: KLEUR_TEXT2 }, grid: { color: KLEUR_BORDER } },
+        x: { ticks: { color: KLEUR_TEXT2, font: { size: 12*sf } }, grid: { display: false } },
+        y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2, font: { size: 12*sf } }, ticks: { color: KLEUR_TEXT2, font: { size: 12*sf } }, grid: { color: KLEUR_BORDER } },
       },
       plugins: { legend: { display: false } },
     },
@@ -532,6 +544,7 @@ function tekenTaartChart(waarden){
   // BINNEN het ene geselecteerde item (i.p.v. aandeel per item) — zelfde isFaseSerie-patroon als
   // tekenChart() al kreeg bij het lijndiagram, de rest van deze functie blijft ongewijzigd
   const isFaseSerie = fase==='alle';
+  const sf = schaalFactor();
   const totaal = waarden.reduce((s,w)=>s+w.waarde, 0);
   const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
   const labels = gesorteerd.map(w=> isFaseSerie ? t('grafieken.fase'+w.fase.toUpperCase()) : (nodeById(w.id)||{naam:w.id}).naam);
@@ -547,6 +560,7 @@ function tekenTaartChart(waarden){
           position: 'right',
           labels: {
             color: KLEUR_TEXT2,
+            font: { size: 12*sf },
             // percentage + waarde in de legenda, zie spec §4
             generateLabels: (c)=> c.data.labels.map((label,i)=>{
               const waarde = c.data.datasets[0].data[i];
@@ -555,7 +569,7 @@ function tekenTaartChart(waarden){
             }),
           },
         },
-        tooltip: { callbacks: { label: (item)=>{
+        tooltip: { titleFont: { size: 12*sf }, bodyFont: { size: 12*sf }, callbacks: { label: (item)=>{
           const pct = totaal>0 ? Math.round((item.parsed/totaal)*100) : 0;
           return item.label+': '+pct+'% ('+item.parsed.toFixed(1)+' '+eenheid+')';
         } } },
@@ -629,7 +643,8 @@ function tekenHeatmap(kolommen, rijen, venster){
   svg.innerHTML = '';
   const labelFmt = heatmapLabelFmt(venster);
   const eenheid = EENHEID_PER_METRIC[metric];
-  const NAAMKOL = 140, CELW = 32, CELH = 28, KOPH = 56;
+  const sf = schaalFactor();
+  const NAAMKOL = 140*sf, CELW = 32*sf, CELH = 28*sf, KOPH = 56*sf;
   const W = NAAMKOL + kolommen.length*CELW, H = KOPH + rijen.length*CELH;
   // geen viewBox (i.t.t. de Sankey hierboven): de heatmap moet op eigen pixelgrootte blijven en
   // laten scrollen binnen de overflow:auto-wrapper-div, niet uitrekken/krimpen naar de container
@@ -646,7 +661,7 @@ function tekenHeatmap(kolommen, rijen, venster){
 
   kolommen.forEach((t,i)=>{
     const x = NAAMKOL + i*CELW + CELW/2, y = KOPH - 8;
-    const kop = svgEl('text', { x, y, fill: KLEUR_TEXT2, 'font-size':'10', 'text-anchor':'middle', transform: 'rotate(-90 '+x+' '+y+')' });
+    const kop = svgEl('text', { x, y, fill: KLEUR_TEXT2, 'font-size': (10*sf).toFixed(1), 'text-anchor':'middle', transform: 'rotate(-90 '+x+' '+y+')' });
     kop.textContent = labelFmt(t);
     svg.appendChild(kop);
   });
@@ -654,7 +669,7 @@ function tekenHeatmap(kolommen, rijen, venster){
   rijen.forEach((rij, ri)=>{
     const node = nodeById(rij.id);
     const naamY = KOPH + ri*CELH + CELH/2;
-    const naam = svgEl('text', { x: 0, y: naamY, fill: KLEUR_TEXT2, 'font-size':'11.5', 'dominant-baseline':'middle', 'clip-path':'url(#heatmapNaamClip)' });
+    const naam = svgEl('text', { x: 0, y: naamY, fill: KLEUR_TEXT2, 'font-size': (11.5*sf).toFixed(1), 'dominant-baseline':'middle', 'clip-path':'url(#heatmapNaamClip)' });
     naam.textContent = (node||{naam:rij.id}).naam;
     svg.appendChild(naam);
     rij.cellen.forEach((waarde,i)=>{
@@ -663,7 +678,7 @@ function tekenHeatmap(kolommen, rijen, venster){
       // de getoonde waarde/tooltip blijft gewoon de driefasen-som
       const statusBasis = rij.statusCellen ? rij.statusCellen[i] : waarde;
       const x = NAAMKOL + i*CELW, y = KOPH + ri*CELH;
-      const cel = svgEl('rect', { x: x+1, y: y+1, width: CELW-2, height: CELH-2, rx: 3,
+      const cel = svgEl('rect', { x: x+1, y: y+1, width: CELW-2, height: CELH-2, rx: 3*sf,
         fill: waarde==null ? 'transparent' : statusKleur(statusBasis, node?node.rating_a:null) });
       if(waarde==null){ cel.setAttribute('stroke', KLEUR_BORDER); cel.setAttribute('stroke-dasharray', '2,2'); }
       const titel = document.createElementNS('http://www.w3.org/2000/svg', 'title');
@@ -718,10 +733,11 @@ function tekenSankeyChart(nodes, links){
     (childrenOf.get(id)||[]).forEach(l=>{ level.set(l.to, level.get(id)+1); volgorde.push(l.to); });
   }
   const maxLevel = Math.max(...level.values());
-  const RECT_W = 16, MARGE_X = 8, TOP = 24, BOTTOM = 24, GAP_Y = 8;
+  const sf = schaalFactor();
+  const RECT_W = 16*sf, MARGE_X = 8*sf, TOP = 24*sf, BOTTOM = 24*sf, GAP_Y = 8*sf;
   // begrensd i.p.v. altijd de volledige containerbreedte vullen — anders trekt een ondiepe keten
   // (weinig niveaus) de kolommen ver uit elkaar met veel lege ruimte ertussen
-  const colGap = maxLevel>0 ? Math.min((W - MARGE_X*2 - RECT_W) / maxLevel, 240) : 0;
+  const colGap = maxLevel>0 ? Math.min((W - MARGE_X*2 - RECT_W) / maxLevel, 240*sf) : 0;
   const xVan = (lvl)=> MARGE_X + lvl*colGap;
   const schaal = (H - TOP - BOTTOM) / totaalWaarde; // px per kWh, gelijk over alle kolommen
 
@@ -759,8 +775,8 @@ function tekenSankeyChart(nodes, links){
   nodes.forEach(n=>{
     const p = pos.get(n.id);
     if(!p) return;
-    svg.appendChild(svgEl('rect', { x:p.x, y:p.y, width:RECT_W, height:p.h, rx:2, fill:sankeyNodeKleur(n.type) }));
-    const label = svgEl('text', { x: p.x+RECT_W+6, y: p.y+p.h/2, fill: KLEUR_TEXT2, 'font-size':'11', 'dominant-baseline':'middle' });
+    svg.appendChild(svgEl('rect', { x:p.x, y:p.y, width:RECT_W, height:p.h, rx:2*sf, fill:sankeyNodeKleur(n.type) }));
+    const label = svgEl('text', { x: p.x+RECT_W+6*sf, y: p.y+p.h/2, fill: KLEUR_TEXT2, 'font-size': (11*sf).toFixed(1), 'dominant-baseline':'middle' });
     label.textContent = n.naam + (n.id!==root.id ? ' · '+p.v.toFixed(1)+' '+eenheid : ' · '+p.v.toFixed(1)+' '+eenheid+' totaal');
     svg.appendChild(label);
   });

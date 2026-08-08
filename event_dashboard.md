@@ -46,6 +46,28 @@ zetten zonder code aan te passen.
 - **Favicon**: zelfde ⚡-icoon als de generator-marker in de zijbalk (`webapp/public/favicon.svg`,
   schaalbare SVG, geen aparte 16/32/180px-PNG-varianten nodig)
 
+**Vloeiende UI-schaling** — zie specs/ui-vloeiende-schaling-plan.md
+- De hele UI-chrome (koppen, knoppen, tabellen, formulieren, zijbalken, kastpopup, grafieken)
+  schaalt evenredig mee met het schermformaat i.p.v. op elke breedte even groot te blijven — was
+  eerder een algeheel probleem (geen enkele `@media`-breakpoint, alle maten vaste px-waarden): op
+  een klein laptopvenster raakte de UI eerder afgekapt/wrappend, op een groot beamer-scherm bleef
+  alles een mini-UI in een zee van lege ruimte
+- Mechanisme: `html{font-size:clamp(14px, 10px + 0.36vw, 19px)}` bepaalt de basiseenheid, de rest
+  van `style.css` (font-sizes, padding, gaps, expliciete knop-/inputafmetingen, border-radius) staat
+  in `rem` i.p.v. `px` en schaalt daar automatisch mee. Op een "normale" desktopbreedte
+  (~1440-1920px) is het resultaat vrijwel identiek aan de oude vaste maten (bewust een
+  schaal-toevoeging, geen visuele redesign); richting de uiterste breedtes (smal laptopvenster resp.
+  groot beamer-scherm) wordt het merkbaar kleiner/groter. Randdiktes en box-shadow-offsets blijven
+  bewust `px` (een haarlijn hoort een haarlijn te blijven)
+- **Kritieke uitzondering**: het topologie-canvas (`.blankcanvas`, 4800×3000px) en alles binnen het
+  percentage-gebaseerde pin-plaatsingssysteem (pins, pin-labels, lijnen/knikpunten — Kalibreren/
+  Schema/Live) blijft bewust buiten dit werk — dat is een vaste logische coördinatenruimte met een
+  eigen, al werkende content-aware fit-to-screen-`transform:scale()`, geen UI-chrome. De UI-chrome
+  ERBOVENOP het canvas (zoomknoppen, koppen, zijbalk) schaalt wel gewoon mee
+- **Chart.js/eigen-SVG-tekst en -maten** (Lijn/Staaf/Taart-lettergroottes, Heatmap-celgrootte,
+  Sankey-nodedikte) lezen geen CSS — een aparte `schaalFactor()`-helper in `grafieken.js` leest de
+  effectieve root-font-size uit en vermenigvuldigt die JS-eigen px-constanten er evenredig mee
+
 **Login & toegangsbeheer** — zie specs/toegang-van-buitenaf-diagnose.md
 - De hele app (elke pagina en elk `/api/*`-endpoint, inclusief de QR-code-deeplinks) zit achter een
   inlogscherm — losse accounts per persoon, geen gedeeld wachtwoord. Sessie blijft staan tot

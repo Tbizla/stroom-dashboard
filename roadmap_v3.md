@@ -639,6 +639,48 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       fasen"-weergave); `tension: 0.15` ongewijzigd. Geverifieerd dat `tekenStaafChart()`s
       balkrand en de taart-slice-rand (elders `borderWidth: 2`, ongerelateerd) niet meeveranderd
       zijn. Visueel gecontroleerd in beide lijndiagram-weergaven.
+- [x] **UI schaalt niet mee op verschillende schermformaten — volledige vloeiende schaling.**
+      Afgerond — gebouwd conform [specs/ui-vloeiende-schaling-plan.md](specs/ui-vloeiende-schaling-plan.md).
+      Mikes bugmelding: geen enkele `@media`-breakpoint in `style.css`, alle maten vaste px-waarden
+      — klein scherm raakte eerder afgekapt/wrappend, groot beamer-scherm bleef een mini-UI in een
+      zee van lege ruimte. Gekozen aanpak (met Mike afgestemd): volledige vloeiende schaling i.p.v.
+      een paar gerichte breakpoint-patches, gefaseerd gebouwd.
+      **Mechanisme**: `html{font-size:clamp(14px, 10px + 0.36vw, 19px)}` — bij een "normale"
+      desktopbreedte (~1440-1920px) resulteert dat in ~15-17px (vrijwel identiek aan de oude
+      impliciete 16px-default), aan de uiterste breedtes klemt de clamp vast op 14px resp. 19px.
+      **Fase 1+2 (CSS, `webapp/public/css/style.css`)**: alle font-sizes/padding/margin/gaps/
+      expliciete knop-en-inputafmetingen/border-radius omgezet van `px` naar `rem` (16px-basis) —
+      in de praktijk in één samenhangende bewerking gedaan i.p.v. als twee losse stappen, aangezien
+      Fase 1 en 2 mechanisch identiek zijn (alleen welke sectie eerst) en er geen technische reden
+      was om ze apart te bouwen/verifiëren. Om het risico op handmatige rekenfouten over ~250
+      px-waarden te vermijden is de conversie via een klein, weggooibaar Node-scriptje gedaan
+      (regex-gebaseerd, met een lookbehind i.p.v. een consumerende capture-group voor de
+      declaratie-grens — een eerdere versie met een consumerende group at per ongeluk de `;`-
+      scheiding tussen twee opeenvolgende target-properties op, waardoor bijv. `width:16px;height:16px`
+      alleen de eerste van de twee omzette; met terugwerkende kracht bevestigd doordat het
+      brace-aantal, de volledige set class-selectors en het aantal `var(--...)`-referenties vóór en
+      ná de conversie exact gelijk bleven). Randdiktes, box-shadow-offsets en positionerings-
+      nudges (`top`/`left`/`right`/`bottom`, `transform`-offsets) blijven bewust `px`.
+      **Kritieke uitzondering, niet aangeraakt**: `.blankcanvas` (4800×3000px) en de hele
+      percentage-gebaseerde pin-plaatsingscluster (`.pin`, `.pinlabel`, `.edgeline`, `.knik`,
+      `.pin-anomaly`, `@keyframes pulse`) — dat is een vaste logische coördinatenruimte met een
+      eigen, al werkende content-aware fit-to-screen-`transform:scale()`; een root-schaalfactor zou
+      dat dubbel gaan beïnvloeden. De UI-chrome erboven (zoomknoppen, zijbalk, kastpopup) schaalt
+      wel gewoon mee.
+      **Fase 3 (JS, `webapp/public/js/grafieken.js`)**: Chart.js (Lijn/Staaf/Taart) en de eigen
+      Heatmap/Sankey-SVG lezen geen CSS-`rem` — nieuwe `schaalFactor()`-helper leest de effectieve
+      root-font-size via `getComputedStyle()` uit (relatief t.o.v. de 16px-basis) en vermenigvuldigt
+      daarmee de tot dan toe hardcoded JS-px-constanten: Chart.js' `ticks`/`legend`/`tooltip`-
+      `font.size`, en bij Heatmap/Sankey `NAAMKOL`/`CELW`/`CELH`/`KOPH` resp.
+      `RECT_W`/`MARGE_X`/`TOP`/`BOTTOM`/`GAP_Y`/de kolombreedte-cap plus de node-labeltekst.
+      Geverifieerd met Playwright op drie referentiebreedtes (1280px smal-laptop, 1920px normale
+      desktop, 3200px beamer, telkens een echt aangepaste viewport, geen devtools-responsive-mode):
+      `html`'s effectieve font-size klopt met de clamp-berekening op alle drie (14.6px/16.9px/19px);
+      Beheer/Kalibreren/Live (incl. een geopende kastpopup) en alle vijf grafiektypes tonen
+      proportioneel grotere/kleinere chrome zonder afgekapte tekst of gebroken layout; de pins/het
+      canvas blijven op elke breedte exact hun vaste pixelgrootte houden en de bestaande fit-to-
+      screen-zoomlogica past zich (ongewijzigd, zoals bedoeld) vanzelf aan de nieuwe containergrootte
+      aan. Zie event_dashboard.md, sectie "Vloeiende UI-schaling".
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
