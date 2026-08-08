@@ -77,6 +77,11 @@ zetten zonder code aan te passen.
   daadwerkelijk dezelfde kolombreedte als de tabel erboven. Nu een laatste `<tr>` ín de tabel zelf
   (zelfde patroon als de al langer bestaande "+"-rij van de leden-subtabel), lijnt daardoor
   gegarandeerd uit ongeacht schermbreedte
+- **Rijlijnen in de Generatoren-/leden-tabel lijnen weer recht**: de RATING (A)-kolom had
+  `display:flex` rechtstreeks op het `<td>`-element staan (i.p.v. op een binnenliggend `<div>`,
+  zoals de rest van de tabel) — daardoor rekte die ene cel niet betrouwbaar mee met de rijhoogte van
+  de andere kolommen, wat als een "verspringende" scheidingslijn zichtbaar was. Checkbox+ratingveld
+  zitten nu in een binnen-`<div>`, net als de Shelly-IP-kolom ernaast
 - **Kritieke uitzondering**: het topologie-canvas (`.blankcanvas`, 4800×3000px) en alles binnen het
   percentage-gebaseerde pin-plaatsingssysteem (pins, pin-labels, lijnen/knikpunten — Kalibreren/
   Schema/Live) blijft bewust buiten dit werk — dat is een vaste logische coördinatenruimte met een

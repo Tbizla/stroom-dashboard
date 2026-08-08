@@ -614,13 +614,13 @@ export function renderBeheer(){
         '<option value="groep"'+(type==='groep'?' selected':'')+'>'+t('beheer.typeGroep')+'</option>'+
       '</select></td>'+
       '<td><input type="number" value="'+g.vermogen_kva+'" data-gen-kva="'+g.id+'"></td>'+
-      '<td class="rating-cell"><input type="checkbox" data-gen-heeft-sensor="'+g.id+'" '+(g.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
-        '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
-      '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle')+'" '+(g.rating_a==null?'disabled':'')+'>'+
+      '<td><div class="rating-cell"><input type="checkbox" data-gen-heeft-sensor="'+g.id+'" '+(g.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
+        '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></div></td>'+
+      '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle').replace(/"/g,'&quot;')+'" '+(g.rating_a==null?'disabled':'')+'>'+
         '<button class="mqtt-copy-btn" data-mqtt-copy="'+g.mqtt_topic_prefix+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button>'+
         vervangIndicatorHtml(g.vervangingen)+'</div></td>'+
       '<td>'+aantal+'</td>'+
-      '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+' title="'+(isGroep?'':t('beheer.soortKoppelingDisabledTitle'))+'">'+
+      '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+' title="'+(isGroep?'':t('beheer.soortKoppelingDisabledTitle').replace(/"/g,'&quot;'))+'">'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>'+t('beheer.soortLeeg')+'</option>'+
         '<option value="parallel"'+(g.groep_soort==='parallel'?' selected':'')+'>'+t('beheer.soortParallel')+'</option>'+
         '<option value="backup"'+(g.groep_soort==='backup'?' selected':'')+'>'+t('beheer.soortBackup')+'</option>'+
@@ -644,9 +644,9 @@ export function renderBeheer(){
             '<td><input value="'+l.naam.replace(/"/g,'&quot;')+'" data-lid-naam="'+g.id+'|'+i+'"></td>'+
             '<td><select data-lid-type="'+g.id+'|'+i+'"><option value="generator"'+(l.type!=='batterij'?' selected':'')+'>'+t('beheer.typeGenerator')+'</option><option value="batterij"'+(l.type==='batterij'?' selected':'')+'>'+t('beheer.typeBatterij')+'</option></select></td>'+
             '<td><input type="number" value="'+(l.vermogen_kva!=null?l.vermogen_kva:'')+'" data-lid-kva="'+g.id+'|'+i+'"></td>'+
-            '<td class="rating-cell"><input type="checkbox" data-lid-heeft-sensor="'+g.id+'|'+i+'" '+(l.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
-              '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
-            '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle')+'" '+(l.rating_a==null?'disabled':'')+'>'+
+            '<td><div class="rating-cell"><input type="checkbox" data-lid-heeft-sensor="'+g.id+'|'+i+'" '+(l.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
+              '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></div></td>'+
+            '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle').replace(/"/g,'&quot;')+'" '+(l.rating_a==null?'disabled':'')+'>'+
               '<button class="mqtt-copy-btn" data-mqtt-copy="'+(l.mqtt_topic_prefix||'')+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button>'+
               vervangIndicatorHtml(l.vervangingen)+'</div></td>'+
             '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+

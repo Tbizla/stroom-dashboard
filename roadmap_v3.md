@@ -765,6 +765,33 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       exact onder elkaar bij alle drie tabellen, en de volledige aanmaak-/verwijder-flow werkt nog
       end-to-end (tijdelijke `TMP-`-generator/-locatie/-account aangemaakt, geverifieerd, weer
       verwijderd).
+- [x] **Vervolgticket: twee losse bugs op de Generatoren-tabel — "gebroken" rijlijnen en een
+      afgekapte tooltip.** Afgerond, twee ongerelateerde grondoorzaken.
+      **Rijlijnen "verspringen"**: gemeld met screenshot, eerst niet reproduceerbaar in headless
+      Playwright-screenshots op Mikes exacte schermbreedtes — een eerste vermoeden
+      (`border-collapse`-rendering bij fractionele DPI-schaling) bleek na een `border-spacing`-poging
+      niet te helpen ("nog steeds"). Pas meetbaar hard gemaakt door niet naar screenshots te kijken
+      maar `getBoundingClientRect()` van elke `<td>` in een rij te vergelijken: de RATING (A)-kolom
+      bleek exact 2px minder hoog dan de rest van dezelfde rij, alleen op rijen met echte data (waar
+      de checkbox+ratingveld-combinatie gerenderd wordt). Grondoorzaak: `class="rating-cell"`
+      (`display:flex`) stond direct op het `<td>`-element i.p.v. op een binnenliggend `<div>` (zoals
+      de wél-goede `.shelly-cell` er één kolom verderop) — een `<td>` die zelf `display:flex` krijgt,
+      rekt in Chrome niet betrouwbaar mee met de rijhoogte van de andere cellen. Opgelost door de
+      checkbox+input in een binnen-`<div class="rating-cell">` te wikkelen, zowel bij de
+      generator-rij als bij de leden-subtabel-rij (zelfde patroon, zelfde bug). Geverifieerd met
+      exacte coördinatenmetingen (niet alleen visueel): alle `<td>`'s in elke rij delen nu precies
+      dezelfde onderrand, in beide getroffen tabellen.
+      **Tooltip afgekapt** (Shelly-IP-veld bij generators): bleek geen weergaveprobleem maar een
+      kapotte HTML-attribuut — de i18n-tekst zelf bevat een aanhalingsteken (`voor de "Open
+      Shelly"-knop`), en dat werd ongeëscaped in een dubbel-aangehaald `title="..."`-attribuut
+      geplakt, waardoor de browser het attribuut al bij het eerste ingesloten aanhalingsteken afkapt.
+      Zelfde bug zat ook in de "Soort koppeling"-disabled-tooltip (ook een i18n-string met een
+      aanhalingsteken). Opgelost door de `t(...)`-uitvoer te escapen (`.replace(/"/g,'&quot;')`,
+      zelfde patroon dat dit bestand al gebruikte voor `value="..."`-attributen) op alle drie de
+      plekken waar deze twee i18n-sleutels in een HTML-attribuut belanden. Overige i18n-sleutels met
+      aanhalingstekens gecontroleerd — die landen allemaal als tekstinhoud (`textContent`) of in een
+      `confirm()`/`alert()`, nooit in een geconcateneerd HTML-attribuut, dus verder geen kwetsbare
+      plekken gevonden.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
