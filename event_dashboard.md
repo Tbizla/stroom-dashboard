@@ -52,13 +52,24 @@ zetten zonder code aan te passen.
   eerder een algeheel probleem (geen enkele `@media`-breakpoint, alle maten vaste px-waarden): op
   een klein laptopvenster raakte de UI eerder afgekapt/wrappend, op een groot beamer-scherm bleef
   alles een mini-UI in een zee van lege ruimte
-- Mechanisme: `html{font-size:clamp(14px, 10px + 0.36vw, 19px)}` bepaalt de basiseenheid, de rest
+- Mechanisme: `html{font-size:clamp(14px, 10px + 0.36vw, 24px)}` bepaalt de basiseenheid, de rest
   van `style.css` (font-sizes, padding, gaps, expliciete knop-/inputafmetingen, border-radius) staat
   in `rem` i.p.v. `px` en schaalt daar automatisch mee. Op een "normale" desktopbreedte
   (~1440-1920px) is het resultaat vrijwel identiek aan de oude vaste maten (bewust een
   schaal-toevoeging, geen visuele redesign); richting de uiterste breedtes (smal laptopvenster resp.
-  groot beamer-scherm) wordt het merkbaar kleiner/groter. Randdiktes en box-shadow-offsets blijven
-  bewust `px` (een haarlijn hoort een haarlijn te blijven)
+  groot 4K-scherm) wordt het merkbaar kleiner/groter — het plafond lag oorspronkelijk op 19px, maar
+  bleek op écht brede/4K-viewports (bevestigd op een 16" 4K-laptop en een 32" 4K-scherm) al ruim vóór
+  de werkelijke schermbreedte bereikt, waarna er niets meer meegroeide; opgehoogd naar 24px zodat een
+  groot scherm ook echt merkbaar groter aanvoelt. Randdiktes en box-shadow-offsets blijven bewust
+  `px` (een haarlijn hoort een haarlijn te blijven)
+- **Beheer-content vult de beschikbare breedte**: `.beheercol` (de Topologie-/Instellingen-/
+  Accounts-/Back-up-inhoud) had een vaste leesbare-regellengte-max-breedte die los stond van de
+  font-schaling én, onafhankelijk daarvan, geen `flex-grow` had binnen zijn `display:flex`-
+  oudercontainer — een flex-item zonder groei sizet op zijn eigen inhoud, dus de max-breedte was op
+  smallere inhoud (bijv. weinig kolommen) meestal niet eens de daadwerkelijke beperking. Beide
+  gefixt (`flex:1;min-width:0`), zodat vooral de kasten-/generatorentabel (tabulaire data, geen
+  lopende tekst) de volledige beschikbare breedte gebruikt i.p.v. een smalle kolom naast een lege
+  rand op een breed scherm
 - **Kritieke uitzondering**: het topologie-canvas (`.blankcanvas`, 4800×3000px) en alles binnen het
   percentage-gebaseerde pin-plaatsingssysteem (pins, pin-labels, lijnen/knikpunten — Kalibreren/
   Schema/Live) blijft bewust buiten dit werk — dat is een vaste logische coördinatenruimte met een

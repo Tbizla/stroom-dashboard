@@ -719,6 +719,31 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       invullen logt niets, een echte vervanging wél (met de juiste oude/nieuwe IP-waarden), een
       tweede vervanging op dezelfde rij geeft twee entries i.p.v. een overschreven entry, en de
       indicator-tooltip toont de geschiedenis in de juiste (nieuwste-eerst) volgorde.
+- [x] **Vervolgticket: UI-schaling werkte nog niet op écht brede/4K-schermen.** Afgerond — Mikes
+      terugmelding op de eerdere "volledige vloeiende schaling"-fix hierboven: op zijn 16" 4K-laptop
+      bleef nog veel ruimte onbenut, op zijn 32" 4K-scherm "helemaal erg". Concrete cijfers
+      opgevraagd i.p.v. blind opnieuw te gokken: `window.innerWidth` was 1536px (laptop, met
+      Windows-schaling) resp. 3840px (32"-scherm, zonder OS-schaling) — beide écht reproduceerbaar,
+      geen incident.
+      **Oorzaak 1**: de root-`clamp()` had een plafond van 19px, ruim vóór 3840px al bereikt (bij
+      ~2500px) — daarna groeide er niets meer mee, wat op het grote scherm aanvoelde als een harde
+      stop. Plafond opgehoogd naar 24px, coëfficiënt ongewijzigd (dus 1440-1920px blijft "vrijwel
+      identiek aan nu").
+      **Oorzaak 2, groter dan gedacht**: `.beheercol` (Topologie-/Instellingen-/Accounts-/
+      Back-up-inhoud) had weliswaar een vaste max-width, maar die was op smallere inhoud vaak niet
+      eens de daadwerkelijke beperking — de vier `.beheer`-subpanelen zijn zelf `display:flex`
+      (rij-richting, `toonBeheerSubnav()` in `modes.js`), en `.beheercol` had daarbinnen nooit een
+      `flex-grow` gekregen. Een flex-item zonder groei sizet op zijn eigen content (shrink-to-fit),
+      dus alléén de max-width loslaten (eerste poging) veranderde zichtbaar niets — pas
+      `.beheercol{flex:1;min-width:0}` (zelfde min-width:0-patroon als `.beheer` zelf al gebruikte)
+      liet 'm ook echt de beschikbare rijbreedte opvullen.
+      Geverifieerd met Playwright op precies Mikes gerapporteerde breedtes (1536px/3840px, geen
+      afgeronde referentiewaarden): `html`'s font-size klopt met de nieuwe clamp-berekening
+      (15.53px/23.82px), en de kasten-/generatorentabel vult nu zichtbaar de volledige breedte i.p.v.
+      een smalle kolom naast een lege rand — gecontroleerd met een tijdelijke test-generator/-kast
+      (de echte topologie was op het moment van testen leeg). Overige tabbladen (Instellingen,
+      Kalibreren) steekproefsgewijs gecontroleerd op geen regressie. Zie event_dashboard.md, sectie
+      "Vloeiende UI-schaling".
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

@@ -9,7 +9,14 @@
      puur zwart leest slecht op dit donkere thema, dus antraciet i.p.v. #000 voor fase 2 */
   --fase1:#8a5a3a; --fase2:#6b7280; --fase3:#b9bec7;
 }
-html{font-size:clamp(14px, 10px + 0.36vw, 19px)}
+/* vervolgticket-ui-schaling-4k.md: 19px-plafond bleef op écht brede/4K-viewports (bevestigd:
+   1536px op een 16" 4K-laptop met Windows-schaling, 3840px op een 32" 4K-scherm zonder OS-schaling)
+   allang bereikt vóórdat het scherm daadwerkelijk "op" was — daarna groeide er niets meer mee, wat
+   op het grote scherm voelde als een harde stop midden op het scherm. Zelfde coëfficiënt (0.36),
+   dus 1440-1920px blijft "vrijwel identiek aan nu"; het plafond schuift op tot 24px zodat 3840px
+   er ook echt merkbaar groter uitziet (~24px) i.p.v. tegen hetzelfde 19px-plafond als op een
+   gewone desktop te blijven plakken. */
+html{font-size:clamp(14px, 10px + 0.36vw, 24px)}
 *{box-sizing:border-box}
 /* basisstijl voor alle knoppen (en upload-"knoppen", die een <label> zijn) — zorgt dat een
    kale <button> zonder eigen container-klasse er niet als onbehandelde browser-knop of kale
@@ -217,7 +224,18 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
    ronde) niets had om tegen te scrollen — die meet t.o.v. .beheer's al te brede breedte, niet t.o.v.
    de viewport. Zelfde patroon als .body/.grafbody's bestaande min-height:0, hier de horizontale variant. */
 .beheer{flex:1;overflow-y:auto;overflow-x:auto;min-width:0;padding:1.375rem 1.625rem;display:none}
-.beheercol{max-width:58.75rem}
+/* vervolgticket-ui-schaling-4k.md: had een vaste max-width:58.75rem (~940px bij de 16px-baseline)
+   als "leesbare regellengte"-begrenzing — maar .beheercol is voor het merendeel tabulaire data
+   (kasten-/generatorentabel, veel kolommen), geen lopende tekst, en die cap stond los van de
+   font-schaling: bleef op een breed 4K-scherm (bevestigd: 3840px-viewport) op ~1100px vastzitten
+   terwijl de rest van het scherm leeg bleef. Cap losgelaten was op zich niet genoeg: de vier
+   .beheer-subpanelen (#topologiePanel e.a.) zijn zelf `display:flex` (rij-richting, zie
+   toonBeheerSubnav() in modes.js), en .beheercol had daarbinnen nooit een flex-grow gekregen —
+   zonder groei sizet een flex-item op zijn eigen content (shrink-to-fit), dus de max-width-cap was
+   sowieso zelden de daadwerkelijke beperking. flex:1+min-width:0 (zelfde min-width:0-patroon als
+   .beheer hierboven) laat 'm nu ook echt de beschikbare rijbreedte opvullen; .btable's al bestaande
+   width:100% vult die ruimte weer met bredere, minder gedrongen kolommen. */
+.beheercol{flex:1;min-width:0}
 .ledenrow>td{padding:0 0.5rem 0.625rem 1.5rem !important;border-bottom:1px solid var(--border)}
 .ledentable{background:var(--panel2);border-radius:0.5rem;padding:0.25rem 0.5rem}
 .ledentable th, .ledentable td{border-bottom:1px solid var(--bg)}
