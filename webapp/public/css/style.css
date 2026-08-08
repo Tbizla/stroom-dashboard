@@ -49,6 +49,10 @@ header h1 span{color:var(--accent)}
 .sessiebar{display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text3)}
 .sessiebar #logoutBtn{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:0.375rem;padding:0.3125rem 0.625rem;font-size:0.75rem;cursor:pointer}
 .sessiebar #logoutBtn:hover{border-color:var(--accent);color:var(--text)}
+/* specs/vervolgticket-fullscreen-knop.md: kaal icoon-knopje, zelfde maat/stijl-familie als .zoomctl button */
+#fullscreenBtn{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  border-radius:0.3125rem;width:1.75rem;height:1.75rem;font-size:1.0625rem;cursor:pointer;line-height:1;padding:0;flex-shrink:0}
+#fullscreenBtn:hover{border-color:var(--accent);color:var(--accent)}
 .login-overlay{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center}
 .login-overlay .loginbox{width:21.25rem;background:var(--panel);border:1px solid var(--border);border-radius:0.625rem;padding:2rem 1.75rem;text-align:center}
 .login-overlay .loginbox h1{font-size:1rem;font-weight:600;margin:0 0 0.25rem;letter-spacing:.02em;color:var(--text)}

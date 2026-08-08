@@ -45,6 +45,11 @@ zetten zonder code aan te passen.
   tussen de webapp-UI (client-fetch) en het PDF-rapport (server-`require`) — één bron van waarheid
 - **Favicon**: zelfde ⚡-icoon als de generator-marker in de zijbalk (`webapp/public/favicon.svg`,
   schaalbare SVG, geen aparte 16/32/180px-PNG-varianten nodig)
+- **Fullscreen-knop** (⛶, rechter bovenhoek van de header, ná de sessiebalk) — zet de hele pagina in
+  volledig scherm via de standaard browser Fullscreen-API, werkt hetzelfde ongeacht welk tabblad
+  actief is. Handig voor een Live-/Schema-weergave op een groot scherm/beamer op locatie. Tooltip
+  wisselt tussen "Volledig scherm"/"Volledig scherm verlaten" en blijft in sync ook als fullscreen
+  op een andere manier verlaten wordt (Esc, F11, browser-UI)
 
 **Vloeiende UI-schaling** — zie specs/ui-vloeiende-schaling-plan.md
 - De hele UI-chrome (koppen, knoppen, tabellen, formulieren, zijbalken, kastpopup, grafieken)

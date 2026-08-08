@@ -204,6 +204,8 @@
   "header.connFout": "fout: ",
   "header.exporteerData": "Exporteer data",
   "header.importeerData": "Importeer data",
+  "header.volledigScherm": "Volledig scherm",
+  "header.volledigSchermVerlaten": "Volledig scherm verlaten",
 
   "calbar.plattegrondUploaden": "Plattegrond uploaden",
   "calbar.hint": "Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.",

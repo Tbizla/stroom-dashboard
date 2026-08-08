@@ -84,6 +84,20 @@ document.getElementById('importFile').onchange = (ev)=>{
   reader.readAsText(file);
 };
 
+// ---------- fullscreen-knop ----------
+// specs/vervolgticket-fullscreen-knop.md: hele pagina, niet per tabblad-mode, dus hoort hier bij de
+// andere kale, mode-onafhankelijke header-knoppen i.p.v. bij auth/i18n
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+function ververFullscreenKnop(){
+  fullscreenBtn.title = document.fullscreenElement ? t('header.volledigSchermVerlaten') : t('header.volledigScherm');
+}
+fullscreenBtn.onclick = ()=>{
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+};
+document.addEventListener('fullscreenchange', ververFullscreenKnop);
+ververFullscreenKnop();
+
 // alles hieronder raakt de (nu login-gegate) /api/*-laag — pas starten zodra er een geldige
 // sessie is, anders krijgt een uitgelogde bezoeker een scherm vol 401-fouten onder de login-overlay
 // i.p.v. gewoon de overlay zelf (zie auth.js). De addEventListener-registraties hierboven (upload/

@@ -792,6 +792,16 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       aanhalingstekens gecontroleerd — die landen allemaal als tekstinhoud (`textContent`) of in een
       `confirm()`/`alert()`, nooit in een geconcateneerd HTML-attribuut, dus verder geen kwetsbare
       plekken gevonden.
+- [x] **Fullscreen-knop rechtsboven.** Afgerond — gebouwd conform
+      [specs/vervolgticket-fullscreen-knop.md](specs/vervolgticket-fullscreen-knop.md). Nieuwe
+      ⛶-knop (`#fullscreenBtn`) als laatste header-element, ná de sessiebalk. Standaard browser
+      Fullscreen-API (`requestFullscreen()`/`exitFullscreen()` op `document.documentElement`), geldt
+      voor de hele pagina, niet per tabblad-mode. Tooltip wisselt tussen "Volledig scherm"/"Volledig
+      scherm verlaten" via het `fullscreenchange`-event, dus blijft ook kloppen als fullscreen op een
+      andere manier verlaten wordt (Esc/F11/browser-UI) i.p.v. alleen bij een klik op de knop zelf.
+      Geverifieerd met Playwright: knop zet aan/uit met correcte title-wissel, blijft aanwezig en
+      werkend op elk tabblad (getest op Live), tooltip synct ook na een programmatische
+      `exitFullscreen()`-aanroep buiten de knop om (simuleert Esc/F11), en NL/EN-vertalingen kloppen.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
