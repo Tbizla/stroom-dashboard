@@ -1027,6 +1027,21 @@ function voorzieLedenVanIdEnPrefix(gen, data) {
   });
 }
 
+// specs/shelly-vervanging-plan.md: een shelly_ip-wijziging telt als "vervanging" zodra er al eerder
+// een ander, niet-leeg shelly_ip stond — puur op de waarde-vergelijking, niet gekoppeld aan welke
+// knop de aanroep deed, zodat ook een rechtstreekse bewerking van het IP-veld gelogd wordt (geen
+// aparte "dit is een vervanging"-vlag nodig). De allereerste keer een IP invullen (vorigShellyIp
+// leeg) is geen vervanging. Geeft het ONGEWIJZIGDE `bestaandeVervangingen`-array terug als er niets
+// te loggen valt (kan `undefined` zijn) — de aanroeper hoeft dus alleen te herschrijven als de
+// waarde ook echt verandert, geen kale `vervangingen: []` op elke kast/generator/lid die nog nooit
+// vervangen is.
+function nieuweVervangingenArray(vorigShellyIp, nieuwShellyIp, bestaandeVervangingen) {
+  if (!vorigShellyIp || nieuwShellyIp === vorigShellyIp) return bestaandeVervangingen;
+  const vervangingen = Array.isArray(bestaandeVervangingen) ? bestaandeVervangingen.slice() : [];
+  vervangingen.push({ op: new Date().toISOString(), vorig_ip: vorigShellyIp, nieuw_ip: nieuwShellyIp });
+  return vervangingen;
+}
+
 app.post('/api/generators', (req, res) => {
   const { naam, vermogen_kva, type, rating_a, shelly_ip } = req.body || {};
   if (!naam || !vermogen_kva) return res.status(400).json({ error: 'naam en vermogen_kva zijn verplicht' });
@@ -1059,7 +1074,12 @@ app.put('/api/generators/:id', (req, res) => {
   if (naam) gen.naam = naam;
   if (vermogen_kva) gen.vermogen_kva = Number(vermogen_kva);
   if (rating_a !== undefined) gen.rating_a = rating_a === '' || rating_a === null ? null : Number(rating_a);
-  if (shelly_ip !== undefined) gen.shelly_ip = shelly_ip ? String(shelly_ip).trim() : null;
+  if (shelly_ip !== undefined) {
+    const nieuweShellyIp = shelly_ip ? String(shelly_ip).trim() : null;
+    const vervangingen = nieuweVervangingenArray(gen.shelly_ip, nieuweShellyIp, gen.vervangingen);
+    if (vervangingen) gen.vervangingen = vervangingen;
+    gen.shelly_ip = nieuweShellyIp;
+  }
   // oudere generators (aangemaakt vóór dit veld bestond, bijv. via een testtopologie-JSON) missen
   // groep_soort/leden nog helemaal — die ontbreken dus niet alleen wanneer je van 'groep' wég schakelt,
   // ook de eerste keer dat je ze juist ÍN 'groep' zet moeten ze een geldige (lege) startwaarde krijgen
@@ -1077,7 +1097,20 @@ app.put('/api/generators/:id', (req, res) => {
   if (leden !== undefined) {
     const fout = valideerLeden(leden);
     if (fout) return res.status(400).json({ error: fout });
-    gen.leden = normaliseerLeden(leden);
+    // specs/shelly-vervanging-plan.md: de hele leden-array wordt in één keer meegestuurd, dus
+    // normaliseerLeden() bouwt telkens verse lid-objecten — oude leden (matchen op het bestaande
+    // `id`, zie normaliseerLeden()'s toelichting) opzoeken om per lid shelly_ip-wijzigingen te
+    // vergelijken en een eventueel bestaand vervangingen-array mee te dragen naar het nieuwe object
+    const oudeLedenPerId = new Map((gen.leden || []).filter(l => l.id).map(l => [l.id, l]));
+    const nieuweLeden = normaliseerLeden(leden);
+    nieuweLeden.forEach(lid => {
+      const oud = lid.id ? oudeLedenPerId.get(lid.id) : null;
+      if (oud) {
+        const vervangingen = nieuweVervangingenArray(oud.shelly_ip, lid.shelly_ip, oud.vervangingen);
+        if (vervangingen) lid.vervangingen = vervangingen;
+      }
+    });
+    gen.leden = nieuweLeden;
     voorzieLedenVanIdEnPrefix(gen, data);
   }
   writeTopo(data);
@@ -1209,7 +1242,12 @@ app.put('/api/kasten/:id', (req, res) => {
     if (type !== 'batterij') kast.heeft_bypass = false;
   }
   if (heeft_bypass !== undefined) kast.heeft_bypass = (kast.type === 'batterij') && !!heeft_bypass;
-  if (shelly_ip !== undefined) kast.shelly_ip = shelly_ip ? String(shelly_ip).trim() : null;
+  if (shelly_ip !== undefined) {
+    const nieuweShellyIp = shelly_ip ? String(shelly_ip).trim() : null;
+    const vervangingen = nieuweVervangingenArray(kast.shelly_ip, nieuweShellyIp, kast.vervangingen);
+    if (vervangingen) kast.vervangingen = vervangingen;
+    kast.shelly_ip = nieuweShellyIp;
+  }
   kast.generator = nieuweGenerator;
   kast.parent = nieuweParent;
   kast.mqtt_topic_prefix = mqttPrefix(kast.generator, kast.id);

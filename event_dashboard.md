@@ -211,6 +211,18 @@ zetten zonder code aan te passen.
   per-lid-tabel van een groep, aside-detail — incl. het ledenblok, de mobiele QR-statuspagina)
   verschijnt een "Open Shelly ↗"-link die de lokale Shelly-webinterface in een nieuw tabblad opent
   (alleen bruikbaar op het evenement-netwerk) — geen link zichtbaar als het veld leeg is
+- **Shelly/kast vervangen** (zie specs/shelly-vervanging-plan.md): 🔁-knop per kast-, generator- en
+  groepslid-rij (naast de bestaande ⚙️-configureerknop) opent een klein inline formuliertje (nieuw
+  Shelly-IP + "ook het snelheidsscript installeren"-vinkje, zelfde default aan) dat in één actie het
+  IP bijwerkt én meteen configureert — i.p.v. het veld handmatig overtypen en daarna apart de
+  configureerknop zoeken. De logische kast/generator (naam, positie, rating, koppelingen, en dus ook
+  de historische Grafieken-/Rapportages-data — `mqtt_topic_prefix` is gebaseerd op de kast-id, niet
+  het fysieke apparaat) blijft ongewijzigd, alleen het IP wijzigt. Elke shelly_ip-wijziging die een
+  al eerder ingevuld IP vervangt wordt automatisch gelogd (nieuw `vervangingen`-array-veld: tijdstip
+  + oud/nieuw IP) — ongeacht of dat via de nieuwe knop of het gewone inline IP-veld gebeurde; de
+  allereerste keer een IP invullen telt niet als vervanging. Een 🔁-indicatortje bij de Shelly-IP-
+  kolom (alleen zichtbaar zodra er iets vervangen is) toont de volledige geschiedenis in een tooltip.
+  Geen apart voorraadbeheer/reserve-apparaten-concept — puur het moment van vervangen zelf
 - **QR-code per kast** (niet voor generators/batterijen): "QR-code"-knop per rij in de kasten-tabel
   (overlay met QR, naam/afkorting, downloaden als PNG of printen) en een "Alle QR-codes
   printen"-knop die in één keer een printvriendelijk stickervel voor alle kasten opent. Elke QR

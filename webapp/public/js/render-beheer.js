@@ -12,6 +12,12 @@ import { openQrOverlay } from './qrcodes.js';
 let groepeerSelectieActief = false;
 let groepeerGeselecteerd = new Set();
 
+// specs/shelly-vervanging-plan.md: welke rij het inline "Vervangen"-formuliertje open heeft staan —
+// net als groepeerGeselecteerd/expandedGroepen hierboven een puur transiente UI-state die een
+// renderBeheer()-rebuild moet overleven (de hele tabel wordt bij elke wijziging herbouwd).
+// Sleutel: "kast:<id>" | "generator:<id>" | "lid:<generatorId>|<lidIndex>"
+let vervangFormOpen = new Set();
+
 function ververGroepeerActiebalk(){
   const balk = document.getElementById('genGroepeerActiebalk');
   const aantal = groepeerGeselecteerd.size;
@@ -152,6 +158,89 @@ function maakShellyConfigureerControl(doel){
   wrap.appendChild(scriptChk);
   wrap.appendChild(btn);
   return wrap;
+}
+
+// specs/shelly-vervanging-plan.md: één "Vervangen"-actie i.p.v. de twee losse stappen (IP-veld
+// overtypen, dan apart de ⚙️-configureerknop zoeken) — inline toggle-formuliertje binnen dezelfde
+// actiekolom-cel, geen apart modal-venster (zelfde soort toggle-zichtbare div als de aangepaste-
+// periode-invoer bij Rapportages/Grafieken). DOM-gebouwd, voor de kast-rij (zelfde patroon-verschil
+// als maakShellyConfigureerControl() hierboven t.o.v. de generator-/lid-rijen).
+// `opNieuweShellyIp` doet de PUT die het nieuwe shelly_ip opslaat (en dus ook de server-side
+// vervangingen-log triggert, zie server.js); `doel` is hetzelfde soort object als
+// startShellyConfiguratie() elders al verwacht.
+function maakVervangForm(key, opNieuweShellyIp, doel){
+  const wrap = document.createElement('span');
+  wrap.className = 'vervang-form';
+  const ipInput = document.createElement('input');
+  ipInput.className = 'vervang-ip-input';
+  ipInput.placeholder = t('beheer.vervangNieuwIpPlaceholder');
+  const scriptChk = document.createElement('input');
+  scriptChk.className = 'vervang-script-chk';
+  scriptChk.type = 'checkbox';
+  scriptChk.checked = true;
+  scriptChk.title = t('beheer.shellyConfigureerScriptTitle');
+  const bevestigBtn = document.createElement('button');
+  bevestigBtn.className = 'vervang-bevestig-btn';
+  bevestigBtn.textContent = t('beheer.vervangBevestigen');
+  bevestigBtn.onclick = async ()=>{
+    const nieuwIp = ipInput.value.trim();
+    if(!nieuwIp) return;
+    bevestigBtn.disabled = true;
+    try{
+      await opNieuweShellyIp(nieuwIp);
+      vervangFormOpen.delete(key);
+      await loadTopology(); // herbouwt renderBeheer() al — vervangFormOpen mist deze key dus weer normale knoppen
+      startShellyConfiguratie(doel, scriptChk.checked);
+    }catch(e){ alert(e.message); bevestigBtn.disabled = false; }
+  };
+  const annulerenBtn = document.createElement('button');
+  annulerenBtn.className = 'vervang-annuleer-btn';
+  annulerenBtn.textContent = t('common.annuleren');
+  annulerenBtn.onclick = ()=>{ vervangFormOpen.delete(key); renderBeheer(); };
+  wrap.appendChild(ipInput); wrap.appendChild(scriptChk); wrap.appendChild(bevestigBtn); wrap.appendChild(annulerenBtn);
+  return wrap;
+}
+function maakVervangOpenKnop(key){
+  const btn = document.createElement('button');
+  btn.textContent = '🔁';
+  btn.title = t('beheer.vervangen');
+  btn.onclick = ()=>{ vervangFormOpen.add(key); renderBeheer(); };
+  return btn;
+}
+// klein indicatortje bij de Shelly-IP-kolom, alleen zichtbaar als er al eens iets vervangen is —
+// tooltip toont de geschiedenis (nieuwste eerst), geen aparte pagina/export nodig voor een eerste versie
+function maakVervangIndicator(vervangingen){
+  if(!vervangingen || !vervangingen.length) return null;
+  const el = document.createElement('span');
+  el.className = 'shelly-vervang-indicator';
+  el.textContent = '🔁';
+  el.title = vervangingen.slice().reverse().map(v=>
+    new Date(v.op).toLocaleString() + ': ' + v.vorig_ip + ' → ' + v.nieuw_ip
+  ).join('\n');
+  return el;
+}
+
+// string-gebouwde tegenhangers van maakVervangForm()/maakVervangOpenKnop()/maakVervangIndicator()
+// hierboven, voor de generator-/lid-rijen (string-built + gedelegeerde events, zie de toelichting
+// bij maakShellyConfigureerControl()). `esc()` bestaat al elders in dit bestand niet — deze waarden
+// (IP-adressen, ISO-tijdstippen) bevatten geen HTML-gevoelige tekens, dus geen aparte escape nodig.
+function vervangFormHtml(key){
+  return '<span class="vervang-form" data-vervang-key="'+key+'">'+
+    '<input class="vervang-ip-input" placeholder="'+t('beheer.vervangNieuwIpPlaceholder')+'">'+
+    '<input type="checkbox" class="vervang-script-chk" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'">'+
+    '<button class="vervang-bevestig-btn">'+t('beheer.vervangBevestigen')+'</button>'+
+    '<button class="vervang-annuleer-btn">'+t('common.annuleren')+'</button>'+
+  '</span>';
+}
+function vervangOpenKnopHtml(key){
+  return '<button class="vervang-open-btn" data-vervang-key="'+key+'" title="'+t('beheer.vervangen')+'">🔁</button>';
+}
+function vervangIndicatorHtml(vervangingen){
+  if(!vervangingen || !vervangingen.length) return '';
+  const titel = vervangingen.slice().reverse().map(v=>
+    new Date(v.op).toLocaleString() + ': ' + v.vorig_ip + ' → ' + v.nieuw_ip
+  ).join('\n').replace(/"/g,'&quot;');
+  return '<span class="shelly-vervang-indicator" title="'+titel+'">🔁</span>';
 }
 
 function alleShellyDoelen(){
@@ -332,6 +421,8 @@ export function renderKastSecties(){
     mqttCopyBtn.title = t('beheer.mqttKopieerTitle');
     mqttCopyBtn.onclick = ()=> kopieerMqttPrefix(k.mqtt_topic_prefix, mqttCopyBtn);
     shellyWrap.appendChild(mqttCopyBtn);
+    const vervangIndicator = maakVervangIndicator(k.vervangingen);
+    if(vervangIndicator) shellyWrap.appendChild(vervangIndicator);
     kastVeld(tr, shellyWrap, {style:'min-width:150px'});
 
     const genSel = document.createElement('select');
@@ -348,26 +439,34 @@ export function renderKastSecties(){
     kastVeld(tr, parentSel, {style:'min-width:190px'});
 
     const actieWrap = document.createElement('div');
-    actieWrap.style.cssText = 'display:flex;gap:4px';
-    if(!isBatterij){
-      // geen QR-codes voor batterijen (net als generators) — zie specs/qr-code-plan.md
-      const qrBtn = document.createElement('button');
-      qrBtn.textContent = t('beheer.qrKnop');
-      qrBtn.onclick = ()=> openQrOverlay(k);
-      actieWrap.appendChild(qrBtn);
+    actieWrap.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+    const vervangKey = 'kast:'+k.id;
+    if(vervangFormOpen.has(vervangKey)){
+      actieWrap.appendChild(maakVervangForm(vervangKey,
+        (nieuwIp)=> apiCall('/api/kasten/'+k.id, 'PUT', {shelly_ip: nieuwIp}),
+        {doelType:'kast', id:k.id, naam:k.naam}));
+    } else {
+      if(!isBatterij){
+        // geen QR-codes voor batterijen (net als generators) — zie specs/qr-code-plan.md
+        const qrBtn = document.createElement('button');
+        qrBtn.textContent = t('beheer.qrKnop');
+        qrBtn.onclick = ()=> openQrOverlay(k);
+        actieWrap.appendChild(qrBtn);
+      }
+      if(k.shelly_ip){
+        actieWrap.appendChild(maakShellyConfigureerControl({doelType:'kast', id:k.id, naam:k.naam}));
+      }
+      actieWrap.appendChild(maakVervangOpenKnop(vervangKey));
+      const delBtn = document.createElement('button');
+      delBtn.className = 'danger';
+      delBtn.textContent = t('common.verwijderen');
+      delBtn.onclick = async ()=>{
+        if(!confirm(t('beheer.confirmKastVerwijderen'))) return;
+        try{ await apiCall('/api/kasten/'+k.id, 'DELETE'); await loadTopology(); }
+        catch(e){ alert(e.message); }
+      };
+      actieWrap.appendChild(delBtn);
     }
-    if(k.shelly_ip){
-      actieWrap.appendChild(maakShellyConfigureerControl({doelType:'kast', id:k.id, naam:k.naam}));
-    }
-    const delBtn = document.createElement('button');
-    delBtn.className = 'danger';
-    delBtn.textContent = t('common.verwijderen');
-    delBtn.onclick = async ()=>{
-      if(!confirm(t('beheer.confirmKastVerwijderen'))) return;
-      try{ await apiCall('/api/kasten/'+k.id, 'DELETE'); await loadTopology(); }
-      catch(e){ alert(e.message); }
-    };
-    actieWrap.appendChild(delBtn);
     kastVeld(tr, actieWrap, {style:'min-width:170px'});
 
     tbody.appendChild(tr);
@@ -518,7 +617,8 @@ export function renderBeheer(){
       '<td class="rating-cell"><input type="checkbox" data-gen-heeft-sensor="'+g.id+'" '+(g.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
         '<input type="number" placeholder="—" value="'+(g.rating_a!=null?g.rating_a:'')+'" data-gen-rating="'+g.id+'" title="'+t('beheer.ratingTitle')+'" '+(g.rating_a==null?'disabled':'')+'></td>'+
       '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(g.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(g.shelly_ip||'').replace(/"/g,'&quot;')+'" data-gen-shelly="'+g.id+'" title="'+t('beheer.shellyIpTitle')+'" '+(g.rating_a==null?'disabled':'')+'>'+
-        '<button class="mqtt-copy-btn" data-mqtt-copy="'+g.mqtt_topic_prefix+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button></div></td>'+
+        '<button class="mqtt-copy-btn" data-mqtt-copy="'+g.mqtt_topic_prefix+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button>'+
+        vervangIndicatorHtml(g.vervangingen)+'</div></td>'+
       '<td>'+aantal+'</td>'+
       '<td><select data-gen-soort="'+g.id+'" '+(isGroep?'':'disabled')+' title="'+(isGroep?'':t('beheer.soortKoppelingDisabledTitle'))+'">'+
         '<option value=""'+(!g.groep_soort?' selected':'')+'>'+t('beheer.soortLeeg')+'</option>'+
@@ -527,7 +627,14 @@ export function renderBeheer(){
         '<option value="hybride"'+(g.groep_soort==='hybride'?' selected':'')+'>'+t('beheer.soortHybride')+'</option>'+
       '</select></td>'+
       '<td>'+(isGroep ? '<button data-groep-toggle="'+g.id+'">'+t('beheer.ledenBtn', {n: g.leden.length})+' '+(expandedGroepen.has(g.id)?'▴':'▾')+'</button>' : '—')+'</td>'+
-      '<td><div style="display:flex;gap:4px;align-items:center">'+(g.shelly_ip?'<span class="shelly-cfg"><input type="checkbox" class="shelly-cfg-script" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'"><button class="shelly-cfg-btn" data-shelly-cfg-type="generator" data-shelly-cfg-id="'+g.id+'" title="'+t('beheer.shellyConfigureren')+'">⚙️</button></span>':'')+'<button data-gen-del="'+g.id+'" class="danger">'+t('common.verwijderen')+'</button></div></td>'+
+      '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+
+        (vervangFormOpen.has('generator:'+g.id)
+          ? vervangFormHtml('generator:'+g.id)
+          : ((g.shelly_ip?'<span class="shelly-cfg"><input type="checkbox" class="shelly-cfg-script" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'"><button class="shelly-cfg-btn" data-shelly-cfg-type="generator" data-shelly-cfg-id="'+g.id+'" title="'+t('beheer.shellyConfigureren')+'">⚙️</button></span>':'')+
+             vervangOpenKnopHtml('generator:'+g.id)+
+             '<button data-gen-del="'+g.id+'" class="danger">'+t('common.verwijderen')+'</button>')
+        )+
+      '</div></td>'+
       '</tr>';
     if(isGroep && expandedGroepen.has(g.id)){
       gh += '<tr class="ledenrow"><td colspan="'+(groepeerSelectieActief?10:9)+'"><table class="btable ledentable">'+
@@ -540,8 +647,16 @@ export function renderBeheer(){
             '<td class="rating-cell"><input type="checkbox" data-lid-heeft-sensor="'+g.id+'|'+i+'" '+(l.rating_a!=null?'checked':'')+' title="'+t('beheer.heeftSensorTitle')+'">'+
               '<input type="number" placeholder="—" value="'+(l.rating_a!=null?l.rating_a:'')+'" data-lid-rating="'+g.id+'|'+i+'" title="'+t('beheer.ledenRatingTitle')+'" '+(l.rating_a==null?'disabled':'')+'></td>'+
             '<td style="min-width:150px"><div class="shelly-cell"><input placeholder="'+(l.rating_a!=null?t('beheer.shellyIpPlaceholder'):'—')+'" value="'+(l.shelly_ip||'').replace(/"/g,'&quot;')+'" data-lid-shelly="'+g.id+'|'+i+'" title="'+t('beheer.shellyIpTitle')+'" '+(l.rating_a==null?'disabled':'')+'>'+
-              '<button class="mqtt-copy-btn" data-mqtt-copy="'+(l.mqtt_topic_prefix||'')+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button></div></td>'+
-            '<td><div style="display:flex;gap:4px;align-items:center">'+(l.shelly_ip?'<span class="shelly-cfg"><input type="checkbox" class="shelly-cfg-script" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'"><button class="shelly-cfg-btn" data-shelly-cfg-type="lid" data-shelly-cfg-id="'+(l.id||'')+'" data-shelly-cfg-generator="'+g.id+'" title="'+t('beheer.shellyConfigureren')+'">⚙️</button></span>':'')+'<button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button></div></td>'+
+              '<button class="mqtt-copy-btn" data-mqtt-copy="'+(l.mqtt_topic_prefix||'')+'" title="'+t('beheer.mqttKopieerTitle')+'">📋</button>'+
+              vervangIndicatorHtml(l.vervangingen)+'</div></td>'+
+            '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+
+              (vervangFormOpen.has('lid:'+g.id+'|'+i)
+                ? vervangFormHtml('lid:'+g.id+'|'+i)
+                : ((l.shelly_ip?'<span class="shelly-cfg"><input type="checkbox" class="shelly-cfg-script" checked title="'+t('beheer.shellyConfigureerScriptTitle')+'"><button class="shelly-cfg-btn" data-shelly-cfg-type="lid" data-shelly-cfg-id="'+(l.id||'')+'" data-shelly-cfg-generator="'+g.id+'" title="'+t('beheer.shellyConfigureren')+'">⚙️</button></span>':'')+
+                   vervangOpenKnopHtml('lid:'+g.id+'|'+i)+
+                   '<button data-lid-del="'+g.id+'|'+i+'" class="danger">×</button>')
+              )+
+            '</div></td>'+
           '</tr>'
         ).join('')+
         '<tr>'+
@@ -573,6 +688,49 @@ export function renderBeheer(){
         naam = (g?g.naam:'') + (l?' — '+l.naam:'');
       }
       startShellyConfiguratie({doelType:type, id, generatorId, naam}, scriptChk ? scriptChk.checked : true);
+    };
+  });
+
+  // specs/shelly-vervanging-plan.md: generator-/lid-tegenhanger van maakVervangForm()/
+  // maakVervangOpenKnop() bij de kast-rij hierboven — string-gebouwd + gedelegeerde events, zelfde
+  // patroon-verschil als de rest van dit bestand tussen kast- en generator-/lid-rijen.
+  genTable.querySelectorAll('.vervang-open-btn').forEach(btn=>{
+    btn.onclick = ()=>{ vervangFormOpen.add(btn.dataset.vervangKey); renderBeheer(); };
+  });
+  genTable.querySelectorAll('.vervang-annuleer-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      vervangFormOpen.delete(btn.closest('[data-vervang-key]').dataset.vervangKey);
+      renderBeheer();
+    };
+  });
+  genTable.querySelectorAll('.vervang-bevestig-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const formEl = btn.closest('[data-vervang-key]');
+      const key = formEl.dataset.vervangKey;
+      const nieuwIp = formEl.querySelector('.vervang-ip-input').value.trim();
+      const scriptChk = formEl.querySelector('.vervang-script-chk');
+      if(!nieuwIp) return;
+      btn.disabled = true;
+      try{
+        let doel;
+        if(key.startsWith('generator:')){
+          const id = key.slice('generator:'.length);
+          await apiCall('/api/generators/'+id, 'PUT', {shelly_ip: nieuwIp});
+          vervangFormOpen.delete(key);
+          await loadTopology(); // herbouwt de tabel al zonder deze key -> normale knoppen terug
+          const g = state.TOPO.generators.find(x=>x.id===id);
+          doel = {doelType:'generator', id, naam: g?g.naam:id};
+        } else {
+          const [genId, idx] = key.slice('lid:'.length).split('|');
+          const leden = huidigeLeden(genId); leden[idx].shelly_ip = nieuwIp;
+          vervangFormOpen.delete(key);
+          await saveLeden(genId, leden); // roept zelf al loadTopology() aan
+          const g = state.TOPO.generators.find(x=>x.id===genId);
+          const l = g && g.leden[idx];
+          doel = {doelType:'lid', id: l?l.id:'', generatorId: genId, naam: (g?g.naam:'')+(l?' — '+l.naam:'')};
+        }
+        startShellyConfiguratie(doel, scriptChk.checked);
+      }catch(e){ alert(e.message); btn.disabled = false; }
     };
   });
 

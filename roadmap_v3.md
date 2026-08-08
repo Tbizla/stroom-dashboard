@@ -681,6 +681,44 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       canvas blijven op elke breedte exact hun vaste pixelgrootte houden en de bestaande fit-to-
       screen-zoomlogica past zich (ongewijzigd, zoals bedoeld) vanzelf aan de nieuwe containergrootte
       aan. Zie event_dashboard.md, sectie "Vloeiende UI-schaling".
+- [x] **Shelly/verdeelkast vervangen tijdens een project.** Afgerond — gebouwd conform
+      [specs/shelly-vervanging-plan.md](specs/shelly-vervanging-plan.md). Mike: soms gaat een Shelly
+      of een verdeelkast tijdens een evenement stuk, hij wilde één duidelijke actie i.p.v. de twee
+      losse stappen (IP-veld overtypen, dan apart de ⚙️-configureerknop zoeken) én bijhouden wát
+      vervangen is. De databasis stond hier al goed voor: de logische kast/generator blijft
+      ongewijzigd (naam/positie/rating/koppelingen), alleen `shelly_ip` wijzigt —
+      `mqtt_topic_prefix` is gebaseerd op de kast-id, niet het fysieke apparaat, dus historische
+      Grafieken-/Rapportages-data blijft ononderbroken.
+      **Backend**: nieuwe gedeelde `nieuweVervangingenArray(vorigShellyIp, nieuwShellyIp,
+      bestaandeVervangingen)`-helper in `server.js`, aangeroepen vanuit `PUT /api/kasten/:id`,
+      `PUT /api/generators/:id` (eigen shelly_ip) én de `leden`-array-route van diezelfde
+      generator-endpoint (leden-scope uit het plan meegenomen, niet als losse ronde uitgesteld) — een
+      wijziging telt als vervanging zodra er al een ander, niet-leeg IP stond, puur op de
+      waarde-vergelijking (niet gekoppeld aan welke knop de aanroep deed, dus ook een rechtstreekse
+      bewerking van het inline IP-veld wordt gelogd). Voor leden bouwt `normaliseerLeden()` bij elke
+      PUT verse lid-objecten, dus de oude leden-array (op `id`) opgezocht om zowel de
+      shelly_ip-vergelijking als een eventueel bestaand `vervangingen`-array mee te dragen naar het
+      nieuwe object.
+      **Frontend** (`render-beheer.js`): nieuwe 🔁-knop naast de bestaande ⚙️-configureerknop op
+      kast-, generator- en groepslid-rijen, opent een inline toggle-formuliertje (nieuw IP +
+      snelheidsscript-vinkje) binnen dezelfde actiekolom-cel — geen modal. Bevestigen doet de PUT en
+      start meteen dezelfde `startShellyConfiguratie()` die de bestaande ⚙️-knop ook gebruikt (zelfde
+      voortgangstoast). Welke rij het formulier open heeft staan zit in een module-level
+      `vervangFormOpen`-Set (sleutel `"kast:<id>"`/`"generator:<id>"`/`"lid:<genId>|<lidIndex>"`),
+      nodig omdat `renderBeheer()` de hele tabel bij elke wijziging herbouwt (zelfde patroon als de
+      bestaande `groepeerGeselecteerd`/`expandedGroepen`-state) — twee parallelle implementaties
+      (DOM-gebouwd voor de kast-rij, string-gebouwd + gedelegeerde events voor generator/lid, zelfde
+      bestaande patroon-verschil als `maakShellyConfigureerControl()` t.o.v. de
+      `data-shelly-cfg-type`-rijen). Nieuw 🔁-indicatortje bij de Shelly-IP-kolom, alleen zichtbaar
+      als `vervangingen.length>0`, met de volledige geschiedenis (nieuwste eerst) in een
+      title-tooltip.
+      **Bug gevonden tijdens het testen**: de DOM-gebouwde formulier-inputs (kast-rij) misten hun
+      CSS-klasse (`ipInput.className` nooit gezet, in tegenstelling tot de string-gebouwde variant)
+      — onopgemerkt gebleven totdat een Playwright-test er specifiek op selecteerde; hersteld.
+      Geverifieerd end-to-end voor alle drie rij-typen (kast/generator/groepslid): eerste keer een IP
+      invullen logt niets, een echte vervanging wél (met de juiste oude/nieuwe IP-waarden), een
+      tweede vervanging op dezelfde rij geeft twee entries i.p.v. een overschreven entry, en de
+      indicator-tooltip toont de geschiedenis in de juiste (nieuwste-eerst) volgorde.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
