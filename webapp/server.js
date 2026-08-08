@@ -1701,6 +1701,7 @@ const GRAFIEKEN_MAX_PUNTEN = 800;
 // i.p.v. een fysiek onjuiste "som" te tonen.
 function grafiekenVeldenVoorMetric(metric, fase) {
   if (metric === 'energie') {
+    if (fase === 'alle') return { measurement: 'shelly_emdata', velden: ['a_total_act_energy', 'b_total_act_energy', 'c_total_act_energy'] };
     return { measurement: 'shelly_emdata', velden: fase === 'totaal' ? ['total_act'] : [fase + '_total_act_energy'] };
   }
   if (metric === 'spanning' && fase === 'totaal') {
@@ -1708,6 +1709,10 @@ function grafiekenVeldenVoorMetric(metric, fase) {
   }
   const suffix = { stroom: 'current', spanning: 'voltage', vermogen: 'act_power' }[metric];
   if (!suffix) return null;
+  // grafieken-alle-fasen-plan.md: "alle" wil de drie rauwe per-fase-velden als aparte series terug
+  // (géén gemiddelde/som, i.t.t. de spanning+totaal-uitzondering hierboven) — zie
+  // grafiekenCsvNaarSeriesPerVeld() verderop, die deze drie velden 1-op-1 naar 3 series omzet.
+  if (fase === 'alle') return { measurement: 'shelly_em', velden: ['a_' + suffix, 'b_' + suffix, 'c_' + suffix] };
   return { measurement: 'shelly_em', velden: [(fase === 'totaal' ? 'total_' : fase + '_') + suffix] };
 }
 
@@ -1766,12 +1771,42 @@ function grafiekenCsvNaarSeries(csv, velden, combine) {
   return Array.from(perKast, ([id, punten]) => ({ id, punten }));
 }
 
+// grafieken-alle-fasen-plan.md: variant van grafiekenCsvNaarSeries() hierboven die de drie
+// per-fase-velden NIET combineert maar als drie aparte series teruggeeft — alleen gebruikt bij
+// fase "alle", waar de server al afdwingt dat er precies 1 kast/generator gequeried wordt, dus
+// "id" is hier gewoon de faseletter (a/b/c) i.p.v. een kast-id.
+function grafiekenCsvNaarSeriesPerVeld(csv, velden) {
+  const regels = csv.replace(/\r\n/g, '\n').trim().split('\n').filter((r) => r.trim());
+  if (regels.length < 2) return [];
+  const kolommen = regels[0].split(',');
+  const tijdIdx = kolommen.indexOf('_time');
+  const veldIdxen = velden.map((v) => kolommen.indexOf(v));
+  if (tijdIdx === -1 || veldIdxen.some((i) => i === -1)) return [];
+  const labels = ['a', 'b', 'c'];
+  const punten = labels.map(() => []);
+  regels.slice(1).forEach((regel) => {
+    const waarden = regel.split(',');
+    const t = Date.parse(waarden[tijdIdx]);
+    if (isNaN(t)) return;
+    veldIdxen.forEach((i, idx) => {
+      const w = parseFloat(waarden[i]);
+      if (!isNaN(w)) punten[idx].push([t, w]);
+    });
+  });
+  return labels.map((label, idx) => ({ id: label, punten: punten[idx] }));
+}
+
 app.get('/api/grafieken/tijdreeks', async (req, res) => {
   const { ids, metric, fase, van, tot, editie } = req.query;
   const idLijst = (ids || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (!idLijst.length) return res.status(400).json({ error: 'ids is verplicht (komma-gescheiden)' });
   if (!idLijst.every(veiligeTagWaarde)) return res.status(400).json({ error: 'ongeldig id in ids' });
-  if (!['a', 'b', 'c', 'totaal'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  if (!['a', 'b', 'c', 'totaal', 'alle'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  // server-side afgedwongen, niet alleen de checklist client-side beperkt tot 1 selectie (zelfde
+  // "echte afdwinging, niet alleen knopjes verstoppen"-principe als bij de rolverdeling-rechten)
+  if (fase === 'alle' && idLijst.length !== 1) {
+    return res.status(400).json({ error: 'fase alle werkt alleen met precies 1 id' });
+  }
   if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
     return res.status(400).json({ error: 'van en tot zijn verplicht en moeten geldige datums zijn' });
   }
@@ -1805,7 +1840,10 @@ app.get('/api/grafieken/tijdreeks', async (req, res) => {
 
   try {
     const csv = await influxQueryPlatteCsv(flux);
-    res.json({ series: grafiekenCsvNaarSeries(csv, veldinfo.velden) });
+    const series = fase === 'alle'
+      ? grafiekenCsvNaarSeriesPerVeld(csv, veldinfo.velden)
+      : grafiekenCsvNaarSeries(csv, veldinfo.velden);
+    res.json({ series });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }

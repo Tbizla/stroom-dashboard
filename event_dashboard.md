@@ -323,9 +323,9 @@ zetten zonder code aan te passen.
   metric/fase/periode/editie kiezen en in een grafiek zetten, zonder naar Grafana te hoeven
   wisselen voor een snelle ad-hoc vraag ("hoe deed kast 12 het gisteren t.o.v. kast 13?")
 - Linkerkolom: doorzoekbare, aan-/uitvinkbare boomlijst van generators/kasten (meerdere tegelijk),
-  metric (Stroom A / Spanning V / Vermogen W / Energie kWh), fase (A/B/C/Totaal — bij Spanning+
-  Totaal het gemiddelde van de drie fasen, er is geen fysiek `total_voltage`-veld), periode (hele
-  evenement/laatste 24u/aangepast) en editie (één, of "alle edities")
+  metric (Stroom A / Spanning V / Vermogen W / Energie kWh), fase (A/B/C/Totaal/Alle fasen — bij
+  Spanning+Totaal het gemiddelde van de drie fasen, er is geen fysiek `total_voltage`-veld), periode
+  (hele evenement/laatste 24u/aangepast) en editie (één, of "alle edities")
 - **Lijndiagram** (gebouwd): tijdreeks, één lijn per geselecteerde kast/generator. Server-side
   downsampling (InfluxDB `aggregateWindow`, venstergrootte berekend uit de periodelengte) — bij
   "hele evenement" komt nooit de ruwe ~1s-puntenreeks naar de browser
@@ -366,6 +366,15 @@ zetten zonder code aan te passen.
 - **Editie(s)**: "Alle edities" is alleen bij het Lijndiagram bruikbaar (het enige type waar
   "meerdere lijnen, één per editie" ondubbelzinnig is) — bij Staaf/Taart/Heatmap/Sankey valt de
   select automatisch terug naar de meest recente enkele editie zodra je naar zo'n type wisselt
+- **Alle fasen** (gebouwd, zie specs/grafieken-alle-fasen-plan.md): vijfde fase-optie bij het
+  Lijndiagram, alleen zichtbaar/bruikbaar bij dat type — toont fase A/B/C als drie losse lijnen
+  (vaste kleur + "Fase A/B/C"-label) voor precies één geselecteerd item, om fase-onbalans van dat
+  item te spotten. Geldt bewust voor één item tegelijk (N items zou N×3 lijnen geven): zodra "Alle
+  fasen" actief is, gedraagt de checklist zich tijdelijk als een enkele-keuze-lijst (een nieuw
+  vinkje zet het vorige automatisch uit); terugschakelen naar A/B/C/Totaal maakt 'm gewoon weer
+  multi-select, de selectie zelf blijft intact. Werkt voor alle vier metrics en ook in live-modus
+  (dezelfde rolling buffer, geen aparte databron). Server-side afgedwongen dat er precies 1 id
+  gequeried wordt bij fase "alle" (400 anders), niet alleen de checklist client-side beperkt
 - **Live-modus** (gebouwd): vierde periode-optie "Live" naast hele evenement/laatste 24u/aangepast
   — een schuifvenster (5/15/30/60 min) dat continu doorschuift, geen vast begin/eind. Hergebruikt
   dezelfde MQTT-websocketverbinding als het Live-tabblad (geen nieuwe databron); een client-side

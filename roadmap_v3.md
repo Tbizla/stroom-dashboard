@@ -565,6 +565,34 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       badge bleef exact dezelfde tekst tonen over meerdere checks, verviel correct tijdens een
       aanhoudende storing, en een nieuwe sprong ná verval werd weer als verse episode gedetecteerd.
       Zie [specs/vervolgticket-commit-cdcef83.md](specs/vervolgticket-commit-cdcef83.md).
+- [x] **Grafieken-tabblad: "Alle fasen tegelijk" bij het lijndiagram.** Afgerond — gebouwd conform
+      [specs/grafieken-alle-fasen-plan.md](specs/grafieken-alle-fasen-plan.md). Mikes verzoek: fase-
+      onbalans van één kast/generator spotten (bijv. één fase structureel zwaarder belast) zonder
+      drie keer achter elkaar van fase te moeten wisselen. Nieuwe 5e fase-chip **"Alle fasen"**, per
+      afgestemde scope-keuze alleen voor **één geselecteerd item tegelijk** (N items zou N×3 lijnen
+      geven — onleesbaar en niet het doel): zodra actief gedraagt de checklist zich tijdelijk als
+      een enkele-keuze-lijst (nieuw vinkje zet het vorige automatisch uit, stonden er al meerdere
+      aan dan blijft alleen het eerste over), terugschakelen naar A/B/C/Totaal maakt 'm gewoon weer
+      multi-select zonder de selectie te wissen. Alleen zichtbaar/bruikbaar bij het Lijndiagram
+      (zelfde type-afhankelijke beschikbaarheid als de bestaande "Alle edities"-optie, met dezelfde
+      val-terug-naar-Totaal zodra je wegschakelt van Lijn). **Backend**: nieuwe
+      `grafiekenCsvNaarSeriesPerVeld()` naast de bestaande combinerende `grafiekenCsvNaarSeries()` —
+      geeft de drie rauwe per-fase-velden als 3 aparte series terug i.p.v. te middelen/sommeren;
+      `/api/grafieken/tijdreeks` dwingt server-side af dat er bij fase "alle" precies 1 id gequeried
+      wordt (400 anders, niet alleen de checklist client-side beperkt, zelfde principe als de
+      rolverdeling-rechten). **Frontend**: vaste kleur (de eerste 3 PALET-kleuren, dus visueel niets
+      nieuws) + "Fase A/B/C"-label per lijn i.p.v. de normale kast/generator-kleur-en-naam-opzoeking.
+      **Live-modus zit ook in scope** (tussentijds toegevoegd op Mikes verzoek): de al aanwezige
+      client-side rolling buffer (per kast de rauwe MQTT-data, geen wijziging nodig) levert 3 series
+      op via 3x `liveVeldWaarde()`-aanroepen (fase a/b/c) op dezelfde buffer van het ene
+      geselecteerde item — dezelfde responsvorm als de historische tak, dus `tekenChart()` heeft
+      maar één fase="alle"-branch nodig voor beide. Geverifieerd met Playwright tegen de ingebouwde
+      testtopologie + simulator: 2 items selecteren en dan Alle fasen activeren laat er terecht nog
+      maar 1 over; een chart met 3 herkenbare Fase A/B/C-lijnen zowel historisch als live (na eerst
+      de MQTT-verbinding via Live-modus geactiveerd te hebben — de buffer vult zich pas dan);
+      wegschakelen naar Staaf terwijl Alle fasen actief was valt terug op Totaal en verbergt de
+      chip; direct een `fase=alle`-query met 2+ ids via de API geeft 400, met een ongeldige fase-
+      waarde ook. Zie event_dashboard.md, Grafieken-tabblad.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

@@ -75,7 +75,13 @@ function renderChecklist(){
     cb.type = 'checkbox';
     cb.checked = selectedIds.has(n.id);
     cb.onchange = ()=>{
-      if(cb.checked) selectedIds.add(n.id); else selectedIds.delete(n.id);
+      // grafieken-alle-fasen-plan.md: bij fase "alle" gedraagt de checklist zich als een
+      // enkele-keuze-lijst (radio-gedrag op de bestaande checkbox-markup) — een fasebalans-lijn
+      // heeft maar aan precies 1 item iets
+      if(cb.checked){
+        if(fase==='alle') selectedIds.clear();
+        selectedIds.add(n.id);
+      } else selectedIds.delete(n.id);
       renderChecklist(); verversGrafiek();
     };
     const swatch = document.createElement('span');
@@ -176,6 +182,7 @@ function ververAlleAfgeleideUiState(){
   ververAggregatieWeergave();
   ververLiveUi();
   ververEditieBeschikbaarheid();
+  ververFaseBeschikbaarheid();
 }
 
 document.querySelectorAll('#grafTypeRow button:not([disabled])').forEach(btn=>{
@@ -292,8 +299,15 @@ document.querySelectorAll('#grafMetricRow .chip').forEach(chip=>{
 });
 document.querySelectorAll('#grafFaseRow .chip').forEach(chip=>{
   chip.onclick = ()=>{
+    if(chip.disabled) return;
     fase = chip.dataset.fase;
     document.querySelectorAll('#grafFaseRow .chip').forEach(c=>c.classList.toggle('active', c===chip));
+    // grafieken-alle-fasen-plan.md: stond er bij het activeren van "Alle fasen" al meer dan één
+    // item aangevinkt, blijft alleen het eerste (bestaande volgorde in de Set) aan
+    if(fase==='alle' && selectedIds.size>1){
+      selectedIds = new Set([Array.from(selectedIds)[0]]);
+      renderChecklist();
+    }
     verversGrafiek();
   };
 });
@@ -366,6 +380,22 @@ function ververEditieBeschikbaarheid(){
   }
 }
 
+// grafieken-alle-fasen-plan.md: "Alle fasen" (3 lijnen A/B/C voor 1 item) is alleen bij het
+// lijndiagram zinvol — zelfde type-afhankelijke beschikbaarheid als ververEditieBeschikbaarheid()
+// hierboven, met dezelfde val-terug-naar-vorige-waarde ("Totaal") zodra je wegschakelt van Lijn
+// terwijl "Alle fasen" actief stond.
+function ververFaseBeschikbaarheid(){
+  const alleChip = document.querySelector('#grafFaseRow [data-fase="alle"]');
+  if(!alleChip) return;
+  const toegestaan = grafiekType==='lijn';
+  alleChip.disabled = !toegestaan;
+  alleChip.hidden = !toegestaan;
+  if(!toegestaan && fase==='alle'){
+    fase = 'totaal';
+    document.querySelectorAll('#grafFaseRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.fase===fase));
+  }
+}
+
 // ---------- statusweergave (leeg/fout/chart) ----------
 function toonGrafState(status, foutmelding){
   // Heatmap/Sankey tekenen op een eigen CSS-grid-div/SVG, geen Chart.js-canvas (spec §5: "puur
@@ -382,13 +412,19 @@ function toonGrafState(status, foutmelding){
   if(status==='fout') document.getElementById('grafFoutInfo').textContent = foutmelding;
 }
 
+// grafieken-alle-fasen-plan.md: bij fase "alle" is s.id de faseletter (a/b/c, zie
+// grafiekenCsvNaarSeriesPerVeld() op de server resp. de live-tak in verversLiveWeergave()) i.p.v.
+// een kast/generator-id — vaste kleur (dezelfde als de eerste 3 PALET-kleuren, dus visueel niets
+// nieuws) + "Fase X"-label i.p.v. de normale kleurVoorId()/nodeById()-opzoeking.
+const FASE_KLEUR = { a: PALET[0], b: PALET[1], c: PALET[2] };
 function tekenChart(series){
   const eenheid = EENHEID_PER_METRIC[metric];
+  const isFaseSerie = fase==='alle';
   const datasets = series.map(s=>({
-    label: (nodeById(s.id) || {naam: s.id}).naam,
+    label: isFaseSerie ? t('grafieken.fase'+s.id.toUpperCase()) : (nodeById(s.id) || {naam: s.id}).naam,
     data: s.punten.map(([tijd, waarde])=>({x: tijd, y: waarde})),
-    borderColor: kleurVoorId(s.id),
-    backgroundColor: kleurVoorId(s.id),
+    borderColor: isFaseSerie ? FASE_KLEUR[s.id] : kleurVoorId(s.id),
+    backgroundColor: isFaseSerie ? FASE_KLEUR[s.id] : kleurVoorId(s.id),
     pointRadius: 0,
     borderWidth: 2,
     tension: 0.15,
@@ -853,11 +889,25 @@ function verversLiveWeergave(){
     return;
   }
   const grens = Date.now() - liveVensterMin*60000;
-  const series = Array.from(selectedIds).map(id=>({
-    id,
-    punten: (liveBuffer.get(id)||[]).filter(e=>e.ts>=grens)
-      .map(e=>[e.ts, liveVeldWaarde(e.data, metric, fase)]).filter(([,w])=>w!=null),
-  }));
+  // grafieken-alle-fasen-plan.md: bij fase "alle" is er (afgedwongen door het checklist-enkele-
+  // keuze-gedrag hierboven) precies 1 item geselecteerd — 3 series bouwen (één per fase) over
+  // dezelfde, al aanwezige buffer van dát ene item, i.p.v. over selectedIds te mappen. Zelfde
+  // responsvorm ({id:'a'|'b'|'c', punten}) als de historische fase=alle-tak van
+  // /api/grafieken/tijdreeks, dus tekenChart() heeft maar één fase==='alle'-branch nodig.
+  const series = fase==='alle'
+    ? (()=>{
+        const [id] = selectedIds;
+        return ['a','b','c'].map(f=>({
+          id: f,
+          punten: (liveBuffer.get(id)||[]).filter(e=>e.ts>=grens)
+            .map(e=>[e.ts, liveVeldWaarde(e.data, metric, f)]).filter(([,w])=>w!=null),
+        }));
+      })()
+    : Array.from(selectedIds).map(id=>({
+        id,
+        punten: (liveBuffer.get(id)||[]).filter(e=>e.ts>=grens)
+          .map(e=>[e.ts, liveVeldWaarde(e.data, metric, fase)]).filter(([,w])=>w!=null),
+      }));
   if(!series.some(s=>s.punten.length)){ toonGrafState('leeg-data'); return; }
   toonGrafState('chart'); tekenChart(series);
 }
