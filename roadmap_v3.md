@@ -632,6 +632,13 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       de chip verdwijnen en fase terugvallen op Totaal; `/api/grafieken/aggregaat` met `fase=alle`
       en 2+ ids geeft gewoon 200 (bevestigd geen 1-id-afdwinging). Zie event_dashboard.md,
       Grafieken-tabblad.
+- [x] **Vervolgticket: Lijndiagram dunnere lijnen.** Afgerond — gebouwd conform
+      [specs/vervolgticket-lijndiagram-lijndikte.md](specs/vervolgticket-lijndiagram-lijndikte.md),
+      Mikes keuze (Optie B) op een eerder voorgelegde mockup. `borderWidth: 2` → `1` in
+      `tekenChart()` (het lijndiagram, gedeeld door de normale meerdere-items-weergave en de "Alle
+      fasen"-weergave); `tension: 0.15` ongewijzigd. Geverifieerd dat `tekenStaafChart()`s
+      balkrand en de taart-slice-rand (elders `borderWidth: 2`, ongerelateerd) niet meeveranderd
+      zijn. Visueel gecontroleerd in beide lijndiagram-weergaven.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

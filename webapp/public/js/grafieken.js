@@ -438,7 +438,7 @@ function tekenChart(series){
     borderColor: isFaseSerie ? FASE_KLEUR[s.id] : kleurVoorId(s.id),
     backgroundColor: isFaseSerie ? FASE_KLEUR[s.id] : kleurVoorId(s.id),
     pointRadius: 0,
-    borderWidth: 2,
+    borderWidth: 1,
     tension: 0.15,
   }));
   if(chart) chart.destroy();
