@@ -172,15 +172,6 @@
       <h2 data-i18n="beheer.accounts">Accounts</h2>
       <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="beheer.accountsSubtitel">Losse accounts per persoon — geen gedeeld wachtwoord. Alleen een ingelogde editor kan hier een account aanmaken; geen publieke registratie.</div>
       <table class="btable" id="accountsTable"></table>
-      <div class="addform">
-        <input id="newAccountNaam" data-i18n-placeholder="beheer.accountNaamPlaceholder" placeholder="Naam, bijv. Sanne">
-        <input id="newAccountEmail" data-i18n-placeholder="beheer.accountEmailPlaceholder" placeholder="E-mailadres">
-        <select id="newAccountRol">
-          <option value="editor" selected data-i18n="beheer.rolEditor">Editor</option>
-          <option value="viewer" data-i18n="beheer.rolViewer">Viewer</option>
-        </select>
-        <button id="addAccountBtn" data-i18n="beheer.accountAanmaken">+ Account aanmaken</button>
-      </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px" data-i18n="beheer.accountHint">Geen e-mail wordt verstuurd — na aanmaken (of resetten) verschijnt het wachtwoord eenmalig hieronder, deel het zelf met de persoon.</div>
       <div id="accountWachtwoordCard" class="genbox" style="display:none">
         <div class="lbl" id="accountWachtwoordLbl"></div>
@@ -203,12 +194,6 @@
         </div>
       </div>
       <table class="btable" id="genTable"></table>
-      <div class="addform">
-        <input id="newGenNaam" data-i18n-placeholder="beheer.newGenNaamPlaceholder" placeholder="Naam, bijv. Generator zuid">
-        <input id="newGenKva" type="number" data-i18n-placeholder="beheer.kvaPlaceholder" placeholder="kVA" style="width:80px">
-        <input id="newGenRating" type="number" data-i18n-placeholder="beheer.ratingOptioneelPlaceholder" placeholder="Rating (A), optioneel" style="width:130px">
-        <button id="addGenBtn" data-i18n="beheer.addGenerator">+ Generator</button>
-      </div>
       <div id="genGroepeerActiebalk" class="genbox" style="display:none">
         <span id="genGroepeerAantal"></span>
         <button id="genGroepeerOpenDialoogBtn" data-i18n="beheer.samenvoegenTotGroep">Samenvoegen tot groep</button>
@@ -592,11 +577,6 @@
         <h2 style="margin-top:22px" data-i18n="locaties.beherenTitel">Locaties beheren</h2>
         <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="locaties.beherenSubtitel">Handmatige lijst — naam + URL per locatie-instance.</div>
         <table class="btable" id="locatiesTable"></table>
-        <div class="addform" id="locatieAddForm">
-          <input id="newLocatieNaam" data-i18n-placeholder="locaties.naamPlaceholder" placeholder="Naam, bijv. Kermis Voorjaarsplein" style="min-width:220px">
-          <input id="newLocatieUrl" data-i18n-placeholder="locaties.urlPlaceholder" placeholder="https://..." style="min-width:260px">
-          <button id="addLocatieBtn" data-i18n="locaties.toevoegen">+ Locatie</button>
-        </div>
       </div>
     </div>
 

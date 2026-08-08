@@ -47,7 +47,15 @@ async function renderLocatiesTabel(){
     locaties.map(l=>
       '<tr><td>'+esc(l.naam)+'</td><td style="font-family:var(--mono);color:var(--text2)">'+esc(l.url)+'</td>'+
       '<td>'+(magBewerken?'<button class="danger" data-verwijder="'+l.id+'">'+t('common.verwijderen')+'</button>':'')+'</td></tr>'
-    ).join('');
+    ).join('') +
+    (magBewerken ?
+      '<tr>'+
+      '<td><input id="newLocatieNaam" placeholder="'+t('locaties.naamPlaceholder')+'"></td>'+
+      '<td><input id="newLocatieUrl" placeholder="'+t('locaties.urlPlaceholder')+'"></td>'+
+      '<td><button id="addLocatieBtn">'+t('locaties.toevoegen')+'</button></td>'+
+      '</tr>'
+      : '');
+  if(magBewerken) document.getElementById('addLocatieBtn').onclick = handleAddLocatie;
   tabel.querySelectorAll('[data-verwijder]').forEach(btn=>{
     btn.onclick = async ()=>{
       if(!confirm(t('locaties.verwijderenConfirm'))) return;
@@ -68,7 +76,7 @@ async function ververLocaties(){
   }
 }
 
-document.getElementById('addLocatieBtn').onclick = async ()=>{
+async function handleAddLocatie(){
   const naamInput = document.getElementById('newLocatieNaam');
   const urlInput = document.getElementById('newLocatieUrl');
   const naam = naamInput.value.trim();
@@ -76,17 +84,14 @@ document.getElementById('addLocatieBtn').onclick = async ()=>{
   if(!naam || !url) return alert(t('locaties.alertVulVelden'));
   try{
     await apiCall('/api/locaties', 'POST', { naam, url });
-    naamInput.value = ''; urlInput.value = '';
     await ververLocaties();
   }catch(e){ alert(e.message); }
-};
+}
 
 // aangeroepen vanuit modes.js zodra de Locaties-subtab getoond wordt
 export async function toonLocaties(){
   // vervolgticket-rolverdeling-locaties-gap.md: puur cosmetisch, de echte gate is server-side
-  // (isEditorOnlyRoute() in server.js) — hier alleen het formulier weghalen zodat een viewer niet
-  // eens de knop ziet.
-  const form = document.getElementById('locatieAddForm');
-  if(form) form.style.display = state.rol === 'viewer' ? 'none' : '';
+  // (isEditorOnlyRoute() in server.js) — de add-rij wordt nu al conditioneel opgebouwd in
+  // renderLocatiesTabel() zelf (magBewerken), hier dus niets meer los te verbergen.
   await ververLocaties();
 }

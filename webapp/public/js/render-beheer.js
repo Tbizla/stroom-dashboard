@@ -670,7 +670,24 @@ export function renderBeheer(){
         '</table></td></tr>';
     }
   });
+  // vervolgticket-ui-schaling-4k-addform.md: het "+ Generator"-formulier stond als losse
+  // .addform-div ONDER de tabel (niet als echte <tr>), dus de inputs kregen nooit dezelfde
+  // kolombreedtes als het echte auto-table-layout — leek bij de oude, smallere .beheercol-max-width
+  // toevallig ongeveer uit te lijnen, maar viel zichtbaar uit elkaar zodra de tabel breder werd (zie
+  // de .beheercol flex:1-fix hierboven). Nu een echte trailing <tr> in dezelfde tabel, zelfde
+  // patroon als de al langer bestaande "+"-rij in de leden-subtabel verderop in dit bestand — lijnt
+  // daardoor per definitie uit, ongeacht schermbreedte. Kolommen zonder invoerveld bij het aanmaken
+  // (type/shelly-ip/#kasten/soort koppeling/leden) blijven leeg, net als bij die leden-rij.
+  gh += '<tr>'+(groepeerSelectieActief?'<td></td>':'')+
+    '<td><input id="newGenNaam" placeholder="'+t('beheer.newGenNaamPlaceholder')+'"></td>'+
+    '<td></td>'+
+    '<td><input id="newGenKva" type="number" placeholder="'+t('beheer.kvaPlaceholder')+'"></td>'+
+    '<td><input id="newGenRating" type="number" placeholder="'+t('beheer.ratingOptioneelPlaceholder')+'"></td>'+
+    '<td></td><td></td><td></td><td></td>'+
+    '<td><button id="addGenBtn">'+t('beheer.addGenerator')+'</button></td>'+
+    '</tr>';
   genTable.innerHTML = gh;
+  document.getElementById('addGenBtn').onclick = handleAddGenerator;
 
   genTable.querySelectorAll('[data-mqtt-copy]').forEach(el=>el.onclick = ()=> kopieerMqttPrefix(el.dataset.mqttCopy, el));
 
@@ -873,17 +890,19 @@ export function renderBeheer(){
   newGenSel.onchange = ()=> vulParentSelect(newParentSel, newGenSel.value, null, null);
 }
 
-document.getElementById('addGenBtn').onclick = async ()=>{
+// #addGenBtn zit nu ín de dynamisch opgebouwde tabel-HTML (zie de trailing <tr> hierboven in
+// renderBeheer()), dus wordt bij elke render vervangen — de handler kan hier niet meer eenmalig
+// op het element gebonden worden, renderBeheer() zet 'm elke keer opnieuw vast (zie onderaan die functie).
+async function handleAddGenerator(){
   const naam = document.getElementById('newGenNaam').value.trim();
   const kva = document.getElementById('newGenKva').value;
   const rating = document.getElementById('newGenRating').value;
   if(!naam || !kva) return alert(t('beheer.alertVulNaamKva'));
   try{
     await apiCall('/api/generators', 'POST', {naam, vermogen_kva: kva, rating_a: rating || undefined});
-    document.getElementById('newGenNaam').value=''; document.getElementById('newGenKva').value=''; document.getElementById('newGenRating').value='';
     await loadTopology();
   }catch(e){ alert(e.message); }
-};
+}
 
 document.getElementById('addKastBtn').onclick = async ()=>{
   const naam = document.getElementById('newKastNaam').value.trim();

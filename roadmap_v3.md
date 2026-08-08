@@ -744,6 +744,27 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       (de echte topologie was op het moment van testen leeg). Overige tabbladen (Instellingen,
       Kalibreren) steekproefsgewijs gecontroleerd op geen regressie. Zie event_dashboard.md, sectie
       "Vloeiende UI-schaling".
+- [x] **Vervolgticket: "+ nieuwe rij"-formulieren onder tabellen lijnden niet meer uit met de
+      kolomkoppen.** Afgerond — regressie die de `.beheercol{flex:1}`-fix hierboven zelf blootlegde,
+      gemeld met screenshot ("de input boxen staan niet meer onder de benamingen"). Grondoorzaak:
+      de "+ Generator"/"+ Account aanmaken"/"+ Locatie"-formulieren waren losse `<div class="addform">`
+      onder de `<table class="btable">`, geen echte tabelrij — hun `<input>`-breedtes hingen dus nooit
+      samen met de kolombreedtes die de browser voor de tabel zelf berekent. Dat de invoervelden
+      toch onder de koppen léken te staan was puur toeval: klopte alleen zolang de tabel toevallig
+      ongeveer even smal rendere als de van-nature-smalle addform-inputs — brak zichtbaar zodra de
+      tabel na de vorige fix daadwerkelijk breed ging renderen. Opgelost door deze drie formulieren
+      om te bouwen tot een echte laatste `<tr>` ín de tabel zelf (zelfde patroon als de al langer
+      bestaande "+"-rij van de leden-subtabel, die dit nooit als probleem had) — lijnt daardoor per
+      definitie uit, ongeacht schermbreedte. Bijkomende fix onderweg: de nieuwe Generatoren-rij
+      kreeg aanvankelijk één `<td>` te weinig (8 i.p.v. 9 kolommen), waardoor alles een kolom
+      opschoof — verholpen door de ontbrekende lege LEDEN-kolom toe te voegen. Statische
+      `<div class="addform">`-blokken + hun losse `onclick`-registratie bij module-load vervangen
+      door in de tabel-HTML meegebouwde velden met een herbruikbare handler-functie die na elke
+      render opnieuw aan de (opnieuw aangemaakte) knop gekoppeld wordt. Geverifieerd met Playwright
+      op 3840px én 1440px: kolomkop- en invoerveld-posities liggen nu op enkele pixels na (padding)
+      exact onder elkaar bij alle drie tabellen, en de volledige aanmaak-/verwijder-flow werkt nog
+      end-to-end (tijdelijke `TMP-`-generator/-locatie/-account aangemaakt, geverifieerd, weer
+      verwijderd).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

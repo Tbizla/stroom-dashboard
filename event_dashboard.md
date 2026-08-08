@@ -70,6 +70,13 @@ zetten zonder code aan te passen.
   gefixt (`flex:1;min-width:0`), zodat vooral de kasten-/generatorentabel (tabulaire data, geen
   lopende tekst) de volledige beschikbare breedte gebruikt i.p.v. een smalle kolom naast een lege
   rand op een breed scherm
+- **"+ nieuwe rij"-formulieren zijn nu echte tabelrijen**: de "+ Generator"/"+ Account aanmaken"/
+  "+ Locatie"-formulieren (Beheer → Topologie/Accounts, Rapportages → Locaties) stonden als losse
+  `<div>` onder de tabel en léken toevallig uit te lijnen met de kolomkoppen — brak zichtbaar zodra
+  de tabel na de breedte-fix hierboven echt breed ging renderen, want de inputs hadden nooit
+  daadwerkelijk dezelfde kolombreedte als de tabel erboven. Nu een laatste `<tr>` ín de tabel zelf
+  (zelfde patroon als de al langer bestaande "+"-rij van de leden-subtabel), lijnt daardoor
+  gegarandeerd uit ongeacht schermbreedte
 - **Kritieke uitzondering**: het topologie-canvas (`.blankcanvas`, 4800×3000px) en alles binnen het
   percentage-gebaseerde pin-plaatsingssysteem (pins, pin-labels, lijnen/knikpunten — Kalibreren/
   Schema/Live) blijft bewust buiten dit werk — dat is een vaste logische coördinatenruimte met een

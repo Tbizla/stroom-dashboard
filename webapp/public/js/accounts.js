@@ -41,7 +41,18 @@ async function renderAccountsTabel(){
       '<td class="dim">'+fmtLaatstIngelogd(a.laatst_ingelogd)+'</td>'+
       '<td><button data-reset="'+a.id+'">'+t('beheer.accountWachtwoordResetten')+'</button> <button class="danger" data-verwijder="'+a.id+'">'+t('common.verwijderen')+'</button></td>'+
       '</tr>'
-    ).join('');
+    ).join('') +
+    '<tr>'+
+    '<td><input id="newAccountNaam" placeholder="'+t('beheer.accountNaamPlaceholder')+'"></td>'+
+    '<td><input id="newAccountEmail" placeholder="'+t('beheer.accountEmailPlaceholder')+'"></td>'+
+    '<td><select id="newAccountRol">'+
+      '<option value="editor" selected>'+t('beheer.rolEditor')+'</option>'+
+      '<option value="viewer">'+t('beheer.rolViewer')+'</option>'+
+    '</select></td>'+
+    '<td></td>'+
+    '<td><button id="addAccountBtn">'+t('beheer.accountAanmaken')+'</button></td>'+
+    '</tr>';
+  document.getElementById('addAccountBtn').onclick = handleAddAccount;
   tabel.querySelectorAll('[data-rol]').forEach(sel=>{
     sel.onchange = async ()=>{
       try{ await apiCall('/api/accounts/'+sel.dataset.rol, 'PUT', { rol: sel.value }); }
@@ -65,7 +76,7 @@ async function renderAccountsTabel(){
   });
 }
 
-document.getElementById('addAccountBtn').onclick = async ()=>{
+async function handleAddAccount(){
   const naamInput = document.getElementById('newAccountNaam');
   const emailInput = document.getElementById('newAccountEmail');
   const rolSelect = document.getElementById('newAccountRol');
@@ -73,11 +84,10 @@ document.getElementById('addAccountBtn').onclick = async ()=>{
   if(!naam) return alert(t('beheer.alertVulAccountNaam'));
   try{
     const { wachtwoord } = await apiCall('/api/accounts', 'POST', { naam, email: emailInput.value.trim(), rol: rolSelect.value });
-    naamInput.value = ''; emailInput.value = '';
     toonWachtwoord(naam, wachtwoord);
     await renderAccountsTabel();
   }catch(e){ alert(e.message); }
-};
+}
 
 document.getElementById('accountWachtwoordKopieerBtn').onclick = async ()=>{
   try{ await navigator.clipboard.writeText(document.getElementById('accountWachtwoordWaarde').textContent); }
