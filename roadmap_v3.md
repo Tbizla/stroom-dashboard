@@ -593,6 +593,45 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       wegschakelen naar Staaf terwijl Alle fasen actief was valt terug op Totaal en verbergt de
       chip; direct een `fase=alle`-query met 2+ ids via de API geeft 400, met een ongeldige fase-
       waarde ook. Zie event_dashboard.md, Grafieken-tabblad.
+- [x] **Favicon.** Afgerond — gebouwd conform [specs/favicon-plan.md](specs/favicon-plan.md):
+      `webapp/public/favicon.svg`, letterlijk hetzelfde ⚡-teken als het generator-icoon in de
+      zijbalk (`typeIcon()`), op een afgeronde vierkante `--panel`-achtergrond. Eén schaalbare SVG,
+      geen aparte 16/32/180px-PNG-varianten. `<link rel="icon">` toegevoegd aan `index.html`'s
+      `<head>`. Geverifieerd: `favicon.svg` wordt met `200 image/svg+xml` geserveerd.
+- [x] **Grafieken-tabblad: "Alle fasen" ook bij Staaf en Taart.** Afgerond — gebouwd conform
+      [specs/grafieken-alle-fasen-staaf-taart-plan.md](specs/grafieken-alle-fasen-staaf-taart-plan.md),
+      vervolg op de hierboven al gebouwde Lijn-variant. Scope-keuze met Mike afgestemd: alleen Staaf
+      en Taart (Heatmap/Sankey hebben geen natuurlijke "3 fasen tegelijk"-vorm, blijven ongewijzigd).
+      **Staaf**: gegroepeerde balken per fase (3 per item), meerdere items blijven toegestaan —
+      i.t.t. Lijn is dat hier juist het punt (fasebalans per kast/generator náást elkaar
+      vergelijken). Vaste fasekleur + nieuwe legenda i.p.v. de groen/amber/rood-statuskleuring,
+      sortering op de som van de (tot 3) fasewaarden, ontbrekende fase toont gewoon minder balken
+      (geen kunstmatige 0). **Taart**: omgeschakeld naar "aandeel van fase A/B/C binnen één item"
+      (i.p.v. aandeel per item) — hier wél dezelfde enkele-keuze-checklist-beperking als Lijn.
+      **Backend** (`/api/grafieken/aggregaat`): fase-validatie uitgebreid met `'alle'`, bewust
+      **geen** 1-id-afdwinging (i.t.t. `/api/grafieken/tijdreeks` — Staaf gebruikt hier legitiem
+      meerdere ids, de Taart-beperking is puur een frontend-renderkeuze op dezelfde ruwe data, de
+      server kent het onderscheid Staaf/Taart niet). Nieuwe
+      `grafiekenAggregaatCsvNaarWaardenPerVeld()` naast de bestaande middelende variant; het
+      periode-totaal-pad (energie) doet bij `fase==='alle'` per id 3 losse
+      `berekenEnergieKwh()`-aanroepen (a/b/c) i.p.v. 1; statuswaarde-verrijking wordt overgeslagen
+      (niet zinvol bij al-rauwe single-fase-waarden). **Frontend**: `ververFaseBeschikbaarheid()`
+      uitgebreid naar Lijn/Staaf/Taart; checklist-enkele-keuze-conditie aangescherpt tot "niet bij
+      Staaf" (zowel in de checkbox-handler als de fase-chip-klik-handler); nieuwe branches in
+      `tekenStaafChart()`/`tekenTaartChart()`. **Live-modus** (niet expliciet in de spec benoemd,
+      maar wel nodig zodra "Alle fasen" bij Staaf/Taart ook tijdens Live bereikbaar wordt — anders
+      een crash/stille misrender bij die combinatie): `verversLiveWeergave()`'s taart/staaf-takken
+      kregen een eigen `fase==='alle'`-pad, `liveStaafWaarde()` accepteert nu een optionele
+      expliciete faseletter zodat 'ie per fase herhaald kan worden. Code-review tijdens het bouwen
+      vond en fixte nog een gat: een type-wissel zelf (bijv. Staaf-met-3-items → Taart terwijl Alle
+      fasen al actief stond) liep niet door de enkele-keuze-afdwinging heen — nu ook gecheckt in
+      `ververFaseBeschikbaarheid()` zelf, bij elke `ververAlleAfgeleideUiState()`-aanroep.
+      Geverifieerd met Playwright tegen de ingebouwde testtopologie + simulator: Staaf+3
+      items+Alle-fasen blijft multi-select (historisch én live, met een 2e/3e balkengroep correct
+      gesorteerd op som); wisselen naar Taart trimt terug naar 1 item; wisselen naar Heatmap laat
+      de chip verdwijnen en fase terugvallen op Totaal; `/api/grafieken/aggregaat` met `fase=alle`
+      en 2+ ids geeft gewoon 200 (bevestigd geen 1-id-afdwinging). Zie event_dashboard.md,
+      Grafieken-tabblad.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

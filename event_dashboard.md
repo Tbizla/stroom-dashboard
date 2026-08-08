@@ -43,6 +43,8 @@ zetten zonder code aan te passen.
   in tabelkoppen/dropdowns), "Beheer" → "Manage", "Kalibreren" → "Calibrate", "Schema" → "Diagram"
 - Vertalingen zitten in platte dot-key JSON-bestanden (`webapp/i18n/nl.json`/`en.json`), gedeeld
   tussen de webapp-UI (client-fetch) en het PDF-rapport (server-`require`) — één bron van waarheid
+- **Favicon**: zelfde ⚡-icoon als de generator-marker in de zijbalk (`webapp/public/favicon.svg`,
+  schaalbare SVG, geen aparte 16/32/180px-PNG-varianten nodig)
 
 **Login & toegangsbeheer** — zie specs/toegang-van-buitenaf-diagnose.md
 - De hele app (elke pagina en elk `/api/*`-endpoint, inclusief de QR-code-deeplinks) zit achter een
@@ -366,15 +368,28 @@ zetten zonder code aan te passen.
 - **Editie(s)**: "Alle edities" is alleen bij het Lijndiagram bruikbaar (het enige type waar
   "meerdere lijnen, één per editie" ondubbelzinnig is) — bij Staaf/Taart/Heatmap/Sankey valt de
   select automatisch terug naar de meest recente enkele editie zodra je naar zo'n type wisselt
-- **Alle fasen** (gebouwd, zie specs/grafieken-alle-fasen-plan.md): vijfde fase-optie bij het
-  Lijndiagram, alleen zichtbaar/bruikbaar bij dat type — toont fase A/B/C als drie losse lijnen
-  (vaste kleur + "Fase A/B/C"-label) voor precies één geselecteerd item, om fase-onbalans van dat
-  item te spotten. Geldt bewust voor één item tegelijk (N items zou N×3 lijnen geven): zodra "Alle
-  fasen" actief is, gedraagt de checklist zich tijdelijk als een enkele-keuze-lijst (een nieuw
-  vinkje zet het vorige automatisch uit); terugschakelen naar A/B/C/Totaal maakt 'm gewoon weer
-  multi-select, de selectie zelf blijft intact. Werkt voor alle vier metrics en ook in live-modus
-  (dezelfde rolling buffer, geen aparte databron). Server-side afgedwongen dat er precies 1 id
-  gequeried wordt bij fase "alle" (400 anders), niet alleen de checklist client-side beperkt
+- **Alle fasen** (gebouwd, zie specs/grafieken-alle-fasen-plan.md en
+  specs/grafieken-alle-fasen-staaf-taart-plan.md): vijfde fase-optie, zichtbaar/bruikbaar bij
+  Lijn/Staaf/Taart (niet bij Heatmap/Sankey — die hebben geen natuurlijke "3 fasen tegelijk"-vorm),
+  om fase-onbalans te spotten (bijv. één fase structureel zwaarder belast) zonder handmatig drie
+  keer van fase te wisselen. Gedraagt zich per grafiektype anders:
+  - **Lijn**: drie losse lijnen (vaste kleur + "Fase A/B/C"-label) voor precies één geselecteerd
+    item — bij meerdere items zouden dat N×3 overlappende lijnen worden, dus de checklist gedraagt
+    zich tijdelijk als enkele-keuze-lijst (nieuw vinkje zet het vorige automatisch uit) zolang
+    "Alle fasen" actief is.
+  - **Staaf**: gegroepeerde balken (3 per item, A/B/C naast elkaar), meerdere items blijven
+    toegestaan — dat is juist het punt van fasebalans per kast/generator vergelijken. Vaste
+    fasekleur + legenda i.p.v. de normale groen/amber/rood-statuskleuring; sortering op de som van
+    de (tot 3) fasewaarden. Een item met een ontbrekende fase (bijv. eenfase-aansluiting) toont
+    gewoon 1-2 balken i.p.v. 3, geen kunstmatige 0.
+  - **Taart**: aandeel van fase A/B/C **binnen** het ene geselecteerde item (i.p.v. aandeel per
+    item) — zelfde enkele-keuze-checklist-gedrag als Lijn.
+  - Terugschakelen naar A/B/C/Totaal maakt de checklist weer gewoon (multi-)select, de selectie
+    zelf blijft intact. Werkt voor alle vier metrics en ook in live-modus (dezelfde rolling buffer/
+    MQTT-verbinding, geen aparte databron). Server-side afgedwongen dat `/api/grafieken/tijdreeks`
+    (Lijn) precies 1 id krijgt bij fase "alle" (400 anders); `/api/grafieken/aggregaat` (Staaf/
+    Taart) staat hier wél meerdere ids toe — de enkele-keuze-beperking voor Taart is daar puur een
+    frontend-renderkeuze, de server kent het onderscheid Staaf/Taart niet
 - **Live-modus** (gebouwd): vierde periode-optie "Live" naast hele evenement/laatste 24u/aangepast
   — een schuifvenster (5/15/30/60 min) dat continu doorschuift, geen vast begin/eind. Hergebruikt
   dezelfde MQTT-websocketverbinding als het Live-tabblad (geen nieuwe databron); een client-side

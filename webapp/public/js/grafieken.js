@@ -77,9 +77,10 @@ function renderChecklist(){
     cb.onchange = ()=>{
       // grafieken-alle-fasen-plan.md: bij fase "alle" gedraagt de checklist zich als een
       // enkele-keuze-lijst (radio-gedrag op de bestaande checkbox-markup) — een fasebalans-lijn
-      // heeft maar aan precies 1 item iets
+      // heeft maar aan precies 1 item iets. grafieken-alle-fasen-staaf-taart-plan.md: geldt niet
+      // voor Staaf — een gegroepeerd staafdiagram werkt juist prima met meerdere items tegelijk.
       if(cb.checked){
-        if(fase==='alle') selectedIds.clear();
+        if(fase==='alle' && grafiekType!=='staaf') selectedIds.clear();
         selectedIds.add(n.id);
       } else selectedIds.delete(n.id);
       renderChecklist(); verversGrafiek();
@@ -303,8 +304,9 @@ document.querySelectorAll('#grafFaseRow .chip').forEach(chip=>{
     fase = chip.dataset.fase;
     document.querySelectorAll('#grafFaseRow .chip').forEach(c=>c.classList.toggle('active', c===chip));
     // grafieken-alle-fasen-plan.md: stond er bij het activeren van "Alle fasen" al meer dan één
-    // item aangevinkt, blijft alleen het eerste (bestaande volgorde in de Set) aan
-    if(fase==='alle' && selectedIds.size>1){
+    // item aangevinkt, blijft alleen het eerste (bestaande volgorde in de Set) aan — behalve bij
+    // Staaf (grafieken-alle-fasen-staaf-taart-plan.md), dat laat meerdere items juist toe
+    if(fase==='alle' && grafiekType!=='staaf' && selectedIds.size>1){
       selectedIds = new Set([Array.from(selectedIds)[0]]);
       renderChecklist();
     }
@@ -387,12 +389,22 @@ function ververEditieBeschikbaarheid(){
 function ververFaseBeschikbaarheid(){
   const alleChip = document.querySelector('#grafFaseRow [data-fase="alle"]');
   if(!alleChip) return;
-  const toegestaan = grafiekType==='lijn';
+  // grafieken-alle-fasen-staaf-taart-plan.md: ook bij Staaf/Taart bruikbaar (Heatmap/Sankey hebben
+  // geen natuurlijke "3 fasen tegelijk"-vorm en blijven buiten scope)
+  const toegestaan = ['lijn','staaf','taart'].includes(grafiekType);
   alleChip.disabled = !toegestaan;
   alleChip.hidden = !toegestaan;
   if(!toegestaan && fase==='alle'){
     fase = 'totaal';
     document.querySelectorAll('#grafFaseRow .chip').forEach(c=>c.classList.toggle('active', c.dataset.fase===fase));
+  }
+  // grafieken-alle-fasen-staaf-taart-plan.md: de enkele-keuze-beperking (Lijn/Taart, niet Staaf)
+  // wordt tot nu toe alleen afgedwongen ín de checkbox- en fase-chip-klik-handlers — een type-
+  // wissel zelf (bijv. Staaf-met-3-items -> Taart, terwijl Alle fasen al actief stond) liep daar
+  // níet doorheen, dus hier ook checken bij elke ververAlleAfgeleideUiState()-aanroep
+  if(toegestaan && fase==='alle' && grafiekType!=='staaf' && selectedIds.size>1){
+    selectedIds = new Set([Array.from(selectedIds)[0]]);
+    renderChecklist();
   }
 }
 
@@ -448,10 +460,44 @@ function tekenChart(series){
 }
 
 function tekenStaafChart(waarden){
+  const eenheid = EENHEID_PER_METRIC[metric];
+  if(fase==='alle'){
+    // grafieken-alle-fasen-staaf-taart-plan.md: gegroepeerde balken per fase, meerdere items
+    // toegestaan (i.t.t. Lijn/Taart) — per item 3 balken (A/B/C) i.p.v. 1, vaste fasekleur i.p.v.
+    // de groen/amber/rood-statuskleuring (fase-identiteit is hier de kernvraag, niet rating-status).
+    // Sortering op de som van de (tot 3) aanwezige fasewaarden per item.
+    const perItem = new Map();
+    waarden.forEach(w=>{
+      if(!perItem.has(w.id)) perItem.set(w.id, {});
+      perItem.get(w.id)[w.fase] = w.waarde;
+    });
+    const items = Array.from(perItem, ([id, fasen])=>({
+      id, fasen, som: ['a','b','c'].reduce((s,f)=>s+(fasen[f]||0), 0),
+    })).sort((a,b)=>b.som-a.som);
+    const labels = items.map(it=>(nodeById(it.id)||{naam:it.id}).naam);
+    const datasets = ['a','b','c'].map(f=>({
+      label: t('grafieken.fase'+f.toUpperCase()),
+      data: items.map(it=> it.fasen[f]!=null ? it.fasen[f] : null),
+      backgroundColor: FASE_KLEUR[f],
+    }));
+    if(chart) chart.destroy();
+    chart = new Chart(document.getElementById('grafCanvas'), {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        scales: {
+          x: { ticks: { color: KLEUR_TEXT2 }, grid: { display: false } },
+          y: { title: { display: true, text: eenheid, color: KLEUR_TEXT2 }, ticks: { color: KLEUR_TEXT2 }, grid: { color: KLEUR_BORDER } },
+        },
+        plugins: { legend: { display: true, labels: { color: KLEUR_TEXT2 } } },
+      },
+    });
+    return;
+  }
   // groen/amber/rood-conventie past hier alleen rechtstreeks bij metric "stroom" (dat ís letterlijk
   // "t.o.v. rating", zie spec §2) — bij de andere metrics (geen rating-drempel in Ampère
   // vergelijkbaar met W/V/kWh) valt dit terug op hetzelfde categorische palet als het lijndiagram
-  const eenheid = EENHEID_PER_METRIC[metric];
   const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
   const labels = gesorteerd.map(w=>(nodeById(w.id)||{naam:w.id}).naam);
   const kleuren = gesorteerd.map(w=>{
@@ -482,10 +528,14 @@ function tekenTaartChart(waarden){
   // vervolgticket-grafieken-tabblad.md §3: eenheid volgt de actieve metric (kWh bij Energie
   // historisch, W bij Vermogen zodra live-modus de metric omzet) i.p.v. een hardcoded "kWh"
   const eenheid = EENHEID_PER_METRIC[metric];
+  // grafieken-alle-fasen-staaf-taart-plan.md: bij fase "alle" is dit het aandeel van fase A/B/C
+  // BINNEN het ene geselecteerde item (i.p.v. aandeel per item) — zelfde isFaseSerie-patroon als
+  // tekenChart() al kreeg bij het lijndiagram, de rest van deze functie blijft ongewijzigd
+  const isFaseSerie = fase==='alle';
   const totaal = waarden.reduce((s,w)=>s+w.waarde, 0);
   const gesorteerd = waarden.slice().sort((a,b)=>b.waarde-a.waarde);
-  const labels = gesorteerd.map(w=>(nodeById(w.id)||{naam:w.id}).naam);
-  const kleuren = gesorteerd.map(w=>kleurVoorId(w.id));
+  const labels = gesorteerd.map(w=> isFaseSerie ? t('grafieken.fase'+w.fase.toUpperCase()) : (nodeById(w.id)||{naam:w.id}).naam);
+  const kleuren = gesorteerd.map(w=> isFaseSerie ? FASE_KLEUR[w.fase] : kleurVoorId(w.id));
   if(chart) chart.destroy();
   chart = new Chart(document.getElementById('grafCanvas'), {
     type: 'doughnut',
@@ -818,11 +868,14 @@ function zorgLiveTick(){
   setInterval(()=>{ if(liveMoetTekenen()) verversLiveWeergave(); }, 2000);
 }
 
-function liveStaafWaarde(id){
-  const huidig = liveVeldWaarde(liveData[id], metric, fase);
+// `f` optioneel: expliciete faseletter i.p.v. de module-brede `fase` — gebruikt door de Staaf+
+// Alle-fasen-live-tak hieronder om dezelfde piekvenster/gemvenster-aggregatie per fase te herhalen
+function liveStaafWaarde(id, f){
+  const doelFase = f || fase;
+  const huidig = liveVeldWaarde(liveData[id], metric, doelFase);
   if(aggregatie!=='piekvenster' && aggregatie!=='gemvenster') return huidig;
   const grens = Date.now() - liveVensterMin*60000;
-  const punten = (liveBuffer.get(id)||[]).filter(e=>e.ts>=grens).map(e=>liveVeldWaarde(e.data, metric, fase)).filter(v=>v!=null);
+  const punten = (liveBuffer.get(id)||[]).filter(e=>e.ts>=grens).map(e=>liveVeldWaarde(e.data, metric, doelFase)).filter(v=>v!=null);
   if(!punten.length) return huidig;
   return aggregatie==='piekvenster' ? Math.max(...punten) : punten.reduce((a,b)=>a+b,0)/punten.length;
 }
@@ -878,13 +931,23 @@ function verversLiveWeergave(){
     return;
   }
   if(grafiekType==='taart'){
-    const waarden = Array.from(selectedIds).map(id=>({ id, waarde: liveVeldWaarde(liveData[id], metric, fase) || 0 }));
+    // grafieken-alle-fasen-staaf-taart-plan.md: net als historisch is er bij fase "alle" precies 1
+    // item geselecteerd (afgedwongen door het checklist-enkele-keuze-gedrag) — 3 waarden bouwen
+    // (fase A/B/C van dat ene item) i.p.v. over selectedIds te mappen
+    const waarden = fase==='alle'
+      ? (()=>{ const [id] = selectedIds; return ['a','b','c'].map(f=>({ id, fase: f, waarde: liveVeldWaarde(liveData[id], metric, f) || 0 })); })()
+      : Array.from(selectedIds).map(id=>({ id, waarde: liveVeldWaarde(liveData[id], metric, fase) || 0 }));
     if(!waarden.some(w=>w.waarde>0)){ toonGrafState('leeg-data'); return; }
     toonGrafState('chart'); tekenTaartChart(waarden);
     return;
   }
   if(grafiekType==='staaf'){
-    const waarden = Array.from(selectedIds).map(id=>({ id, waarde: liveStaafWaarde(id) || 0, statusWaarde: liveStatusBasis(id) }));
+    // grafieken-alle-fasen-staaf-taart-plan.md: bij fase "alle" per geselecteerd item (meerdere
+    // toegestaan, i.t.t. Taart) tot 3 waarden (A/B/C) i.p.v. 1 — geen statusWaarde nodig, zie de
+    // server-side toelichting bij dezelfde uitzondering in /api/grafieken/aggregaat
+    const waarden = fase==='alle'
+      ? Array.from(selectedIds).flatMap(id=>['a','b','c'].map(f=>({ id, fase: f, waarde: liveStaafWaarde(id, f) })).filter(w=>w.waarde!=null))
+      : Array.from(selectedIds).map(id=>({ id, waarde: liveStaafWaarde(id) || 0, statusWaarde: liveStatusBasis(id) }));
     toonGrafState('chart'); tekenStaafChart(waarden);
     return;
   }

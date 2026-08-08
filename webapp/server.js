@@ -1910,13 +1910,29 @@ function grafiekenAggregaatCsvNaarWaarden(csv, velden) {
     return { id, waarde: waarden.reduce((a, b) => a + b, 0) / waarden.length };
   });
 }
+// grafieken-alle-fasen-staaf-taart-plan.md: variant van grafiekenAggregaatCsvNaarWaarden()
+// hierboven die de drie per-fase-velden NIET middelt maar als aparte {id, fase, waarde}-entries
+// teruggeeft (tot 3 per id) — velden op volgorde gezipt met ['a','b','c'], zelfde volgorde-aanname
+// als grafiekenCsvNaarSeriesPerVeld() bij het lijndiagram. Alleen entries voor velden die ook echt
+// aanwezig zijn in de veldMap (vanzelf geen kunstmatige 0 bij bijv. een eenfase-aansluiting).
+function grafiekenAggregaatCsvNaarWaardenPerVeld(csv, velden) {
+  const perKast = grafiekenAggregaatCsvGroeperen(csv, velden);
+  const faseLabels = ['a', 'b', 'c'];
+  const resultaten = [];
+  perKast.forEach((veldMap, id) => {
+    velden.forEach((veld, idx) => {
+      if (veldMap.has(veld)) resultaten.push({ id, fase: faseLabels[idx], waarde: veldMap.get(veld) });
+    });
+  });
+  return resultaten;
+}
 
 app.get('/api/grafieken/aggregaat', async (req, res) => {
   const { ids, metric, fase, van, tot, editie, aggregatie } = req.query;
   const idLijst = (ids || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (!idLijst.length) return res.status(400).json({ error: 'ids is verplicht (komma-gescheiden)' });
   if (!idLijst.every(veiligeTagWaarde)) return res.status(400).json({ error: 'ongeldig id in ids' });
-  if (!['a', 'b', 'c', 'totaal'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
+  if (!['a', 'b', 'c', 'totaal', 'alle'].includes(fase)) return res.status(400).json({ error: 'ongeldige fase' });
   if (!['piek', 'gemiddelde', 'totaal'].includes(aggregatie)) return res.status(400).json({ error: 'ongeldige aggregatie' });
   if (aggregatie === 'totaal' && metric !== 'energie') return res.status(400).json({ error: 'periode-totaal is alleen beschikbaar bij metric energie' });
   if (!van || !tot || isNaN(Date.parse(van)) || isNaN(Date.parse(tot))) {
@@ -1934,6 +1950,16 @@ app.get('/api/grafieken/aggregaat', async (req, res) => {
 
   try {
     if (aggregatie === 'totaal') {
+      if (fase === 'alle') {
+        // grafieken-alle-fasen-staaf-taart-plan.md: per id 3 aanroepen (a/b/c) i.p.v. 1 —
+        // grafiekenVermogenVeld() hoeft niet aangepast, accepteert al een willekeurige faseletter
+        const resultaten = (await Promise.all(idLijst.map((id) =>
+          Promise.all(['a', 'b', 'c'].map(async (f) => ({
+            id, fase: f, waarde: await berekenEnergieKwh(id, grafiekenVermogenVeld(f), range, editieFilter),
+          })))
+        ))).flat();
+        return res.json({ waarden: resultaten });
+      }
       const veld = grafiekenVermogenVeld(fase);
       const resultaten = await Promise.all(idLijst.map(async (id) => ({ id, waarde: await berekenEnergieKwh(id, veld, range, editieFilter) })));
       return res.json({ waarden: resultaten });
@@ -1954,12 +1980,17 @@ app.get('/api/grafieken/aggregaat', async (req, res) => {
       '  |> ' + fn + '()\n' +
       '  |> keep(columns: ["kast", "_field", "_value"])';
     const csv = await influxQueryPlatteCsv(flux);
-    const waarden = grafiekenAggregaatCsvNaarWaarden(csv, veldinfo.velden);
+    const waarden = fase === 'alle'
+      ? grafiekenAggregaatCsvNaarWaardenPerVeld(csv, veldinfo.velden)
+      : grafiekenAggregaatCsvNaarWaarden(csv, veldinfo.velden);
 
     // vervolgticket-grafieken-tabblad.md §1: bij fase totaal + metric stroom een aparte
     // statusWaarde meegeven (zwaarst-belaste fase i.p.v. de driefasen-som) — de weergegeven
-    // waarde zelf (total_current) blijft ongewijzigd, alleen de kleurbepaling gebruikt statusWaarde
-    const statusVelden = grafiekenStatusVeldenVoorMetric(metric, fase);
+    // waarde zelf (total_current) blijft ongewijzigd, alleen de kleurbepaling gebruikt statusWaarde.
+    // grafieken-alle-fasen-staaf-taart-plan.md: bij fase "alle" is elke waarde al een rauwe,
+    // direct met rating_a vergelijkbare single-fase-stroom — geen statusWaarde nodig (en de
+    // frontend schakelt status-kleuring in deze modus toch al bewust uit).
+    const statusVelden = fase === 'alle' ? null : grafiekenStatusVeldenVoorMetric(metric, fase);
     if (statusVelden) {
       const statusVeldFilter = statusVelden.map((v) => 'r._field == "' + v + '"').join(' or ');
       const statusFlux =
