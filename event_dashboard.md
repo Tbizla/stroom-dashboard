@@ -344,7 +344,10 @@ zetten zonder code aan te passen.
 - In-/uitzoomen (knoppen, scrollwiel, of het percentage tussen de +/- -knoppen rechtstreeks
   intypen — Enter of wegklikken past het toe, Escape zet 'm terug) en pannen (klikken en slepen),
   met een "fit to screen"-knop die alles in één keer in beeld brengt (incl. eventuele knikpunten)
-  — handig bij een grote topologie
+  — handig bij een grote topologie. Scrollwiel-zoomen op Kalibreren/Live gebeurt rond de
+  muispositie (het punt onder de cursor blijft op zijn plek staan), niet vanuit de linkerbovenhoek
+  van de plattegrond — de zoomknoppen zelf blijven ongewijzigd (geen zinvol cursorpunt bij een
+  klik op een vaste hoekknop)
 
 **Schema-tabblad**
 - Automatisch gegenereerd stroomschema (boomdiagram) van de volledige parent/child-keten, generator

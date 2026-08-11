@@ -902,7 +902,21 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       `.mapinner`, en `draggable=false` op elke tegel in `map-tiles.js`) voor browsers waar
       preventDefault alleen niet genoeg is. Achtergrond-pannen (`enablePanDrag()` in `zoom.js`)
       bewust niet aangeraakt — niet gemeld, en een blanco `preventDefault()` daar zou legitieme
-      tekstselectie in de kastpopup-databallon kunnen blokkeren. (ongefilterd, nog niet besproken/geprioriteerd met Mike)
+      tekstselectie in de kastpopup-databallon kunnen blokkeren.
+- [x] **Scrollwiel-zoomen rond de cursorpositie (tweak, geen spec nodig).** Afgerond — Mike wilde
+      dat het punt onder de muis het middelpunt van de zoom is, i.p.v. dat de plattegrond altijd
+      vanuit de linkerbovenhoek schaalt (`transform-origin:top left` op `#mapinner`, en
+      `setZoom()` liet `mapwrap.scrollLeft/Top` voorheen altijd met rust). `setZoom()`
+      (`webapp/public/js/zoom.js`) accepteert nu een optioneel `focal`-punt
+      (`{clientX, clientY}`): berekent het content-punt (onverschaalde px) dat vóór de zoomwijziging
+      onder de cursor ligt, past de schaal toe, en herstelt `mapwrap.scrollLeft/Top` zo dat
+      datzelfde content-punt na de wijziging weer onder de cursor staat. Alleen de scrollwiel-
+      handler geeft dit punt mee (de +/- -knoppen niet — die zitten vast in een hoek, een klik
+      daarop heeft geen zinvol "cursorpunt op de plattegrond" om naartoe te zoomen); Schema blijft
+      op zijn bestaande centreer-op-inhoud-gedrag (`centerContentInViewport()`), niet cursor-
+      gebaseerd. Zie event_dashboard.md, Plattegrond & kalibratie.
+
+## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
 > Deze sectie is momenteel leeg — alle eerder voorgestelde ideeën zijn inmiddels met Mike
 > geprioriteerd (zie de items hierboven en in [roadmap_v4.md](roadmap_v4.md)).

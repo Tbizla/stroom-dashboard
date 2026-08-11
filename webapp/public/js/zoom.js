@@ -23,7 +23,12 @@ export function applyZoom(){
   centerContentInViewport();
   renderKastPopup();
 }
-export function setZoom(z){
+// focal (optioneel): { clientX, clientY } — het schermpunt dat na de zoomwijziging op dezelfde
+// plek moet blijven staan (bijv. de muispositie bij scrollwiel-zoom), i.p.v. altijd vanuit de
+// linkerbovenhoek van de inhoud te schalen (transform-origin:top left op #mapinner). Alleen
+// zinvol voor kaart/live (Schema centreert al op zijn eigen inhoud, zie centerContentInViewport).
+export function setZoom(z, focal){
+  const vorigeZoom = currentZoom();
   z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
   zoomLevels[state.mode] = z;
   // elke zoomwijziging (ook handmatig via +/-/scrollwiel, niet alleen de fit-knop) legt vast voor welke
@@ -33,7 +38,20 @@ export function setZoom(z){
     zoomLevels.schemaSize = { w: +svg.getAttribute('width') || 0, h: +svg.getAttribute('height') || 0 };
   }
   try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(zoomLevels)); } catch(e) {}
-  applyZoom();
+
+  if(focal && state.mode!=='schema' && vorigeZoom){
+    const rect = mapwrap.getBoundingClientRect();
+    const viewportX = focal.clientX - rect.left, viewportY = focal.clientY - rect.top;
+    // het content-punt (in onverschaalde px) dat nu precies onder de cursor ligt
+    const contentX = (mapwrap.scrollLeft + viewportX) / vorigeZoom;
+    const contentY = (mapwrap.scrollTop + viewportY) / vorigeZoom;
+    applyZoom();
+    // datzelfde content-punt na de nieuwe schaal weer onder diezelfde cursorpositie zetten
+    mapwrap.scrollLeft = contentX * z - viewportX;
+    mapwrap.scrollTop = contentY * z - viewportY;
+  } else {
+    applyZoom();
+  }
 }
 
 // transform:scale() krimpt alleen de visuele weergave, niet de layout-/scrollbox van de wrap (die blijft
@@ -148,7 +166,7 @@ document.getElementById('zoomFitBtn').onclick = fitToScreen;
 
 document.getElementById('mainBody').addEventListener('wheel', (ev) => {
   ev.preventDefault();
-  setZoom(currentZoom() + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  setZoom(currentZoom() + (ev.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP), { clientX: ev.clientX, clientY: ev.clientY });
 }, { passive: false });
 
 // klik-en-sleep pannen op de achtergrond (nu het scrollwiel zoomt i.p.v. scrollt).
