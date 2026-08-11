@@ -93,6 +93,7 @@
   "locaties.alertVulVelden": "Enter both a name and a URL.",
 
   "knikpunt.invoegen": "Insert bend point here",
+  "knikpunt.verwijderen": "Remove this bend point",
   "knikpunt.rechtzetten": "Reset to straight line",
   "knikpunt.sleepTitel": "Drag to move · double-click to remove",
 

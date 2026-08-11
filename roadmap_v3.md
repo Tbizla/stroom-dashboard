@@ -915,6 +915,17 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       daarop heeft geen zinvol "cursorpunt op de plattegrond" om naartoe te zoomen); Schema blijft
       op zijn bestaande centreer-op-inhoud-gedrag (`centerContentInViewport()`), niet cursor-
       gebaseerd. Zie event_dashboard.md, Plattegrond & kalibratie.
+- [x] **Bugfix: "Rechte lijn terugzetten" op een knikpunt verwijderde alle knikpunten i.p.v. dat
+      ene punt.** Afgerond — Mike's melding: het rechtsklik-mini-menu op een bestáánd knikpunt bood
+      alleen "Rechte lijn terugzetten" aan (`resetLijn(k)`, wist `k.knikpunten` volledig), terwijl
+      dubbelklikken op datzelfde knikpunt altijd al alleen dát ene punt verwijderde
+      (`verwijderKnikpunt(k, idx)`) — het rechtsklikmenu was daarmee geen echt alternatief voor
+      dubbelklikken op een knikpunt, zoals de rest van de feature wel bedoelt. Nieuwe menu-optie
+      "Dit knikpunt verwijderen" toegevoegd (`render-pins.js`, `knik.oncontextmenu`) die
+      `verwijderKnikpunt(k, idx)` aanroept — "Rechte lijn terugzetten" blijft ernaast staan als
+      bewust drastischere optie om in één keer alle knikpunten van die lijn te wissen. Het
+      rechtsklikmenu op een lijnsegment zelf (niet op een knikpunt) is ongewijzigd. Zie
+      event_dashboard.md, Plattegrond & kalibratie.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

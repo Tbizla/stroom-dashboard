@@ -338,9 +338,12 @@ zetten zonder code aan te passen.
   rechte lijn, maar met knikpunten aan te passen aan de daadwerkelijke kabelroute (obstakels,
   paden, hoeken om een gebouw): dubbelklik op een lijnsegment voegt een knikpunt toe op die
   positie, slepen verplaatst het, dubbelklik op een knikpunt verwijdert het weer. Rechtsklik op een
-  lijn of knikpunt opent een mini-menu ("Knikpunt hier invoegen" / "Rechte lijn terugzetten") als
-  alternatief voor dubbelklikken. Alleen bewerkbaar op Kalibreren; op Live volgt de lijn dezelfde
-  route, puur ter weergave, zonder handles
+  lijnsegment opent een mini-menu ("Knikpunt hier invoegen" / "Rechte lijn terugzetten", dat
+  laatste wist in één keer alle knikpunten van die lijn) als alternatief voor dubbelklikken;
+  rechtsklik op een bestaand knikpunt zelf opent een eigen mini-menu ("Dit knikpunt verwijderen" —
+  alternatief voor dubbelklikken, wist alleen dat ene punt — / "Rechte lijn terugzetten", dezelfde
+  drastischere alles-in-één-keer-optie). Alleen bewerkbaar op Kalibreren; op Live volgt de lijn
+  dezelfde route, puur ter weergave, zonder handles
 - In-/uitzoomen (knoppen, scrollwiel, of het percentage tussen de +/- -knoppen rechtstreeks
   intypen — Enter of wegklikken past het toe, Escape zet 'm terug) en pannen (klikken en slepen),
   met een "fit to screen"-knop die alles in één keer in beeld brengt (incl. eventuele knikpunten)

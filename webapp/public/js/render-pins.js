@@ -147,6 +147,10 @@ export function renderPins(){
         knik.oncontextmenu = (ev)=>{
           ev.preventDefault(); ev.stopPropagation();
           showCtxMenu(ev.clientX, ev.clientY, [
+            // alternatief voor dubbelklikken (zelfde als knik.ondblclick): verwijdert alleen dít
+            // knikpunt, niet de hele lijn — "Rechte lijn terugzetten" hieronder blijft de losse,
+            // bewust drastischere optie om alle knikpunten van deze lijn in één keer te wissen
+            { label: t('knikpunt.verwijderen'), onClick: ()=>verwijderKnikpunt(k, idx) },
             { label: t('knikpunt.rechtzetten'), danger:true, onClick: ()=>resetLijn(k) },
           ]);
         };
