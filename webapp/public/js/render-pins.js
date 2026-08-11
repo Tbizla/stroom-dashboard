@@ -10,18 +10,17 @@ import { currentZoom } from './zoom.js';
 // pins/knikpunten/labels blijven op een constante, leesbare schermgrootte ongeacht de kaart-zoom
 // (net als markers op een kaartprogramma) — het zijn plain siblings binnen #mapinner, dus zonder
 // dit schalen ze gewoon mee met diens transform:scale() en worden ze bij ver uitzoomen (bijv. 25%)
-// onleesbaar klein. translate(...) staat vóór scale(1/z) in elke transform-string: percentages in
-// translate() resolven altijd tegen de eigen (onverschaalde) boxgrootte, dus deze volgorde houdt
-// het zelf-centrerende ankerpunt exact op zijn plek, ongeacht de schaal (bij .pinlabel/.pin-anomaly
-// se vaste offset — geen zelf-centrering — schaalt de tussenruimte tot de pin zelf niet helemaal
-// evenredig mee bij extreme zoom, puur cosmetisch, geen positioneringsfout).
+// onleesbaar klein.
 function pinTegenschaal(){ return 1 / (currentZoom() || 1); }
+// .pinanchor is een zero-size positioneringspunt (zie renderPins() hieronder) — pin/label/badge
+// zitten er ongewijzigd (eigen translate-offset intact) áls kind in, dus één simpele scale() op de
+// anchor zelf schaalt dat hele clustertje uniform rond het ankerpunt. Voorkomt het probleem dat een
+// los toegepaste tegenschaal op alleen .pinlabel gaf: de vaste 4px-tussenruimte tot de pin schaalde
+// dan niet mee met de (wél tegengeschaalde) labelgrootte, waardoor het label bij ver uitzoomen over
+// de pin heen kroop i.p.v. eronder te blijven staan.
 export function ververPinTegenschaal(){
   const s = pinTegenschaal();
-  mapinner.querySelectorAll('.pin').forEach(el => el.style.transform = 'translate(-50%,-50%) scale(' + s + ')');
-  mapinner.querySelectorAll('.knik').forEach(el => el.style.transform = 'translate(-50%,-50%) scale(' + s + ')');
-  mapinner.querySelectorAll('.pinlabel').forEach(el => el.style.transform = 'translate(-50%,4px) scale(' + s + ')');
-  mapinner.querySelectorAll('.pin-anomaly').forEach(el => el.style.transform = 'translate(6px,-16px) scale(' + s + ')');
+  mapinner.querySelectorAll('.pinanchor').forEach(el => el.style.transform = 'scale(' + s + ')');
 }
 // gedispatcht vanuit zoom.js's applyZoom() ná elke scale-wijziging (knoppen/scrollwiel/fit-to-screen)
 mapinner.addEventListener('kaartzoom', ververPinTegenschaal);
@@ -82,7 +81,7 @@ function resetLijn(k){
 }
 
 export function renderPins(){
-  mapinner.querySelectorAll('.pin,.pinlabel,.knik,.pin-anomaly').forEach(e=>e.remove());
+  mapinner.querySelectorAll('.pinanchor,.knik').forEach(e=>e.remove());
   const surface = getSurfaceEl();
   const w = surface.clientWidth, h = surface.clientHeight;
   if(!w || !h) return;
@@ -181,10 +180,18 @@ export function renderPins(){
 
   allNodes().forEach(n=>{
     if(!n.positie || n.positie.x_pct==null) return;
+
+    // zero-size positioneringspunt op de kaart — pin/badge/label zitten er als kind in en delen
+    // zo één gemeenschappelijk ankerpunt + tegenschaal (zie ververPinTegenschaal() hierboven),
+    // i.p.v. dat elk los zijn eigen left/top en transform bijhoudt
+    const anchor = document.createElement('div');
+    anchor.className = 'pinanchor';
+    anchor.style.left = (n.positie.x_pct/100*w)+'px';
+    anchor.style.top = (n.positie.y_pct/100*h)+'px';
+    mapinner.appendChild(anchor);
+
     const pin = document.createElement('div');
     pin.className = 'pin' + (isGen(n)?' gen':'') + ' ' + statusClass(n) + (n.id===state.selectedId?' selected':'');
-    pin.style.left = (n.positie.x_pct/100*w)+'px';
-    pin.style.top = (n.positie.y_pct/100*h)+'px';
     pin.title = n.naam;
     pin.dataset.id = n.id;
     pin.onmousedown = (ev)=>{
@@ -206,8 +213,9 @@ export function renderPins(){
         let y = ((mv.clientY-rect.top)/rect.height)*100;
         x = Math.max(0,Math.min(100,x)); y = Math.max(0,Math.min(100,y));
         n.positie = {x_pct:x, y_pct:y};
-        pin.style.left = (x/100*w)+'px'; pin.style.top = (y/100*h)+'px';
+        anchor.style.left = (x/100*w)+'px'; anchor.style.top = (y/100*h)+'px';
       };
+
       const up = ()=>{
         document.removeEventListener('mousemove', move);
         document.removeEventListener('mouseup', up);
@@ -216,25 +224,21 @@ export function renderPins(){
       document.addEventListener('mousemove', move);
       document.addEventListener('mouseup', up);
     };
-    mapinner.appendChild(pin);
+    anchor.appendChild(pin);
 
     if(heeftActieveAnomaly(n.id)){
       const anomalyBadge = document.createElement('div');
       anomalyBadge.className = 'pin-anomaly';
       anomalyBadge.textContent = '⚡';
-      anomalyBadge.style.left = (n.positie.x_pct/100*w)+'px';
-      anomalyBadge.style.top = (n.positie.y_pct/100*h)+'px';
       anomalyBadge.title = t('anomaly.badgeTitel') + ' — ' + anomalyTekst(n.id);
       anomalyBadge.onmousedown = (ev)=>{ ev.stopPropagation(); bevestigAnomaly(n.id); renderPins(); };
-      mapinner.appendChild(anomalyBadge);
+      anchor.appendChild(anomalyBadge);
     }
 
     const label = document.createElement('div');
     label.className = 'pinlabel';
-    label.style.left = (n.positie.x_pct/100*w)+'px';
-    label.style.top = (n.positie.y_pct/100*h)+'px';
     label.textContent = isGen(n) ? typeIcon(n)+' '+n.naam : (n.type==='batterij'?'🔋 ':'')+n.naam;
-    mapinner.appendChild(label);
+    anchor.appendChild(label);
   });
 
   ververPinTegenschaal();

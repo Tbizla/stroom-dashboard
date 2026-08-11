@@ -932,17 +932,25 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       schaalden gewoon mee met diens `transform:scale()` — een bewuste keuze voor de
       percentage-plaatsingswiskunde (CLAUDE.md), maar zonder tegenmaatregel betekent dat ook dat
       hun eigen visuele grootte meekrimpt, net zo goed als de plattegrond zelf.
-      **Iconen/knikpunten/labels** (`render-pins.js`): nieuwe `ververPinTegenschaal()`, gehaakt aan
-      hetzelfde `kaartzoom`-event dat `map-tiles.js` al gebruikt (gedispatcht vanuit `zoom.js`'s
-      `applyZoom()` ná elke scale-wijziging) — zet `transform` op elke `.pin`/`.knik`/`.pinlabel`/
-      `.pin-anomaly` naar hun bestaande centrerings-/offset-`translate(...)` gevolgd door
-      `scale(1/z)`. Voor `.pin`/`.knik` (zuivere `-50%,-50%`-zelfcentrering) staat het ankerpunt
-      daarmee wiskundig exact vast ongeacht `z` — percentages in `translate()` resolven altijd
-      tegen de eigen onverschaalde boxgrootte, dus de tegenschaal die er in dezelfde
-      transform-string ná komt raakt het ankerpunt niet. Voor `.pinlabel`/`.pin-anomaly` (een vaste
-      offset i.p.v. zelfcentrering) is de tussenruimte tot de pin bij extreme uitzoom niet meer
-      helemaal evenredig — puur cosmetisch, geen positioneringsfout, bewust niet met een zwaardere
-      wrapper-architectuur opgelost voor zo'n klein verschil. **Lijnen** (`style.css`):
+      **Iconen/knikpunten/labels** (`render-pins.js`): eerste versie paste een losse tegenschaal per
+      element toe (`translate(...) scale(1/z)` op elk van `.pin`/`.knik`/`.pinlabel`/`.pin-anomaly`
+      afzonderlijk) — voor `.pin`/`.knik` (zuivere `-50%,-50%`-zelfcentrering) wiskundig correct
+      (percentages in `translate()` resolven altijd tegen de eigen onverschaalde boxgrootte, dus een
+      tegenschaal ná die translate in dezelfde transform-string raakt het ankerpunt niet), maar bij
+      `.pinlabel`/`.pin-anomaly` (een vaste px-offset i.p.v. zelfcentrering) bleek de vaste
+      tussenruimte tot de pin niet evenredig mee te schalen — Mike's terugmelding met screenshot:
+      het label kroop bij ver uitzoomen over de (wél correct tegengeschaalde) pin heen. Root cause:
+      een vaste offset schaalt alleen evenredig mee als de hele lokale ruimte waarin 'm getekend
+      wordt uniform meeschaalt, niet als je per element een eigen tegenschaal-getal uitrekent.
+      Opgelost met een `.pinanchor`-wrapper: één zero-size positioneringspunt per node (`left`/`top`
+      op de kaartpercentage-positie, verder geen eigen grootte omdat 'ie alleen absoluut
+      gepositioneerde kinderen bevat) waar pin, label en anomaly-badge nu als kind in hangen met hun
+      bestaande, ongewijzigde centrerings-/offset-`translate()`. `ververPinTegenschaal()` (gehaakt
+      aan hetzelfde `kaartzoom`-event dat `map-tiles.js` al gebruikt, gedispatcht vanuit `zoom.js`'s
+      `applyZoom()` ná elke scale-wijziging) zet nu nog maar één simpele `scale(1/z)` op de
+      `.pinanchor` zelf — dat hele clustertje schaalt daardoor uniform rond het ankerpunt, dus ook
+      de tussenruimte tot de pin blijft bij elke zoom exact evenredig. `.knik` bleef ongewijzigd
+      (zuivere zelfcentrering, geen wrapper nodig, was al correct). **Lijnen** (`style.css`):
       `.edgeline{vector-effect:non-scaling-stroke}` — een losstaande, voor dit doel bestaande
       SVG-eigenschap die de lijndikte in echte schermpixels houdt, geen JS nodig. Zie
       event_dashboard.md, Kalibreren-tabblad.
