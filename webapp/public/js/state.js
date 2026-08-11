@@ -74,7 +74,7 @@ export function isBeheerNodeOpen(id, defaultOpen){
 }
 
 // ---------- zoom: eigen, onthouden niveau per tabblad (cal/schema/live), ook na herladen van de pagina ----------
-export const ZOOM_MIN = 0.05, ZOOM_MAX = 3, ZOOM_STEP = 0.15;
+export const ZOOM_MIN = 0.05, ZOOM_MAX = 3, ZOOM_STEP = 0.05;
 export const ZOOM_STORAGE_KEY = 'stroomdash_zoom_v1';
 export const zoomLevels = { cal: null, schema: null, live: null, schemaSize: null };
 try { Object.assign(zoomLevels, JSON.parse(localStorage.getItem(ZOOM_STORAGE_KEY) || '{}')); } catch(e) {}

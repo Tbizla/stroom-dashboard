@@ -861,6 +861,11 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       de UI geüpload) bleek al end-to-end te werken — bevestigd met een gedownloade tegel die
       daadwerkelijk lijnwerk uit de tekening toont. Geen restcode-fouten in de serverlogs tijdens de
       hele testronde. Zie event_dashboard.md, Kalibreren-tabblad en Topologiebeheer.
+- [x] **Fijnmaziger zoomen op Kalibreren/Live/Schema (tweak, geen spec nodig).** Afgerond — Mike
+      wilde meer tussenstappen bij het in-/uitzoomen. `ZOOM_STEP` (`webapp/public/js/state.js`) van
+      `0.15` (15%) naar `0.05` (5%) — geldt voor de zoomknoppen en het scrollwiel op alle drie de
+      tabbladen (gedeelde constante), verder geen gedragswijziging (`ZOOM_MIN`/`ZOOM_MAX`
+      ongewijzigd).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
