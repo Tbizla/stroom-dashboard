@@ -822,6 +822,21 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       nog de kaarten zonder de tabel. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad) en de
       Locaties-subtab (Rapportages-tabblad).
 
+- [ ] **Tile-based rendering voor de plattegrond.** Nog niet gestart, spec afgestemd (11 augustus
+      2026). Mike's verzoek: bottleneck oplossen bij grote/gedetailleerde
+      plattegronden (vandaag rendert `#mapimg` op natuurlijke pixelresolutie, zonder
+      serverside-verkleining of dimensielimiet — alleen een 25MB-bestandsgroottecap). Voorgestelde
+      aanpak: server-side een tegel-piramide genereren (sharp/libvips, alleen voor PNG/BMP boven
+      een afmetingsdrempel; SVG blijft ongewijzigd, dat is al resolutie-onafhankelijk), client-side
+      een eigen lichte tegel-loader die past binnen het bestaande scale()+scroll-model
+      (`#mapinner`/`zoom.js`) zodat `render-pins.js`'s percentage-wiskunde en de bestaande
+      content-aware fit-to-screen-logica ongewijzigd blijven — bewust geen kant-en-klare
+      deep-zoom-library (bijv. OpenSeadragon), die zou het hele zoom/pan-mechanisme moeten
+      vervangen. Zie [specs/plattegrond-tile-based-plan.md]
+      (specs/plattegrond-tile-based-plan.md) voor de volledige technische afweging en de
+      afgestemde keuzes (drempel >2000px/>3MP, nieuwe `sharp`-dependency, BMP altijd flat, geen
+      automatische migratie van bestaande grote plattegronden).
+
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
 > Deze sectie is momenteel leeg — alle eerder voorgestelde ideeën zijn inmiddels met Mike
