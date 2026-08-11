@@ -1,7 +1,11 @@
-// ---------- HQ-Locaties (specs/toegang-van-buitenaf-diagnose.md) — Rapportages-subtab ----------
+// ---------- HQ-Locaties (specs/toegang-van-buitenaf-diagnose.md) ----------
 // Handmatige locatielijst + een live statusoverzicht (server-naar-server opgehaald via
 // /api/hq-locaties-status, zie server.js — de browser praat nooit rechtstreeks met een andere
 // locatie-instance, dat voorkomt CORS/mixed-content-gedoe en houdt elke locatie-URL server-side).
+// De kaarten (live status) staan op de Rapportages > Locaties-subtab, het beheer (naam/URL
+// toevoegen/verwijderen) staat op de Beheer > Locaties-subtab — allebei roepen ze ververLocaties()
+// aan, die (idempotent) zowel de tabel als de kaarten ververst, ongeacht welke van de twee panelen
+// op dat moment zichtbaar is.
 import { apiCall } from './api.js';
 import { t } from './i18n.js';
 import { state } from './state.js';
@@ -88,10 +92,16 @@ async function handleAddLocatie(){
   }catch(e){ alert(e.message); }
 }
 
-// aangeroepen vanuit modes.js zodra de Locaties-subtab getoond wordt
+// aangeroepen vanuit modes.js zodra de Rapportages > Locaties-subtab getoond wordt
 export async function toonLocaties(){
   // vervolgticket-rolverdeling-locaties-gap.md: puur cosmetisch, de echte gate is server-side
   // (isEditorOnlyRoute() in server.js) — de add-rij wordt nu al conditioneel opgebouwd in
   // renderLocatiesTabel() zelf (magBewerken), hier dus niets meer los te verbergen.
+  await ververLocaties();
+}
+
+// aangeroepen vanuit modes.js zodra de Beheer > Locaties-subtab getoond wordt — zelfde ververLocaties()
+// als hierboven (ververst tabel + kaarten samen), zie de toelichting bovenaan dit bestand.
+export async function toonLocatiesBeheren(){
   await ververLocaties();
 }

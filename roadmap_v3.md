@@ -802,6 +802,25 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       Geverifieerd met Playwright: knop zet aan/uit met correcte title-wissel, blijft aanwezig en
       werkend op elk tabblad (getest op Live), tooltip synct ook na een programmatische
       `exitFullscreen()`-aanroep buiten de knop om (simuleert Esc/F11), en NL/EN-vertalingen kloppen.
+- [x] **Locatiebeheer verplaatst naar Beheer-subtab (tweak, geen spec nodig).** Afgerond — de
+      Rapportages > Locaties-subtab combineerde tot nu toe het live statusoverzicht (kaarten) én het
+      beheer van de locatielijst zelf (naam/URL toevoegen/verwijderen); dat laatste hoort qua rol
+      (bewerken) beter bij Beheer dan bij het overwegend read-only Rapportages-tabblad. Nieuwe vijfde
+      sub-tab **Beheer > Locaties** (`#beheerLocatiesPanel`, zelfde `.beheer`/`toonBeheerSubnav()`-
+      patroon als de andere vier Beheer-sub-tabs) neemt de bestaande locatietabel + aanmaakformulier
+      over; Rapportages > Locaties houdt alleen de statuskaarten over. Pure DOM-verplaatsing, geen
+      nieuwe functionaliteit: `hq-locaties.js`s bestaande `renderLocatiesTabel()`/`handleAddLocatie()`/
+      `ververLocaties()` zijn ongewijzigd, alleen een nieuwe `toonLocatiesBeheren()`-export
+      (aangeroepen vanuit `toonBeheerSubnav()` in `modes.js`) naast de bestaande `toonLocaties()`
+      (aangeroepen vanuit de Rapportages-subnav) — beide roepen dezelfde `ververLocaties()` aan, dus
+      een wijziging in de ene subtab is meteen zichtbaar in de andere. Geen server-side wijziging
+      nodig: `/api/locaties` was al langer editor-only voor schrijven (GET blijft open, zie het
+      vervolgticket-rolverdeling-locaties-gap.md-item hierboven) en de hele Beheer-hoofdtab is al
+      onzichtbaar voor een viewer-rol, dus de nieuwe sub-tab erft die afscherming automatisch. Herbouwd
+      en handmatig geverifieerd tegen de draaiende stack (Mike): Beheer > Locaties toont tabel +
+      aanmaakformulier en een locatie toevoegen/verwijderen werkt, Rapportages > Locaties toont alleen
+      nog de kaarten zonder de tabel. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad) en de
+      Locaties-subtab (Rapportages-tabblad).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

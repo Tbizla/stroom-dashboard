@@ -151,13 +151,15 @@ zetten zonder code aan te passen.
   per-tabblad-matrix)
 
 **Topologiebeheer (Beheer-tabblad)**
-- Het Beheer-tabblad heeft een altijd-zichtbare subnav met vier sub-tabs (zelfde patroon als de
+- Het Beheer-tabblad heeft een altijd-zichtbare subnav met vijf sub-tabs (zelfde patroon als de
   Rapportages-subnav): **Topologie** (standaard actief — Generators + Kasten + "Alles wissen"),
   **Instellingen** (Evenementlogo, Systeeminstellingen, Alert-notificaties — dingen die je typisch
-  één keer per evenement instelt), **Accounts**, en **Back-up** (Back-up maken, Automatische
-  back-up, Back-up herstellen, ongewijzigd bij elkaar). Welke sub-tab actief is blijft onthouden
-  zolang je in de app blijft (zelfde gedrag als de Rapportages-subnav), ook bij het wisselen naar
-  een ander hoofdtabblad en terug
+  één keer per evenement instelt), **Accounts**, **Back-up** (Back-up maken, Automatische
+  back-up, Back-up herstellen, ongewijzigd bij elkaar), en **Locaties** (de handmatige HQ-
+  locatielijst beheren — naam/URL toevoegen/verwijderen; verplaatst vanuit de Rapportages >
+  Locaties-subtab, die alleen nog de live statuskaarten toont, zie de Locaties-subtab hieronder).
+  Welke sub-tab actief is blijft onthouden zolang je in de app blijft (zelfde gedrag als de
+  Rapportages-subnav), ook bij het wisselen naar een ander hoofdtabblad en terug
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
   **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
   generators/accu's bestaat (bijv. een centrale met meerdere aggregaten + een batterijcontainer die
@@ -581,8 +583,10 @@ Grafana:
   zetten. Logo-embedding werkt alleen met een PNG-logo (BMP/SVG worden overgeslagen)
 
 *Locaties-subtab* (specs/toegang-van-buitenaf-diagnose.md, uitgangspunt "meerdere locaties tegelijk
-zien") — alleen zinvol als HQ-instance, maar staat in elke instance beschikbaar:
-- Handmatige locatielijst (naam + URL per locatie-instance) beheren — geen auto-discovery
+zien") — alleen zinvol als HQ-instance, maar staat in elke instance beschikbaar. Toont alleen nog
+het live statusoverzicht (kaarten); de locatielijst zelf (naam/URL toevoegen/verwijderen) beheer je
+via Beheer > Locaties (zie Topologiebeheer hierboven) — beide subtabs delen dezelfde
+ververLocaties()-verversfunctie, dus een wijziging in Beheer is meteen zichtbaar in dit overzicht:
 - Statuskaart per bekende locatie: groen/amber/rood-stip, aantal kasten, aantal amber/rood, en een
   "Beheer openen"-link die de volledige app van die locatie opent (zelfde rechten als ter plekke,
   geen aparte uitgeklede weergave — vraagt om een eigen login op die andere instance, geen

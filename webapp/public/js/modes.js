@@ -12,7 +12,7 @@ import { t } from './i18n.js';
 import { toonOverzicht } from './overzicht.js';
 import { toonGrafieken } from './grafieken.js';
 import { verbindMqtt } from './mqtt.js';
-import { toonLocaties } from './hq-locaties.js';
+import { toonLocaties, toonLocatiesBeheren } from './hq-locaties.js';
 
 function setActiveModeButton(id){
   ['modeBeheer','modeCal','modeSchema','modeLive','modeTest','modeRapportages','modeGrafieken'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
@@ -25,18 +25,31 @@ function setActiveModeButton(id){
 // content in DOM-structuur, geen enkel formulier/tabel/knop is herbouwd of hernoemd, dus al het
 // bestaande JS in render-beheer.js/instellingen.js/notificaties.js/accounts.js/(automatische-)
 // backup.js blijft ongewijzigd werken zolang de id's intact blijven.
+// Locaties kreeg géén 'subnavLocaties' id hier (die is al in gebruik door de gelijknamige
+// Rapportages-subtab, zie toonRapportSubnav() verderop) — vandaar een expliciete naam->id-lookup
+// i.p.v. de capitalize-truc die de overige drie subtabs hierboven nog gebruiken.
+const BEHEER_SUBNAV_IDS = {
+  topologie: 'subnavTopologie',
+  instellingen: 'subnavInstellingen',
+  accounts: 'subnavAccounts',
+  backup: 'subnavBackup',
+  locaties: 'subnavBeheerLocaties',
+};
 function toonBeheerSubnav(naam){
   state.beheerSubnav = naam;
-  ['subnavTopologie','subnavInstellingen','subnavAccounts','subnavBackup'].forEach(id=>document.getElementById(id).classList.toggle('active', id==='subnav'+naam.charAt(0).toUpperCase()+naam.slice(1)));
+  Object.entries(BEHEER_SUBNAV_IDS).forEach(([key,id])=>document.getElementById(id).classList.toggle('active', key===naam));
   document.getElementById('topologiePanel').style.display = naam==='topologie' ? 'flex' : 'none';
   document.getElementById('instellingenPanel').style.display = naam==='instellingen' ? 'flex' : 'none';
   document.getElementById('accountsPanel').style.display = naam==='accounts' ? 'flex' : 'none';
   document.getElementById('backupPanel').style.display = naam==='backup' ? 'flex' : 'none';
+  document.getElementById('beheerLocatiesPanel').style.display = naam==='locaties' ? 'flex' : 'none';
+  if(naam==='locaties') toonLocatiesBeheren();
 }
 document.getElementById('subnavTopologie').onclick = ()=>toonBeheerSubnav('topologie');
 document.getElementById('subnavInstellingen').onclick = ()=>toonBeheerSubnav('instellingen');
 document.getElementById('subnavAccounts').onclick = ()=>toonBeheerSubnav('accounts');
 document.getElementById('subnavBackup').onclick = ()=>toonBeheerSubnav('backup');
+document.getElementById('subnavBeheerLocaties').onclick = ()=>toonBeheerSubnav('locaties');
 
 document.getElementById('modeBeheer').onclick = ()=>{
   state.mode='beheer';
