@@ -832,10 +832,15 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       (`#mapinner`/`zoom.js`) zodat `render-pins.js`'s percentage-wiskunde en de bestaande
       content-aware fit-to-screen-logica ongewijzigd blijven — bewust geen kant-en-klare
       deep-zoom-library (bijv. OpenSeadragon), die zou het hele zoom/pan-mechanisme moeten
-      vervangen. Zie [specs/plattegrond-tile-based-plan.md]
+      vervangen. **Uitgebreid met PDF-ondersteuning**: een geüploade PDF wordt server-side eerst
+      met `poppler-utils`/`pdftoppm` naar PNG gerasteriseerd (alleen eerste pagina, resolutie
+      berekend uit de PDF's eigen paginaformaat, gecapt op ~5000-6000px) vóórdat 'm dezelfde
+      tegel-/drempellogica volgt als elke andere PNG-upload. Zie
+      [specs/plattegrond-tile-based-plan.md]
       (specs/plattegrond-tile-based-plan.md) voor de volledige technische afweging en de
-      afgestemde keuzes (drempel >2000px/>3MP, nieuwe `sharp`-dependency, BMP altijd flat, geen
-      automatische migratie van bestaande grote plattegronden).
+      afgestemde keuzes (drempel >2000px/>3MP, nieuwe `sharp`-dependency, BMP altijd flat,
+      PDF-rasterisatie via poppler-utils, geen automatische migratie van bestaande grote
+      plattegronden).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
