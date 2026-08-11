@@ -84,7 +84,10 @@ header h1 span{color:var(--accent)}
   text-align:center;cursor:text;border:1px solid transparent;background:transparent;border-radius:0.25rem}
 .zoomctl .zoomlabel:hover{border-color:var(--border)}
 .zoomctl .zoomlabel:focus{outline:none;border-color:var(--accent);background:var(--panel2)}
-.mapinner img{display:block;max-width:none}
+/* -webkit-user-drag/user-select: voorkomt dat de browser tijdens het slepen van een pin/knikpunt
+   zijn eigen afbeeldingsdrag/-selectie op de plattegrond eronder start (naast de preventDefault()
+   in render-pins.js — dit dekt ook browsers waar dat niet genoeg is) */
+.mapinner img{display:block;max-width:none;-webkit-user-drag:none;user-select:none}
 /* specs/plattegrond-tile-based-plan.md: vervangt #mapimg als "surface" wanneer de plattegrond
    getiled is — vaste breedte/hoogte (JS, map-tiles.js) gelijk aan de volle-resolutie-afmeting van
    de tegel-piramide, zodat getSurfaceEl()/fitToScreenKaart()/render-pins.js's percentage-wiskunde

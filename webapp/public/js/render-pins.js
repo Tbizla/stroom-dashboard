@@ -121,6 +121,7 @@ export function renderPins(){
         knik.title = t('knikpunt.sleepTitel');
         knik.onmousedown = (ev)=>{
           ev.stopPropagation();
+          ev.preventDefault(); // zelfde reden als bij pin.onmousedown hierboven
           // alleen bij daadwerkelijke sleepbeweging opslaan+herrenderen — een kale klik (het begin
           // van een dubbelklik) mag de knik-div niet vervangen, anders ziet de browser de tweede
           // klik van de dubbelklik als een klik op een ander element en vuurt 'dblclick' nooit
@@ -164,6 +165,11 @@ export function renderPins(){
     pin.dataset.id = n.id;
     pin.onmousedown = (ev)=>{
       ev.stopPropagation();
+      // zonder dit start de browser tijdens het slepen zijn eigen tekst-/afbeeldingselectie op de
+      // onderliggende plattegrond — met de losse tegel-<img>'s van een getilede plattegrond
+      // (specs/plattegrond-tile-based-plan.md) zichtbaar als een "flikkerende" selectie-omlijning
+      // per tegel waar de cursor overheen beweegt
+      ev.preventDefault();
       state.selectedId = n.id; renderList(); renderDetail(); renderPins();
       if(state.mode==='live'){
         state.openPopupKastId = (state.openPopupKastId===n.id) ? null : n.id;

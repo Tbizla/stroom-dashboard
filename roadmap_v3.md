@@ -889,8 +889,20 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       foutmelding. `applyZoom()` overschrijft de invoer niet zolang die gefocust is (voorkomt dat de
       waarde tijdens het typen zelf terugspringt). Geldt voor Kalibreren/Live/Schema (gedeelde
       zoombalk). Zie event_dashboard.md, Plattegrond & kalibratie.
-
-## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
+- [x] **Bugfix: slepen van kasten/knikpunten selecteerde de onderliggende plattegrond-tegels.**
+      Afgerond — regressie uit de tile-based-plattegrond-feature: `pin.onmousedown`/
+      `knik.onmousedown` (`render-pins.js`) riepen al `stopPropagation()` maar nooit
+      `preventDefault()`, dus de browser startte tijdens het slepen gewoon zijn eigen native
+      tekst-/afbeeldingselectie op wat onder de cursor lag. Met de vroegere platte `#mapimg` (één
+      groot `<img>`) viel dat nauwelijks op; met de losse tegel-`<img>`'s van een getilede
+      plattegrond (specs/plattegrond-tile-based-plan.md) was dat zichtbaar als een flikkerende
+      selectie-omlijning per tegel tijdens het slepen. Twee lagen gefixt: `ev.preventDefault()`
+      toegevoegd aan beide `onmousedown`-handlers (stopt de native selectie/drag al bij de bron),
+      plus defense-in-depth (`-webkit-user-drag:none;user-select:none` op elke `<img>` binnen
+      `.mapinner`, en `draggable=false` op elke tegel in `map-tiles.js`) voor browsers waar
+      preventDefault alleen niet genoeg is. Achtergrond-pannen (`enablePanDrag()` in `zoom.js`)
+      bewust niet aangeraakt — niet gemeld, en een blanco `preventDefault()` daar zou legitieme
+      tekstselectie in de kastpopup-databallon kunnen blokkeren. (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
 > Deze sectie is momenteel leeg — alle eerder voorgestelde ideeën zijn inmiddels met Mike
 > geprioriteerd (zie de items hierboven en in [roadmap_v4.md](roadmap_v4.md)).

@@ -64,6 +64,9 @@ export function ververTegels(){
       gewenst.add(key);
       if(geplaatst.has(key)) continue;
       const img = document.createElement('img');
+      // anders start de browser bij het slepen van een pin/knikpunt zijn eigen native
+      // afbeeldingsdrag/-selectie op de tegel eronder — zie de preventDefault() in render-pins.js
+      img.draggable = false;
       img.style.left = (k * tegelCss) + 'px';
       img.style.top = (r * tegelCss) + 'px';
       img.style.width = tegelCss + 'px';
