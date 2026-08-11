@@ -115,8 +115,10 @@ header h1 span{color:var(--accent)}
           background:rgba(18,21,26,.85);padding:1px 5px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:4}
 
 /* lijnsegmenten kast<->voedingsbron (evt. met knikpunten ertussen) — .hoverable alleen op
-   Kalibreren, zie render-pins.js; op Live blijft de kale .edgeline-stijl (geen hover/klik) */
-.edgeline{stroke:rgba(79,209,197,.55);stroke-width:2}
+   Kalibreren, zie render-pins.js; op Live blijft de kale .edgeline-stijl (geen hover/klik).
+   vector-effect:non-scaling-stroke houdt de lijndikte in echte schermpixels, ongeacht #mapinner's
+   transform:scale() — anders wordt de lijn bij ver uitzoomen (bijv. 25%) nauwelijks nog zichtbaar */
+.edgeline{stroke:rgba(79,209,197,.55);stroke-width:2;vector-effect:non-scaling-stroke}
 .edgeline.hoverable{pointer-events:stroke;cursor:pointer}
 .edgeline.hoverable:hover{stroke:var(--accent);stroke-width:3}
 .knik{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--accent);

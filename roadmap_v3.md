@@ -926,6 +926,26 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       bewust drastischere optie om in één keer alle knikpunten van die lijn te wissen. Het
       rechtsklikmenu op een lijnsegment zelf (niet op een knikpunt) is ongewijzigd. Zie
       event_dashboard.md, Plattegrond & kalibratie.
+- [x] **Bugfix: pins/lijnen werden onleesbaar klein bij ver uitzoomen.** Afgerond — Mike's melding:
+      op bijv. 25% zoom waren de kast-/generatoriconen en verbindingslijnen nauwelijks nog te
+      zien. Oorzaak: pins/knikpunten/labels/lijnen zijn plain siblings binnen `#mapinner`, dus ze
+      schaalden gewoon mee met diens `transform:scale()` — een bewuste keuze voor de
+      percentage-plaatsingswiskunde (CLAUDE.md), maar zonder tegenmaatregel betekent dat ook dat
+      hun eigen visuele grootte meekrimpt, net zo goed als de plattegrond zelf.
+      **Iconen/knikpunten/labels** (`render-pins.js`): nieuwe `ververPinTegenschaal()`, gehaakt aan
+      hetzelfde `kaartzoom`-event dat `map-tiles.js` al gebruikt (gedispatcht vanuit `zoom.js`'s
+      `applyZoom()` ná elke scale-wijziging) — zet `transform` op elke `.pin`/`.knik`/`.pinlabel`/
+      `.pin-anomaly` naar hun bestaande centrerings-/offset-`translate(...)` gevolgd door
+      `scale(1/z)`. Voor `.pin`/`.knik` (zuivere `-50%,-50%`-zelfcentrering) staat het ankerpunt
+      daarmee wiskundig exact vast ongeacht `z` — percentages in `translate()` resolven altijd
+      tegen de eigen onverschaalde boxgrootte, dus de tegenschaal die er in dezelfde
+      transform-string ná komt raakt het ankerpunt niet. Voor `.pinlabel`/`.pin-anomaly` (een vaste
+      offset i.p.v. zelfcentrering) is de tussenruimte tot de pin bij extreme uitzoom niet meer
+      helemaal evenredig — puur cosmetisch, geen positioneringsfout, bewust niet met een zwaardere
+      wrapper-architectuur opgelost voor zo'n klein verschil. **Lijnen** (`style.css`):
+      `.edgeline{vector-effect:non-scaling-stroke}` — een losstaande, voor dit doel bestaande
+      SVG-eigenschap die de lijndikte in echte schermpixels houdt, geen JS nodig. Zie
+      event_dashboard.md, Kalibreren-tabblad.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

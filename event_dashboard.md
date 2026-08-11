@@ -333,7 +333,11 @@ zetten zonder code aan te passen.
   (`poppler-utils`/`pdftoppm`, alleen de eerste pagina) — de renderresolutie wordt berekend uit de
   PDF's eigen paginaformaat (`pdfinfo`), gecapt op ~5500px lange zijde, i.p.v. een vaste DPI blind
   toe te passen. Het resultaat volgt daarna hetzelfde tegel-/drempelpad als elke andere PNG-upload
-- Generators en kasten als pins plaatsen en verslepen
+- Generators en kasten als pins plaatsen en verslepen. Pins, hun naamlabels, de status-/anomaly-
+  badges en lijn-knikpunten houden een constante, leesbare schermgrootte ongeacht de kaart-zoom
+  (net als markers op een kaartprogramma) — bij ver uitzoomen (bijv. 25%) blijven ze dus goed
+  zichtbaar i.p.v. onleesbaar klein mee te krimpen met de plattegrond. Verbindingslijnen houden om
+  dezelfde reden een constante lijndikte
 - Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling. Standaard een
   rechte lijn, maar met knikpunten aan te passen aan de daadwerkelijke kabelroute (obstakels,
   paden, hoeken om een gebouw): dubbelklik op een lijnsegment voegt een knikpunt toe op die

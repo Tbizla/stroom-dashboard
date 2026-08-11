@@ -5,6 +5,26 @@ import { renderDetail } from './render-detail.js';
 import { renderKastPopup } from './kastpopup.js';
 import { t } from './i18n.js';
 import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
+import { currentZoom } from './zoom.js';
+
+// pins/knikpunten/labels blijven op een constante, leesbare schermgrootte ongeacht de kaart-zoom
+// (net als markers op een kaartprogramma) — het zijn plain siblings binnen #mapinner, dus zonder
+// dit schalen ze gewoon mee met diens transform:scale() en worden ze bij ver uitzoomen (bijv. 25%)
+// onleesbaar klein. translate(...) staat vóór scale(1/z) in elke transform-string: percentages in
+// translate() resolven altijd tegen de eigen (onverschaalde) boxgrootte, dus deze volgorde houdt
+// het zelf-centrerende ankerpunt exact op zijn plek, ongeacht de schaal (bij .pinlabel/.pin-anomaly
+// se vaste offset — geen zelf-centrering — schaalt de tussenruimte tot de pin zelf niet helemaal
+// evenredig mee bij extreme zoom, puur cosmetisch, geen positioneringsfout).
+function pinTegenschaal(){ return 1 / (currentZoom() || 1); }
+export function ververPinTegenschaal(){
+  const s = pinTegenschaal();
+  mapinner.querySelectorAll('.pin').forEach(el => el.style.transform = 'translate(-50%,-50%) scale(' + s + ')');
+  mapinner.querySelectorAll('.knik').forEach(el => el.style.transform = 'translate(-50%,-50%) scale(' + s + ')');
+  mapinner.querySelectorAll('.pinlabel').forEach(el => el.style.transform = 'translate(-50%,4px) scale(' + s + ')');
+  mapinner.querySelectorAll('.pin-anomaly').forEach(el => el.style.transform = 'translate(6px,-16px) scale(' + s + ')');
+}
+// gedispatcht vanuit zoom.js's applyZoom() ná elke scale-wijziging (knoppen/scrollwiel/fit-to-screen)
+mapinner.addEventListener('kaartzoom', ververPinTegenschaal);
 
 // ---------- rechtsklik-mini-menu (knikpunten toevoegen/resetten) — enige contextmenu-gebruiker in
 // de app, dus geen apart module nodig; sluit op klik erbuiten of Escape ----------
@@ -217,6 +237,7 @@ export function renderPins(){
     mapinner.appendChild(label);
   });
 
+  ververPinTegenschaal();
   renderKastPopup();
 }
 
