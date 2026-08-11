@@ -18,6 +18,9 @@ function pinTegenschaal(){ return 1 / (currentZoom() || 1); }
 // los toegepaste tegenschaal op alleen .pinlabel gaf: de vaste 4px-tussenruimte tot de pin schaalde
 // dan niet mee met de (wél tegengeschaalde) labelgrootte, waardoor het label bij ver uitzoomen over
 // de pin heen kroop i.p.v. eronder te blijven staan.
+// basis-lijndikte in px bij 100% zoom — zelfde waarde als de vorige statische .edgeline{stroke-
+// width:2}, nu als uitgangspunt voor de dynamische --edge-w hieronder
+const EDGE_BASIS_DIKTE = 2;
 export function ververPinTegenschaal(){
   const s = pinTegenschaal();
   mapinner.querySelectorAll('.pinanchor').forEach(el => el.style.transform = 'scale(' + s + ')');
@@ -26,6 +29,12 @@ export function ververPinTegenschaal(){
   // hier was de tegenschaal per ongeluk helemaal weggevallen toen .pinanchor de losse per-element-
   // aanpak voor pin/label verving, waardoor knikpunten weer meekrompen met de kaart-zoom
   mapinner.querySelectorAll('.knik').forEach(el => el.style.transform = 'translate(-50%,-50%) scale(' + s + ')');
+  // Mike: bij uitzoomen moeten de kabellijnen niet alleen zichtbaar-blijven (dat deed
+  // non-scaling-stroke al, hield 'm constant op de basisdikte) maar ook daadwerkelijk dikker worden
+  // — --edge-w schaalt dus mee met dezelfde tegenschaal als pins/knikpunten. .edgeline leest 'm via
+  // een CSS custom property (style.css) i.p.v. een vaste stroke-width, zodat de bestaande
+  // :hover-verdikking (los, relatief bovenop --edge-w) intact blijft
+  svg.style.setProperty('--edge-w', (EDGE_BASIS_DIKTE * s) + 'px');
 }
 // gedispatcht vanuit zoom.js's applyZoom() ná elke scale-wijziging (knoppen/scrollwiel/fit-to-screen)
 mapinner.addEventListener('kaartzoom', ververPinTegenschaal);

@@ -122,10 +122,13 @@ header h1 span{color:var(--accent)}
 /* lijnsegmenten kast<->voedingsbron (evt. met knikpunten ertussen) — .hoverable alleen op
    Kalibreren, zie render-pins.js; op Live blijft de kale .edgeline-stijl (geen hover/klik).
    vector-effect:non-scaling-stroke houdt de lijndikte in echte schermpixels, ongeacht #mapinner's
-   transform:scale() — anders wordt de lijn bij ver uitzoomen (bijv. 25%) nauwelijks nog zichtbaar */
-.edgeline{stroke:rgba(79,209,197,.55);stroke-width:2;vector-effect:non-scaling-stroke}
+   transform:scale(). --edge-w (ververPinTegenschaal() in render-pins.js) wordt bij uitzoomen groter
+   dan de 2px-basiswaarde — Mike wilde niet alleen dat de lijn zichtbaar blíjft, maar ook
+   daadwerkelijk dikker wordt bij uitzoomen. De :hover-verdikking hieronder blijft een relatieve
+   bump bovenop --edge-w, niet een vaste losstaande waarde. */
+.edgeline{stroke:rgba(79,209,197,.55);stroke-width:var(--edge-w, 2px);vector-effect:non-scaling-stroke}
 .edgeline.hoverable{pointer-events:stroke;cursor:pointer}
-.edgeline.hoverable:hover{stroke:var(--accent);stroke-width:3}
+.edgeline.hoverable:hover{stroke:var(--accent);stroke-width:calc(var(--edge-w, 2px) * 1.5)}
 .knik{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--accent);
       border:2px solid #0b0d10;transform:translate(-50%,-50%);cursor:grab;z-index:6}
 .knik:hover{box-shadow:0 0 0 4px var(--accent-dim)}

@@ -961,8 +961,17 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       *positionering*, maar niet voor de constatering dat 'ie sowieso ergens tegengeschaald moest
       blíjven worden. Knikpunten kropen daardoor weer even klein als vóór de hele fix. Hersteld: de
       `.knik`-tegenschaal staat weer los naast de `.pinanchor`-regel in `ververPinTegenschaal()`
-      (geen wrapper nodig, `.knik` heeft geen label/badge ernaast). Zie event_dashboard.md,
-      Kalibreren-tabblad.
+      (geen wrapper nodig, `.knik` heeft geen label/badge ernaast).
+      **Vierde ronde**: Mike's daadwerkelijke wens bleek net iets anders dan wat er tot dan toe
+      gebouwd was — niet "de lijndikte blijft constant" (dat deed `non-scaling-stroke` al), maar
+      "de lijn wordt bij uitzoomen ook echt dikker, om 'm goed zichtbaar te houden". Nieuwe CSS
+      custom property `--edge-w` (`style.css`), gezet door `ververPinTegenschaal()` op
+      `EDGE_BASIS_DIKTE * s` (dezelfde tegenschaal-factor `s = 1/zoom` als pins/knikpunten) i.p.v.
+      een vaste `stroke-width:2`. Bij 25% zoom (`s=4`) wordt de lijn dus 8px in plaats van
+      standaard 2px. De bestaande `:hover`-verdikking (`.edgeline.hoverable:hover`) is aangepast
+      naar een relatieve `calc(var(--edge-w) * 1.5)` bovenop de dynamische basisdikte, i.p.v. een
+      losstaande vaste `3px` die bij uitzoomen weer dunner dan de niet-hover-lijn zou zijn geweest.
+      Zie event_dashboard.md, Kalibreren-tabblad.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

@@ -336,8 +336,9 @@ zetten zonder code aan te passen.
 - Generators en kasten als pins plaatsen en verslepen. Pins, hun naamlabels, de status-/anomaly-
   badges en lijn-knikpunten houden een constante, leesbare schermgrootte ongeacht de kaart-zoom
   (net als markers op een kaartprogramma) — bij ver uitzoomen (bijv. 25%) blijven ze dus goed
-  zichtbaar i.p.v. onleesbaar klein mee te krimpen met de plattegrond. Verbindingslijnen houden om
-  dezelfde reden een constante lijndikte
+  zichtbaar i.p.v. onleesbaar klein mee te krimpen met de plattegrond. Verbindingslijnen worden bij
+  uitzoomen juist geleidelijk dikker (i.p.v. alleen maar constant te blijven) zodat de kabelroute
+  ook op een uitgezoomd overzicht duidelijk zichtbaar blijft
 - Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling. Standaard een
   rechte lijn, maar met knikpunten aan te passen aan de daadwerkelijke kabelroute (obstakels,
   paden, hoeken om een gebouw): dubbelklik op een lijnsegment voegt een knikpunt toe op die
