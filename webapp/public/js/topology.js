@@ -1,9 +1,10 @@
-import { state, liveData, mapimg, blankCanvas } from './state.js';
+import { state, liveData, mapimg, blankCanvas, mapTiles } from './state.js';
 import { renderList } from './render-list.js';
 import { renderDetail } from './render-detail.js';
 import { renderBeheer } from './render-beheer.js';
 import { renderSchema } from './render-schema.js';
 import { renderPins } from './render-pins.js';
+import { initMapTiles } from './map-tiles.js';
 
 export function allNodes(){ return [...state.TOPO.generators, ...state.TOPO.kasten]; }
 export function isGen(n){ return n.vermogen_kva !== undefined; }
@@ -12,9 +13,15 @@ export function genNaam(genId){ const g = state.TOPO.generators.find(g=>g.id===g
 // visueel onderscheid tussen een los aggregaat, een accu en een groep (meerdere aggregaten/accu's die
 // samen als één krachtbron optreden, bijv. een centrale met 6 generators + een CAT-batterijcontainer)
 export function typeIcon(n){ return n.type==='batterij' ? '🔋' : n.type==='groep' ? '🏭' : '⚡'; }
-// het "oppervlak" waarop kasten geplaatst worden: de plattegrond als die is geüpload,
-// anders een leeg vlak — zo kun je ook zonder plattegrond kasten vrij plaatsen
-export function getSurfaceEl(){ return mapimg.style.display !== 'none' ? mapimg : blankCanvas; }
+// het "oppervlak" waarop kasten geplaatst worden: de plattegrond (getiled of plat) als die is
+// geüpload, anders een leeg vlak — zo kun je ook zonder plattegrond kasten vrij plaatsen. Bij een
+// getilede plattegrond (specs/plattegrond-tile-based-plan.md) is #mapTiles het oppervlak i.p.v.
+// #mapimg — dezelfde rol (vaste width/height, siblings binnen #mapinner), dus alle
+// percentage-plaatsingswiskunde elders werkt ongewijzigd door.
+export function getSurfaceEl(){
+  if(state.kaartGetiled) return mapTiles;
+  return mapimg.style.display !== 'none' ? mapimg : blankCanvas;
+}
 
 export async function loadTopology(){
   const res = await fetch('/api/topology');
@@ -37,7 +44,32 @@ export async function saveKnikpunten(kast){
   });
 }
 
-export function loadMap(){
+export async function loadMap(){
+  let meta;
+  try { meta = await (await fetch('/api/map/meta')).json(); }
+  catch(e){ meta = { exists:false }; }
+
+  if(!meta.exists){
+    state.kaartGetiled = false;
+    mapimg.style.display = 'none';
+    mapTiles.style.display = 'none';
+    blankCanvas.style.display = 'block';
+    renderPins();
+    return;
+  }
+
+  if(meta.tiled){
+    state.kaartGetiled = true;
+    mapimg.style.display = 'none';
+    blankCanvas.style.display = 'none';
+    mapTiles.style.display = 'block';
+    initMapTiles(meta);
+    renderPins();
+    return;
+  }
+
+  state.kaartGetiled = false;
+  mapTiles.style.display = 'none';
   const img = new Image();
   img.onload = ()=>{
     mapimg.src = '/api/map?t=' + Date.now();

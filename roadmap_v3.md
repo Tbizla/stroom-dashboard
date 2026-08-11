@@ -822,25 +822,45 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       nog de kaarten zonder de tabel. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad) en de
       Locaties-subtab (Rapportages-tabblad).
 
-- [ ] **Tile-based rendering voor de plattegrond.** Nog niet gestart, spec afgestemd (11 augustus
-      2026). Mike's verzoek: bottleneck oplossen bij grote/gedetailleerde
-      plattegronden (vandaag rendert `#mapimg` op natuurlijke pixelresolutie, zonder
-      serverside-verkleining of dimensielimiet — alleen een 25MB-bestandsgroottecap). Voorgestelde
-      aanpak: server-side een tegel-piramide genereren (sharp/libvips, alleen voor PNG/BMP boven
-      een afmetingsdrempel; SVG blijft ongewijzigd, dat is al resolutie-onafhankelijk), client-side
-      een eigen lichte tegel-loader die past binnen het bestaande scale()+scroll-model
-      (`#mapinner`/`zoom.js`) zodat `render-pins.js`'s percentage-wiskunde en de bestaande
-      content-aware fit-to-screen-logica ongewijzigd blijven — bewust geen kant-en-klare
-      deep-zoom-library (bijv. OpenSeadragon), die zou het hele zoom/pan-mechanisme moeten
-      vervangen. **Uitgebreid met PDF-ondersteuning**: een geüploade PDF wordt server-side eerst
-      met `poppler-utils`/`pdftoppm` naar PNG gerasteriseerd (alleen eerste pagina, resolutie
-      berekend uit de PDF's eigen paginaformaat, gecapt op ~5000-6000px) vóórdat 'm dezelfde
-      tegel-/drempellogica volgt als elke andere PNG-upload. Zie
-      [specs/plattegrond-tile-based-plan.md]
-      (specs/plattegrond-tile-based-plan.md) voor de volledige technische afweging en de
-      afgestemde keuzes (drempel >2000px/>3MP, nieuwe `sharp`-dependency, BMP altijd flat,
-      PDF-rasterisatie via poppler-utils, geen automatische migratie van bestaande grote
-      plattegronden).
+- [x] **Tile-based rendering voor de plattegrond.** Afgerond — gebouwd conform
+      [specs/plattegrond-tile-based-plan.md](specs/plattegrond-tile-based-plan.md) (11 augustus
+      2026). Mike's verzoek: bottleneck oplossen bij grote/gedetailleerde plattegronden (`#mapimg`
+      rendert op natuurlijke pixelresolutie, zonder serverside-verkleining of dimensielimiet —
+      alleen een 25MB-bestandsgroottecap).
+      **Server-side**: nieuwe `sharp`-dependency genereert een Deep-Zoom-tegel-piramide
+      (256×256px-tegels, `<TILES_PREFIX>.dzi` + `<TILES_PREFIX>_files/<niveau>/<kolom>_<rij>.png`)
+      voor elke PNG-upload boven de drempel (>2000px lange zijde of >3 megapixel); BMP/SVG en een
+      kleinere PNG blijven op het bestaande platte-bestand-pad. Nieuwe routes `GET /api/map/meta`
+      (bestaat/getiled/afmetingen) en `GET /api/map/tiles/:niveau/:tegel` (viewer-toegankelijk,
+      zelfde uitzondering als het bestaande `GET /api/map`). Back-up/export en restore uitgebreid
+      met de tegelmap (`archive.directory()`/entries met een `plattegrond-tiles`-prefix).
+      **PDF-upload**: eerst gerasteriseerd naar PNG via `poppler-utils`/`pdftoppm` (alleen eerste
+      pagina; resolutie berekend uit het eigen paginaformaat via `pdfinfo`, gecapt op ~5500px lange
+      zijde), volgt daarna hetzelfde tegel-/drempelpad als elke andere PNG-upload.
+      **Client-side**: nieuwe `webapp/public/js/map-tiles.js` — een eigen, lichte tegel-loader
+      binnen het bestaande `#mapinner`-scale()+scroll-model (bewust geen kant-en-klare
+      deep-zoom-library zoals OpenSeadragon, die het hele zoom/pan-mechanisme had moeten
+      vervangen). `#mapTiles` (nieuw element, sibling van `#mapimg`/`#blankCanvas`) krijgt een
+      vaste CSS-breedte/hoogte gelijk aan de volle-resolutie-afmeting van de piramide, waardoor
+      `getSurfaceEl()` (`topology.js`), `render-pins.js`'s percentage-plaatsingswiskunde en
+      `fitToScreenKaart()` ongewijzigd blijven werken. `loadMap()` vraagt eerst `/api/map/meta` op
+      en kiest daarna het platte- of tegel-pad; `zoom.js` dispatcht een `kaartzoom`-event ná elke
+      scale-wijziging waar de tegel-loader op reageert (een zoomwijziging verandert
+      `mapwrap.scrollLeft/Top` niet altijd, maar wel welk volle-resolutiegebied zichtbaar is).
+      **Bug gevonden tijdens het bouwen**: sharp's `.tile({format:'png'})`-optie bleek stilzwijgend
+      genegeerd te worden (leverde JPEG-tegels op) — het uitvoerformaat volgt de pipeline, niet een
+      `tile()`-suboptie; gefixt door `.png()` vóór `.tile()` te zetten, gevonden en bevestigd met
+      een losse test binnen de container (DZI-`Format`-veld + daadwerkelijke tegelextensies).
+      **Getest**: een standalone containertest bevestigde de PNG-tegelpiramide (correcte
+      DZI-afmeting, tegelaantal, PNG-formaat) en de PDF-rasterisatie (paginaformaat via `pdfinfo`,
+      berekende dpi, resultaat binnen ~100px van de ~5500px-doelresolutie). Tegen de live stack
+      (met een vooraf genomen bestandssnapshot van de al aanwezige, echte getilede plattegrond als
+      veiligheidsnet, ná afloop byte-exact teruggezet en geverifieerd): een kleine PNG-upload blijft
+      correct op het platte pad (`tiled:false`), `GET /api/map/tiles/...` levert een geldige PNG-
+      tegel, en de reeds aanwezige echte PDF-afkomstige plattegrond (5492×3883, door Mike zelf via
+      de UI geüpload) bleek al end-to-end te werken — bevestigd met een gedownloade tegel die
+      daadwerkelijk lijnwerk uit de tekening toont. Geen restcode-fouten in de serverlogs tijdens de
+      hele testronde. Zie event_dashboard.md, Kalibreren-tabblad en Topologiebeheer.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

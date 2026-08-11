@@ -10,6 +10,10 @@ export function applyZoom(){
     document.getElementById('schemaSvg').style.transform = 'scale(' + z + ')';
   } else {
     mapinner.style.transform = 'scale(' + z + ')';
+    // specs/plattegrond-tile-based-plan.md: map-tiles.js luistert hierop om te herberekenen welke
+    // tegels zichtbaar zijn — een scale-wijziging verandert mapwrap.scrollLeft/Top niet altijd (zie
+    // hieronder), maar wél welk volle-resolutiegebied zichtbaar is
+    mapinner.dispatchEvent(new CustomEvent('kaartzoom'));
   }
   document.getElementById('zoomLabel').textContent = Math.round(z * 100) + '%';
   centerContentInViewport();

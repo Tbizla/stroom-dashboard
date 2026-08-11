@@ -4,11 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const dns = require('dns');
 const crypto = require('crypto');
+const { execFile } = require('child_process');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
+const sharp = require('sharp');
 const { configureerShelly } = require('./shelly-rpc');
 
 // letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
@@ -20,6 +22,11 @@ const DATA_DIR = process.env.DATA_DIR || '/data';
 const TOPO_FILE = path.join(DATA_DIR, 'topologie.json');
 const INSTELLINGEN_FILE = path.join(DATA_DIR, 'instellingen.json');
 const MAP_BASENAME = path.join(DATA_DIR, 'kaart');
+// specs/plattegrond-tile-based-plan.md: prefix voor de sharp/libvips Deep-Zoom-tegel-piramide van
+// een grote plattegrond — sharp schrijft hiernaast '<TILES_PREFIX>.dzi' (XML-afmetingen) en een
+// '<TILES_PREFIX>_files/<niveau>/<kolom>_<rij>.png'-boom. Een plattegrond is óf getiled (dit
+// bestandenpaar) óf plat (kaart.png/.bmp/.svg hierboven) — nooit allebei tegelijk.
+const TILES_PREFIX = path.join(DATA_DIR, 'kaart-tiles');
 const LOGO_BASENAME = path.join(DATA_DIR, 'logo');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
 const TEST_TOPO_SIMPEL = path.join(__dirname, 'test_topologie_simpel.json');
@@ -303,7 +310,10 @@ const EDITOR_ONLY_PREFIXEN = [
   '/api/locaties', // Rapportages/Locaties — aanmaken/verwijderen (GET blijft hieronder expliciet uitgezonderd)
 ];
 function isEditorOnlyRoute(req, pad) {
-  if ((pad === '/api/map' || pad === '/api/logo' || pad === '/api/locaties') && req.method === 'GET') return false;
+  // /api/map/meta en /api/map/tiles/... (specs/plattegrond-tile-based-plan.md) horen bij dezelfde
+  // "lezen mag altijd"-uitzondering als /api/map zelf — een viewer-sessie moet een getilede
+  // plattegrond op Live/Schema net zo kunnen zien als een platte
+  if ((pad === '/api/map' || pad.startsWith('/api/map/') || pad === '/api/logo' || pad === '/api/locaties') && req.method === 'GET') return false;
   return EDITOR_ONLY_PREFIXEN.some((prefix) => pad === prefix || pad.startsWith(prefix + '/'));
 }
 app.use((req, res, next) => {
@@ -1433,13 +1443,17 @@ app.post('/api/metingen/reset', alleenInTestmodus, async (req, res) => {
   }
 });
 
-// ---------- afbeeldingsuploads (plattegrond, logo): alleen .png/.bmp/.svg ----------
+// ---------- afbeeldingsuploads (plattegrond, logo): .png/.bmp/.svg (plattegrond ook .pdf) ----------
 // De bestandsnaam-extensie en de Content-Type die de browser meestuurt zijn allebei door de
 // client te vervalsen, dus die tellen alleen als eerste, snelle filter. De echte controle is
 // het herkennen van het bestandstype aan de daadwerkelijke bytes na de upload.
 const AFBEELDING_EXT = new Set(['.png', '.bmp', '.svg']);
 const AFBEELDING_MIME = new Set(['image/png', 'image/bmp', 'image/x-ms-bmp', 'image/svg+xml']);
 const AFBEELDING_EXT_BY_TYPE = { png: '.png', bmp: '.bmp', svg: '.svg' };
+// alleen de plattegrond-upload accepteert ook een PDF (specs/plattegrond-tile-based-plan.md) — het
+// logo blijft op de oorspronkelijke drie formaten, zie kaartFileFilter/afbeeldingFileFilter hieronder
+const KAART_EXT = new Set(['.png', '.bmp', '.svg', '.pdf']);
+const KAART_MIME = new Set(['image/png', 'image/bmp', 'image/x-ms-bmp', 'image/svg+xml', 'application/pdf']);
 
 function afbeeldingFileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase();
@@ -1448,10 +1462,18 @@ function afbeeldingFileFilter(req, file, cb) {
   }
   cb(null, true);
 }
+function kaartFileFilter(req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!KAART_EXT.has(ext) || !KAART_MIME.has(file.mimetype)) {
+    return cb(new Error('alleen .png, .bmp, .svg of .pdf bestanden zijn toegestaan'));
+  }
+  cb(null, true);
+}
 
 function detecteerAfbeeldingType(buffer) {
   if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return 'png';
   if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) return 'bmp';
+  if (buffer.length >= 5 && buffer.slice(0, 5).toString('latin1') === '%PDF-') return 'pdf';
   const head = buffer.slice(0, 1024).toString('utf8');
   if (/<svg[\s>]/i.test(head)) return 'svg';
   return null;
@@ -1475,7 +1497,7 @@ function verwijderAfbeeldingsbestanden(basename) {
 function verwerkAfbeeldingUpload(req, res, basename) {
   const buffer = fs.readFileSync(req.file.path);
   const type = detecteerAfbeeldingType(buffer);
-  if (!type) {
+  if (!type || type === 'pdf') {
     fs.unlinkSync(req.file.path);
     return res.status(400).json({ error: 'bestand is geen geldige .png, .bmp of .svg afbeelding' });
   }
@@ -1485,6 +1507,7 @@ function verwerkAfbeeldingUpload(req, res, basename) {
 }
 
 const upload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 }, fileFilter: afbeeldingFileFilter });
+const kaartUpload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 }, fileFilter: kaartFileFilter });
 // multer geeft een fileFilter-afwijzing door aan de Express-errorhandler; die hier meteen
 // als nette 400 afvangen voorkomt dat de upload eindigt in een generieke 500.
 function metUploadFoutafhandeling(middleware) {
@@ -1494,15 +1517,132 @@ function metUploadFoutafhandeling(middleware) {
   });
 }
 
-// ---------- plattegrond ----------
-app.post('/api/map', metUploadFoutafhandeling(upload.single('kaart')), (req, res) => {
+// ---------- plattegrond: tegel-piramide (specs/plattegrond-tile-based-plan.md) ----------
+const TILE_SIZE = 256;
+const TILE_DREMPEL_LANGE_ZIJDE_PX = 2000;
+const TILE_DREMPEL_MEGAPIXEL = 3_000_000;
+const PDF_MAX_LANGE_ZIJDE_PX = 5500;
+
+function execFileP(cmd, args) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) return reject(new Error((stderr || err.message || '').toString().trim() || ('kon ' + cmd + ' niet uitvoeren')));
+      resolve(stdout.toString());
+    });
+  });
+}
+
+// leest het paginaformaat (in PDF-punten, 1/72 inch) van de eerste pagina — nodig om de
+// rasterisatie-DPI zo te kiezen dat het resultaat rond PDF_MAX_LANGE_ZIJDE_PX uitkomt, i.p.v. een
+// vaste DPI blind toe te passen (een plattegrond-PDF kan van A4 tot een plotterformaat variëren)
+async function pdfPaginaformaatInPunten(pdfPad) {
+  const out = await execFileP('pdfinfo', [pdfPad]);
+  const m = out.match(/Page size:\s*([\d.]+)\s*x\s*([\d.]+)\s*pts/);
+  if (!m) throw new Error('kon PDF-paginaformaat niet bepalen');
+  return { w: parseFloat(m[1]), h: parseFloat(m[2]) };
+}
+
+// rasteriseert alleen de eerste pagina naar PNG; geeft het pad van het resultaat terug
+async function rasteriseerPdfNaarPng(pdfPad, uitvoerBasispad) {
+  const { w, h } = await pdfPaginaformaatInPunten(pdfPad);
+  const langsteZijdePts = Math.max(w, h);
+  let dpi = Math.round((PDF_MAX_LANGE_ZIJDE_PX / langsteZijdePts) * 72);
+  dpi = Math.max(72, Math.min(600, dpi));
+  await execFileP('pdftoppm', ['-png', '-r', String(dpi), '-singlefile', '-f', '1', '-l', '1', pdfPad, uitvoerBasispad]);
+  return uitvoerBasispad + '.png';
+}
+
+async function moetTegelen(pngPad) {
+  const meta = await sharp(pngPad).metadata();
+  const langsteZijde = Math.max(meta.width, meta.height);
+  return langsteZijde > TILE_DREMPEL_LANGE_ZIJDE_PX || meta.width * meta.height > TILE_DREMPEL_MEGAPIXEL;
+}
+
+function verwijderTegelbestanden() {
+  const dzi = TILES_PREFIX + '.dzi';
+  const filesDir = TILES_PREFIX + '_files';
+  if (fs.existsSync(dzi)) fs.unlinkSync(dzi);
+  if (fs.existsSync(filesDir)) fs.rmSync(filesDir, { recursive: true, force: true });
+}
+
+async function genereerTegels(pngPad) {
+  verwijderTegelbestanden();
+  // het uitvoerformaat van .tile() volgt de pipeline (.png() hiervóór), geen 'format'-optie ín
+  // .tile() zelf — leverde zonder deze .png()-call stilzwijgend JPEG-tegels op i.p.v. PNG, ondanks
+  // een eerdere (foutieve) format:'png'-tile-optie; empirisch bevestigd tijdens het bouwen
+  await sharp(pngPad).png().tile({ size: TILE_SIZE, layout: 'dz' }).toFile(TILES_PREFIX);
+}
+
+// huidige plattegrond-status voor de client: getiled (met afmetingen uit de .dzi) of plat, of geen
+// plattegrond. GET /api/map/meta hieronder serveert dit rechtstreeks.
+function huidigeKaartMeta() {
+  const dzi = TILES_PREFIX + '.dzi';
+  if (fs.existsSync(dzi)) {
+    const xml = fs.readFileSync(dzi, 'utf8');
+    // Width/Height staan elk op hun eigen regel, volgorde niet gegarandeerd (empirisch: sharp
+    // schrijft Height vóór Width) — losse matches i.p.v. één regex die volgorde aanneemt
+    const wM = xml.match(/Width="(\d+)"/), hM = xml.match(/Height="(\d+)"/);
+    if (wM && hM) {
+      const width = +wM[1], height = +hM[1];
+      return { exists: true, tiled: true, width, height, tileSize: TILE_SIZE, maxLevel: Math.ceil(Math.log2(Math.max(width, height))) };
+    }
+  }
+  if (bestaandAfbeeldingsbestand(MAP_BASENAME)) return { exists: true, tiled: false };
+  return { exists: false };
+}
+
+// hoofdverwerking voor een plattegrond-upload: PDF wordt eerst naar PNG gerasteriseerd, PNG boven de
+// drempel wordt getiled, alles daaronder (incl. BMP/SVG, zie specs/plattegrond-tile-based-plan.md
+// "BMP blijft altijd buiten tiling") blijft op het bestaande platte-bestand-pad.
+async function verwerkKaartUpload(req, res) {
+  const buffer = fs.readFileSync(req.file.path);
+  let type = detecteerAfbeeldingType(buffer);
+  if (!type) {
+    fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'bestand is geen geldige .png, .bmp, .svg of .pdf plattegrond' });
+  }
+
+  let bronPad = req.file.path;
+  const opruimen = [req.file.path];
+  try {
+    if (type === 'pdf') {
+      bronPad = await rasteriseerPdfNaarPng(bronPad, req.file.path + '-gerasteriseerd');
+      opruimen.push(bronPad);
+      type = 'png';
+    }
+
+    verwijderAfbeeldingsbestanden(MAP_BASENAME);
+    verwijderTegelbestanden();
+
+    if (type === 'png' && (await moetTegelen(bronPad))) {
+      await genereerTegels(bronPad);
+      return res.json({ ok: true, tiled: true });
+    }
+    fs.copyFileSync(bronPad, MAP_BASENAME + AFBEELDING_EXT_BY_TYPE[type]);
+    res.json({ ok: true, tiled: false });
+  } catch (e) {
+    res.status(500).json({ error: 'kon plattegrond niet verwerken: ' + e.message });
+  } finally {
+    opruimen.forEach((p) => { if (fs.existsSync(p)) fs.unlinkSync(p); });
+  }
+}
+
+app.post('/api/map', metUploadFoutafhandeling(kaartUpload.single('kaart')), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'geen bestand ontvangen (veldnaam moet "kaart" zijn)' });
-  verwerkAfbeeldingUpload(req, res, MAP_BASENAME);
+  verwerkKaartUpload(req, res);
 });
 app.get('/api/map', (req, res) => {
   const bestand = bestaandAfbeeldingsbestand(MAP_BASENAME);
   if (!bestand) return res.status(404).send('nog geen plattegrond geupload');
   res.sendFile(bestand);
+});
+app.get('/api/map/meta', (req, res) => res.json(huidigeKaartMeta()));
+app.get('/api/map/tiles/:level/:tile', (req, res) => {
+  const { level, tile } = req.params;
+  if (!/^\d+$/.test(level) || !/^\d+_\d+\.png$/.test(tile)) return res.status(400).end();
+  const p = path.join(TILES_PREFIX + '_files', level, tile);
+  if (!fs.existsSync(p)) return res.status(404).end();
+  res.sendFile(p);
 });
 
 // ---------- evenementlogo ----------
@@ -2534,6 +2674,13 @@ async function bouwBackupZip(bestandspad, meetdataPeriode) {
     if (fs.existsSync(LOCATIES_FILE)) archive.file(LOCATIES_FILE, { name: 'locaties.json' });
     const kaartBestand = bestaandAfbeeldingsbestand(MAP_BASENAME);
     if (kaartBestand) archive.file(kaartBestand, { name: 'plattegrond' + path.extname(kaartBestand) });
+    // getiled (specs/plattegrond-tile-based-plan.md): kaartBestand hierboven bestaat dan niet, de
+    // .dzi + tegelmap gaan in plaats daarvan mee
+    const kaartDzi = TILES_PREFIX + '.dzi';
+    if (fs.existsSync(kaartDzi)) {
+      archive.file(kaartDzi, { name: 'plattegrond-tiles.dzi' });
+      archive.directory(TILES_PREFIX + '_files', 'plattegrond-tiles_files');
+    }
     const logoBestand = bestaandAfbeeldingsbestand(LOGO_BASENAME);
     if (logoBestand) archive.file(logoBestand, { name: 'logo' + path.extname(logoBestand) });
 
@@ -2649,12 +2796,30 @@ async function voerHerstelUit(modus, zip, lpRegels) {
       if (!mediaEntry) return;
       const buffer = mediaEntry.getData();
       const type = detecteerAfbeeldingType(buffer);
-      if (!type) return; // ongeldig media-bestand in de back-up: sla dit onderdeel over, blokkeer niet de rest van het herstel
+      if (!type || type === 'pdf') return; // ongeldig media-bestand in de back-up: sla dit onderdeel over, blokkeer niet de rest van het herstel
       const basename = naam === 'plattegrond' ? MAP_BASENAME : LOGO_BASENAME;
       verwijderAfbeeldingsbestanden(basename);
+      if (naam === 'plattegrond') verwijderTegelbestanden();
       fs.writeFileSync(basename + AFBEELDING_EXT_BY_TYPE[type], buffer);
       mediaTeruggezet = true;
     });
+    // getiled plattegrond (specs/plattegrond-tile-based-plan.md): eigen tak, want die heeft geen
+    // los 'plattegrond.<ext>'-entry zoals hierboven, maar een .dzi + tegelmap
+    const dziEntry = zip.getEntries().find((e) => e.entryName === 'plattegrond-tiles.dzi');
+    if (dziEntry) {
+      verwijderAfbeeldingsbestanden(MAP_BASENAME);
+      verwijderTegelbestanden();
+      fs.writeFileSync(TILES_PREFIX + '.dzi', dziEntry.getData());
+      const prefixInZip = 'plattegrond-tiles_files/';
+      zip.getEntries()
+        .filter((e) => e.entryName.startsWith(prefixInZip) && !e.isDirectory)
+        .forEach((e) => {
+          const dest = path.join(TILES_PREFIX + '_files', e.entryName.slice(prefixInZip.length));
+          fs.mkdirSync(path.dirname(dest), { recursive: true });
+          fs.writeFileSync(dest, e.getData());
+        });
+      mediaTeruggezet = true;
+    }
     if (mediaTeruggezet) onderdelen.push('media');
   }
 

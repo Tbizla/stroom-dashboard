@@ -40,7 +40,7 @@
   </header>
 
   <div class="calbar" id="calbar" style="display:none">
-    <label class="uploadbtn"><span data-i18n="calbar.plattegrondUploaden">Plattegrond uploaden</span><input type="file" id="mapFile" style="display:none" accept=".png,.bmp,.svg,image/png,image/bmp,image/svg+xml"></label>
+    <label class="uploadbtn"><span data-i18n="calbar.plattegrondUploaden">Plattegrond uploaden</span><input type="file" id="mapFile" style="display:none" accept=".png,.bmp,.svg,.pdf,image/png,image/bmp,image/svg+xml,application/pdf"></label>
     <span id="mapUploadErr" class="err" style="display:none"></span>
     <span data-i18n="calbar.hint">Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
     <span class="hint" id="armedLabel"></span>
@@ -705,6 +705,7 @@
     <div class="mapwrap" id="mapwrap">
       <div class="mapinner" id="mapinner">
         <img id="mapimg" alt="Plattegrond" style="display:none">
+        <div class="maptiles" id="mapTiles" style="display:none"></div>
         <div class="blankcanvas" id="blankCanvas">
           <div class="blankcanvas-hint" data-i18n="blankcanvas.hint">Nog geen plattegrond geüpload. Je kunt kasten hier alvast vrij plaatsen — upload later een plattegrond via de knop hierboven, de posities blijven staan.</div>
         </div>

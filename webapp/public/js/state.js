@@ -23,6 +23,7 @@ export const state = {
   backupPollHandle: null,
   herstelPollHandle: null,
   grafiekenPeriodeChip: '24u',
+  kaartGetiled: false, // specs/plattegrond-tile-based-plan.md: true zolang de actieve plattegrond een tegel-piramide is (i.p.v. een platte #mapimg) — bepaalt wat getSurfaceEl() teruggeeft
 };
 
 export const liveData = {};
@@ -39,6 +40,7 @@ export const mapimg = document.getElementById('mapimg');
 export const mapinner = document.getElementById('mapinner');
 export const mapwrap = document.getElementById('mapwrap');
 export const blankCanvas = document.getElementById('blankCanvas');
+export const mapTiles = document.getElementById('mapTiles');
 
 // ---------- sidebar: in-/uitklapstatus per generator/kast, onthouden in localStorage ----------
 export const SIDEBAR_STORAGE_KEY = 'stroomdash_sidebar_v1';

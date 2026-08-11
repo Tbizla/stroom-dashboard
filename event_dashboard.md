@@ -200,9 +200,10 @@ zetten zonder code aan te passen.
   databaseveld) — zodat "bewust geen sensor" onderscheiden is van "per ongeluk leeg gelaten". Overal
   waar tot nu toe stil niets werd getoond bij een ontbrekende rating (Live-zijlijst, aside-detail,
   schema-tabblad, kastpopup-ledentabel) staat nu een herkenbaar grijs "geen sensor"-label
-- Evenementlogo uploaden, zichtbaar in de header. Logo- en plattegronduploads zijn beperkt tot
-  .png/.bmp/.svg, gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen de
-  bestandsnaam), zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
+- Evenementlogo uploaden, zichtbaar in de header. Logo-uploads zijn beperkt tot .png/.bmp/.svg,
+  plattegronduploads tot .png/.bmp/.svg/.pdf (zie de tegel-based rendering hieronder) —
+  gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen de bestandsnaam),
+  zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
 - **Systeeminstellingen**: evenementnaam en editie zijn nu bewerkbaar vanuit Beheer i.p.v. alleen
   via `.env` bij het opstarten (`GET`/`PUT /api/instellingen`, opgeslagen in `instellingen.json`) —
   gebruikt voor de `editie`/`evenement`-tags op meetdata en de naamsbotsing-check bij een
@@ -319,6 +320,19 @@ zetten zonder code aan te passen.
 - Plattegrond (afbeelding) uploaden, of zonder plattegrond werken op een leeg, ruim canvas
   (4800×3000) als er nog geen kaart is — de posities blijven gewoon staan zodra je er later een
   toevoegt
+- **Grote plattegronden renderen als tegels** (specs/plattegrond-tile-based-plan.md): een
+  geüploade PNG boven ~2000px lange zijde/~3 megapixel wordt server-side (sharp/libvips) in een
+  Deep-Zoom-tegel-piramide geknipt — de browser laadt dan alleen de tegels die op het huidige
+  zoomniveau daadwerkelijk binnen beeld vallen, i.p.v. één grote afbeelding in zijn geheel te
+  decoderen. Kleinere PNG's, BMP en SVG blijven op het bestaande, platte weergavepad (BMP altijd,
+  ongeacht grootte — sharp/libvips ondersteunt geen betrouwbare BMP-tegelgeneratie). Voor de
+  gebruiker verandert er verder niets: zelfde upload-knop, dezelfde percentage-gebaseerde
+  pin-plaatsing en fit-to-screen-zoom werken ongewijzigd door, of de plattegrond nu getiled is of
+  niet
+- **Ook een PDF-plattegrond uploaden**: server-side eerst gerasteriseerd naar PNG
+  (`poppler-utils`/`pdftoppm`, alleen de eerste pagina) — de renderresolutie wordt berekend uit de
+  PDF's eigen paginaformaat (`pdfinfo`), gecapt op ~5500px lange zijde, i.p.v. een vaste DPI blind
+  toe te passen. Het resultaat volgt daarna hetzelfde tegel-/drempelpad als elke andere PNG-upload
 - Generators en kasten als pins plaatsen en verslepen
 - Lijnen tussen kasten en hun voedingsbron, afgeleid uit de parent/child-koppeling. Standaard een
   rechte lijn, maar met knikpunten aan te passen aan de daadwerkelijke kabelroute (obstakels,
