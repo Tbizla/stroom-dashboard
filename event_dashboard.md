@@ -362,7 +362,10 @@ zetten zonder code aan te passen.
   (indien uitgelezen) generators/groepen
 - Zij-lijst met generators en kasten is in-/uitklapbaar (met status-badges per generator en een
   "N onderliggend"-indicator bij geneste kasten), doorzoekbaar op naam/afkorting en filterbaar op
-  amber/rood; in-/uitklapstatus per item wordt onthouden. Een generatorrij toont twee losse regels:
+  amber/rood; in-/uitklapstatus per item wordt onthouden. Een nieuw toegevoegde kast klapt de hele
+  generator-/parent-keten in deze zij-lijst automatisch open, ook als die daarvoor dichtgeklapt
+  stond — meteen zichtbaar in Kalibreren/Live na het aanmaken, geen handmatig uitklappen nodig. Een
+  generatorrij toont twee losse regels:
   bovenaan de eigen self-meter-status (stip) van de generator/groep zelf, daaronder expliciet
   gelabeld "onderliggend:" de opgetelde groen/amber/rood-badges van de kasten die eraan hangen — zelfde
   onderscheid ook op de Overzicht-kaarten (Rapportages-tabblad)

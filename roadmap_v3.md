@@ -866,6 +866,18 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       `0.15` (15%) naar `0.05` (5%) — geldt voor de zoomknoppen en het scrollwiel op alle drie de
       tabbladen (gedeelde constante), verder geen gedragswijziging (`ZOOM_MIN`/`ZOOM_MAX`
       ongewijzigd).
+- [x] **Grotere in-/uitklap-pijltjes + kasten auto-uitklappen bij toevoegen (tweak, geen spec
+      nodig).** Afgerond, twee losse punten. **Pijltjes**: de gedeelde `.chev`-stijl
+      (`webapp/public/css/style.css`) — gebruikt door zowel de Kalibreren/Live-zijlijst
+      (`render-list.js`) als de kasten-secties in Beheer (`render-beheer.js`) — ging van
+      `font-size:0.625rem`/`width:0.875rem` naar `0.9375rem`/`1.125rem`, merkbaar beter zichtbaar
+      als uit-/inklapbediening. **Auto-uitklappen**: een nieuw toegevoegde kast (via Beheer's
+      "+ Kast"-formulier) zet nu de hele generator-/parent-keten open in `sidebarState`
+      (`state.js`) vóórdat `loadTopology()` de zijlijst herrendert — Mike's kastentoevoeging is
+      daardoor meteen zichtbaar in de Kalibreren/Live-zijlijst, ook als die sectie daarvoor
+      dichtgeklapt stond (bijv. eerder zelf ingeklapt om ruimte te sparen). Losstaand van
+      `beheerState` (Beheer's eigen tabel-in-/uitklapstatus), die was al niet het probleem. Zie
+      event_dashboard.md, Live-monitoring (zij-lijst).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

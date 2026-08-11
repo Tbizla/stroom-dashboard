@@ -1,5 +1,5 @@
 // ---------- Beheer: generators & kasten aanmaken, bewerken, koppelen, verwijderen ----------
-import { state, beheerState, saveBeheerState, isBeheerNodeOpen, expandedGroepen } from './state.js';
+import { state, beheerState, saveBeheerState, isBeheerNodeOpen, expandedGroepen, sidebarState, saveSidebarState } from './state.js';
 import { listChildrenOf, collectDescendantKasten, genNaam, typeIcon } from './topology.js';
 import { apiCall } from './api.js';
 import { loadTopology } from './topology.js';
@@ -904,6 +904,21 @@ async function handleAddGenerator(){
   }catch(e){ alert(e.message); }
 }
 
+// zet de generator + de hele parent-keten van een net toegevoegde kast open in de Kalibreren/Live-
+// zijlijst (sidebarState — los van beheerState, de eigen in-/uitklapstatus van de Beheer-tabel
+// zelf), zodat de nieuwe kast daar meteen zichtbaar is i.p.v. verstopt achter een dichtgeklapte
+// sectie die je voorheen zelf had ingeklapt
+function openAncestorsInSidebar(generatorId, parentId){
+  sidebarState[generatorId] = true;
+  let cur = parentId;
+  while(cur){
+    sidebarState[cur] = true;
+    const k = state.TOPO.kasten.find(x=>x.id===cur);
+    cur = k ? k.parent : null;
+  }
+  saveSidebarState();
+}
+
 document.getElementById('addKastBtn').onclick = async ()=>{
   const naam = document.getElementById('newKastNaam').value.trim();
   const afkorting = document.getElementById('newKastAfk').value.trim();
@@ -914,6 +929,9 @@ document.getElementById('addKastBtn').onclick = async ()=>{
   try{
     await apiCall('/api/kasten', 'POST', {naam, rating_a, generator, parent: parent || null, afkorting: afkorting || undefined});
     document.getElementById('newKastNaam').value=''; document.getElementById('newKastAfk').value=''; document.getElementById('newKastRating').value='';
+    // vóór loadTopology() (die zelf al renderList() aanroept), anders toont die ene render nog de
+    // oude, mogelijk dichtgeklapte sidebarState
+    openAncestorsInSidebar(generator, parent || null);
     await loadTopology();
   }catch(e){ alert(e.message); }
 };
