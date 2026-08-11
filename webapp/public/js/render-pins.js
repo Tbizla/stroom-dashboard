@@ -21,6 +21,11 @@ function pinTegenschaal(){ return 1 / (currentZoom() || 1); }
 export function ververPinTegenschaal(){
   const s = pinTegenschaal();
   mapinner.querySelectorAll('.pinanchor').forEach(el => el.style.transform = 'scale(' + s + ')');
+  // .knik heeft geen label/badge ernaast (puur zelf-centrerend, geen asymmetrische offset zoals
+  // .pinlabel), dus geen aparte wrapper nodig — regressie t.o.v. de vorige tegenschaal-fix:
+  // hier was de tegenschaal per ongeluk helemaal weggevallen toen .pinanchor de losse per-element-
+  // aanpak voor pin/label verving, waardoor knikpunten weer meekrompen met de kaart-zoom
+  mapinner.querySelectorAll('.knik').forEach(el => el.style.transform = 'translate(-50%,-50%) scale(' + s + ')');
 }
 // gedispatcht vanuit zoom.js's applyZoom() ná elke scale-wijziging (knoppen/scrollwiel/fit-to-screen)
 mapinner.addEventListener('kaartzoom', ververPinTegenschaal);

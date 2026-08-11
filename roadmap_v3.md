@@ -949,11 +949,20 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       aan hetzelfde `kaartzoom`-event dat `map-tiles.js` al gebruikt, gedispatcht vanuit `zoom.js`'s
       `applyZoom()` ná elke scale-wijziging) zet nu nog maar één simpele `scale(1/z)` op de
       `.pinanchor` zelf — dat hele clustertje schaalt daardoor uniform rond het ankerpunt, dus ook
-      de tussenruimte tot de pin blijft bij elke zoom exact evenredig. `.knik` bleef ongewijzigd
-      (zuivere zelfcentrering, geen wrapper nodig, was al correct). **Lijnen** (`style.css`):
+      de tussenruimte tot de pin blijft bij elke zoom exact evenredig. **Lijnen** (`style.css`):
       `.edgeline{vector-effect:non-scaling-stroke}` — een losstaande, voor dit doel bestaande
-      SVG-eigenschap die de lijndikte in echte schermpixels houdt, geen JS nodig. Zie
-      event_dashboard.md, Kalibreren-tabblad.
+      SVG-eigenschap die de lijndikte in echte schermpixels houdt, geen JS nodig.
+      **Derde ronde**: Mike meldde dat de kabellijnen nog steeds niet mooi meeschaalden. Bleek een
+      eigen regressie in de vorige ronde: `.knik` (de sleepbare knikpunt-cirkels op een lijn) had in
+      de allereerste versie wél een eigen tegenschaal (`translate(-50%,-50%) scale(s)`, wiskundig
+      correct voor dit zuiver zelf-centrerende element — zie hierboven), maar die viel abusievelijk
+      helemaal weg toen `ververPinTegenschaal()` herschreven werd naar alleen `.pinanchor`
+      aanspreken — de aanname "`.knik` was al correct, geen wrapper nodig" klopte voor de
+      *positionering*, maar niet voor de constatering dat 'ie sowieso ergens tegengeschaald moest
+      blíjven worden. Knikpunten kropen daardoor weer even klein als vóór de hele fix. Hersteld: de
+      `.knik`-tegenschaal staat weer los naast de `.pinanchor`-regel in `ververPinTegenschaal()`
+      (geen wrapper nodig, `.knik` heeft geen label/badge ernaast). Zie event_dashboard.md,
+      Kalibreren-tabblad.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
