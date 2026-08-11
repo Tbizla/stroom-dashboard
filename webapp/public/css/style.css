@@ -182,7 +182,7 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .row .sub2{font-family:var(--sans);color:var(--text3);font-size:0.6875rem;white-space:nowrap}
 .geen-sensor-label{font-family:var(--sans);color:var(--text3);font-size:0.6875rem;white-space:nowrap}
 
-.chev{width:1.125rem;flex-shrink:0;text-align:center;color:var(--text3);font-size:0.9375rem;cursor:pointer;user-select:none}
+.chev{width:1.5rem;flex-shrink:0;text-align:center;color:var(--text3);font-size:1.375rem;cursor:pointer;user-select:none}
 .genrow .chev{color:var(--accent)}
 
 .listtools{padding:0 0.875rem 0.625rem;display:flex;flex-direction:column;gap:0.5rem}

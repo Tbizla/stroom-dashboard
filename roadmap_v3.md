@@ -869,9 +869,10 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
 - [x] **Grotere in-/uitklap-pijltjes + kasten auto-uitklappen bij toevoegen (tweak, geen spec
       nodig).** Afgerond, twee losse punten. **Pijltjes**: de gedeelde `.chev`-stijl
       (`webapp/public/css/style.css`) — gebruikt door zowel de Kalibreren/Live-zijlijst
-      (`render-list.js`) als de kasten-secties in Beheer (`render-beheer.js`) — ging van
-      `font-size:0.625rem`/`width:0.875rem` naar `0.9375rem`/`1.125rem`, merkbaar beter zichtbaar
-      als uit-/inklapbediening. **Auto-uitklappen**: een nieuw toegevoegde kast (via Beheer's
+      (`render-list.js`) als de kasten-secties in Beheer (`render-beheer.js`) — in twee stappen (op
+      Mikes terugmelding dat de eerste stap nog niet genoeg was) van
+      `font-size:0.625rem`/`width:0.875rem` uiteindelijk naar `1.375rem`/`1.5rem`, merkbaar beter
+      zichtbaar als uit-/inklapbediening. **Auto-uitklappen**: een nieuw toegevoegde kast (via Beheer's
       "+ Kast"-formulier) zet nu de hele generator-/parent-keten open in `sidebarState`
       (`state.js`) vóórdat `loadTopology()` de zijlijst herrendert — Mike's kastentoevoeging is
       daardoor meteen zichtbaar in de Kalibreren/Live-zijlijst, ook als die sectie daarvoor
