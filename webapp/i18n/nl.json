@@ -216,7 +216,7 @@
   "schema.emptyHint": "Nog geen generators/kasten. Voeg ze toe via \"Beheer\" — het schema wordt automatisch getekend.",
 
   "zoom.uitzoomen": "Uitzoomen",
-  "zoom.resetTitle": "Klik om te resetten naar 100%",
+  "zoom.typTitel": "Typ een percentage en druk op Enter",
   "zoom.inzoomen": "Inzoomen",
   "zoom.fitToScreen": "Alles in beeld (fit to screen)",
 

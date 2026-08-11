@@ -3,6 +3,8 @@ import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ZOOM_STORAGE_KEY, zoomLevels } from './s
 import { allNodes, getSurfaceEl } from './topology.js';
 import { renderKastPopup } from './kastpopup.js';
 
+const zoomLabelEl = document.getElementById('zoomLabel');
+
 export function currentZoom(){ return zoomLevels[state.mode] ?? 1; }
 export function applyZoom(){
   const z = currentZoom();
@@ -15,7 +17,9 @@ export function applyZoom(){
     // hieronder), maar wél welk volle-resolutiegebied zichtbaar is
     mapinner.dispatchEvent(new CustomEvent('kaartzoom'));
   }
-  document.getElementById('zoomLabel').textContent = Math.round(z * 100) + '%';
+  // niet overschrijven terwijl de gebruiker er zelf in aan het typen is (focus) — anders springt de
+  // invoer tijdens het typen terug naar de nog-actieve waarde
+  if(document.activeElement !== zoomLabelEl) zoomLabelEl.value = Math.round(z * 100) + '%';
   centerContentInViewport();
   renderKastPopup();
 }
@@ -56,7 +60,21 @@ export function centerContentInViewport(){
 
 document.getElementById('zoomInBtn').onclick = () => setZoom(currentZoom() + ZOOM_STEP);
 document.getElementById('zoomOutBtn').onclick = () => setZoom(currentZoom() - ZOOM_STEP);
-document.getElementById('zoomLabel').onclick = () => setZoom(1);
+// zelf een percentage kunnen intypen i.p.v. alleen +/-/scrollwiel/fit-to-screen — Enter en focus-
+// verlies passen 'm toe, Escape zet 'm terug op de huidige waarde zonder te wijzigen. Een ongeldige
+// invoer (leeg, geen getal, 0 of negatief) valt terug op de huidige waarde i.p.v. een foutmelding —
+// setZoom() zelf klemt een geldig getal al vast tussen ZOOM_MIN/ZOOM_MAX.
+function commitZoomInput(){
+  const waarde = parseFloat(zoomLabelEl.value);
+  if(!isNaN(waarde) && waarde > 0) setZoom(waarde / 100);
+  else applyZoom();
+}
+zoomLabelEl.addEventListener('focus', () => zoomLabelEl.select());
+zoomLabelEl.addEventListener('keydown', (ev) => {
+  if(ev.key === 'Enter'){ commitZoomInput(); zoomLabelEl.blur(); }
+  else if(ev.key === 'Escape'){ applyZoom(); zoomLabelEl.blur(); }
+});
+zoomLabelEl.addEventListener('blur', commitZoomInput);
 
 // zoomt zo ver uit (of in) dat de volledige inhoud past
 export function fitToScreen(){

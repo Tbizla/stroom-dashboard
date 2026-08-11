@@ -341,9 +341,10 @@ zetten zonder code aan te passen.
   lijn of knikpunt opent een mini-menu ("Knikpunt hier invoegen" / "Rechte lijn terugzetten") als
   alternatief voor dubbelklikken. Alleen bewerkbaar op Kalibreren; op Live volgt de lijn dezelfde
   route, puur ter weergave, zonder handles
-- In-/uitzoomen (knoppen of scrollwiel) en pannen (klikken en slepen), met een "fit to screen"-knop
-  die alles in één keer in beeld brengt (incl. eventuele knikpunten) — handig bij een grote
-  topologie
+- In-/uitzoomen (knoppen, scrollwiel, of het percentage tussen de +/- -knoppen rechtstreeks
+  intypen — Enter of wegklikken past het toe, Escape zet 'm terug) en pannen (klikken en slepen),
+  met een "fit to screen"-knop die alles in één keer in beeld brengt (incl. eventuele knikpunten)
+  — handig bij een grote topologie
 
 **Schema-tabblad**
 - Automatisch gegenereerd stroomschema (boomdiagram) van de volledige parent/child-keten, generator

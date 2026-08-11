@@ -879,6 +879,16 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       dichtgeklapt stond (bijv. eerder zelf ingeklapt om ruimte te sparen). Losstaand van
       `beheerState` (Beheer's eigen tabel-in-/uitklapstatus), die was al niet het probleem. Zie
       event_dashboard.md, Live-monitoring (zij-lijst).
+- [x] **Zoompercentage rechtstreeks intypen (tweak, geen spec nodig).** Afgerond — Mike wilde een
+      specifiek zoomniveau kunnen invoeren i.p.v. alleen via de +/- -knoppen of het scrollwiel.
+      `#zoomLabel` (`webapp/public/index.html`) van een niet-interactieve `<span>` naar een
+      `<input>`; de oude "klik om te resetten naar 100%"-functie is hiermee vervallen (vervangen
+      door intypen). `webapp/public/js/zoom.js`: Enter of focus verliezen past de ingetypen waarde
+      toe (`setZoom()` klemt 'm zelf al tussen `ZOOM_MIN`/`ZOOM_MAX`), Escape zet 'm terug zonder te
+      wijzigen, een ongeldige invoer (leeg/geen getal/≤0) valt terug op de huidige waarde i.p.v. een
+      foutmelding. `applyZoom()` overschrijft de invoer niet zolang die gefocust is (voorkomt dat de
+      waarde tijdens het typen zelf terugspringt). Geldt voor Kalibreren/Live/Schema (gedeelde
+      zoombalk). Zie event_dashboard.md, Plattegrond & kalibratie.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

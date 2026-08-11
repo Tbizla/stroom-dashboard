@@ -216,7 +216,7 @@
   "schema.emptyHint": "No generators/boxes yet. Add them via \"Manage\" — the diagram is drawn automatically.",
 
   "zoom.uitzoomen": "Zoom out",
-  "zoom.resetTitle": "Click to reset to 100%",
+  "zoom.typTitel": "Type a percentage and press Enter",
   "zoom.inzoomen": "Zoom in",
   "zoom.fitToScreen": "Fit to screen",
 
