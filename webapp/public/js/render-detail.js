@@ -3,6 +3,7 @@ import { nodeById, isGen, genNaam, typeIcon, maxFaseStroom, statusClass } from '
 import { t, huidigeLocale } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
 import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
+import { sparklineSvg } from './live-spark.js';
 
 // per-lid live rijen onder de bestaande ledenlijst van een groep (naam/kVA/soort blijft
 // ongewijzigd). Een lid zonder eigen rating_a heeft
@@ -79,6 +80,15 @@ export function renderDetail(){
     }
     html += metingenHtml(n, d);
     html += ledenblokHtml(n);
+  }
+  // specs/live-viewport-grote-monitor-plan.md: trendlijn van de laatste minuten, alleen op Live —
+  // #detail is gedeeld met Kalibreren (zie topology.js/getSurfaceEl()), dus expliciet op state.mode
+  // gaten i.p.v. een aparte "live-detail"-element te bouwen. Puur-client-side buffer (live-spark.js),
+  // geen nieuwe databron.
+  if(state.mode==='live'){
+    const spark = sparklineSvg(n.id, 240, 40);
+    html += '<div class="spark-wrap"><div class="spark-label">'+t('live.sparkLabel')+'</div>'+
+      (spark || '<div class="spark-leeg">'+t('live.sparkLeeg')+'</div>')+'</div>';
   }
   html += '<div class="metric" style="margin-top:10px"><span class="k">'+t('detail.positie')+'</span><span>'+(n.positie && n.positie.x_pct!=null? n.positie.x_pct.toFixed(1)+'%, '+n.positie.y_pct.toFixed(1)+'%' : t('detail.nogNietGeplaatst'))+'</span></div>';
   if(n.shelly_ip){

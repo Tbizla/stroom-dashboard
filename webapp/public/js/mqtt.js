@@ -20,6 +20,8 @@ import { ververKastStatusPagina } from './kaststatus.js';
 import { verwerkAnomalyDetectie } from './anomaly.js';
 import { verwerkGrafiekenLiveMessage } from './grafieken.js';
 import { maxFaseStroom } from './topology.js';
+import { ververLiveKpi } from './live-kpi.js';
+import { verwerkLiveSparkPunt } from './live-spark.js';
 
 // vervolgticket-toegang-van-buitenaf.md §4: een ticket is eenmalig bruikbaar en maar 30s geldig
 // (server.js) — mqtt.js' eigen ingebouwde reconnect-logica zou na de eerste onderbreking blijven
@@ -101,9 +103,11 @@ export async function verbindMqtt(){
       liveData[kastId] = { ...data, ts: Date.now() };
       verwerkGrafiekenLiveMessage(kastId, liveData[kastId]);
       verwerkAnomalyDetectie(kastId, maxFaseStroom(liveData[kastId]));
+      verwerkLiveSparkPunt(kastId, maxFaseStroom(liveData[kastId]));
       renderList(); renderPins(); if(state.mode==='schema') renderSchema(); if(state.selectedId===kastId) renderDetail();
       ververOverzichtLiveWeergave();
       ververKastStatusPagina();
+      ververLiveKpi();
     });
   }catch(e){
     dot.className='dot err'; label.textContent=t('header.connFout')+e.message; state.mqttClient=null;

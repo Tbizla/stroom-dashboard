@@ -972,6 +972,35 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       naar een relatieve `calc(var(--edge-w) * 1.5)` bovenop de dynamische basisdikte, i.p.v. een
       losstaande vaste `3px` die bij uitzoomen weer dunner dan de niet-hover-lijn zou zijn geweest.
       Zie event_dashboard.md, Kalibreren-tabblad.
+- [ ] **Live-weergave & viewport-kalibratie voor grote monitoren.** Mike's verzoek (12 augustus
+      2026): het dashboard draait op een grote monitor, mogelijk in portrait-stand — nog niet
+      vastgelegd welke kant op, dus beide moeten werken. Twee interactieve Cowork-mockups
+      (landscape 16:9 4K en portrait), mockup akkoord bevonden, gefaseerde bouwvolgorde met Mike
+      afgestemd: 1) Live-layout (landscape+portrait) → 2) 90°-rotatie → 3) viewport-kalibratie. Spec:
+      [specs/live-viewport-grote-monitor-plan.md](specs/live-viewport-grote-monitor-plan.md).
+      **Deelopgeleverd — fase 1, alleen landscape** (12 augustus 2026): pure reindexering van
+      bestaande data, geen nieuwe databron. **Alert-ticker-strip** (`#liveTicker`, alleen op Live,
+      direct onder de header): vaste rood/amber/normaal/offline-tellingen + een elke ~3,2s
+      wisselende tekst van de actieve amber/rood-kasten (`live-kpi.js`). **KPI-tegels**
+      (`#liveKpiRow`, bovenaan de zij-lijst): tot. belasting, piek (nu — bewust geen "piek vandaag",
+      dat zou een InfluxDB-query vereisen en dit blijft binnen de "geen nieuwe databron"-afspraak
+      van fase 1), actieve alerts, offline — hergebruikt de bestaande `.card`/`.lbl`/`.val`-stijl
+      van de Overzicht-kaarten i.p.v. een eigen kaart-ontwerp. **Filters uitgebreid**: nieuwe
+      "Offline"-filterchip (`statusOf(k)===null`) en een "↓ Prioriteit"-sorteertoggle
+      (`render-list.js`, sorteert generatoren op ergste onderliggende status) naast de bestaande
+      Alles/Amber+/Alleen-rood-chips — deze twee gelden bewust voor zowel Kalibreren als Live (geen
+      reden om ze op Live te beperken). **Trendlijn in de zij-detail** (`live-spark.js`, alleen op
+      Live): een kleine sparkline van de laatste ~60 punten voor de geselecteerde kast/generator/
+      lid, een eigen kleine client-side rolling buffer los van grafieken.js' eigen 60-min-buffer.
+      **Nog niet gebouwd** (blijft dit item openstaand): de portrait-specifieke stacked/tabbed
+      lay-out (plattegrond boven, compacte KPI-strip, Statuslijst/Detail-tabs — momenteel werkt de
+      bestaande lay-out gewoon door op een smal/hoog scherm, alleen niet zo ruimte-efficiënt als de
+      portrait-mockup laat zien), de 90°-rotatieknop, en de viewport-kalibratiefunctie op
+      Kalibreren. **Nog niet getest in een echte browser** (Docker Desktop viel tijdens het bouwen
+      stil en is herstart, geen Playwright/browser-tool beschikbaar in deze sessie) — alleen
+      statisch geverifieerd (JS-syntax, JSON-validiteit, DOM-elementen/nieuwe bestanden correct
+      geserveerd, geen serverfouten in de logs). Zie event_dashboard.md, Live-monitoring
+      (Live-tabblad).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

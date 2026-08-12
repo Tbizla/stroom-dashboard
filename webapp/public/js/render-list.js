@@ -54,6 +54,7 @@ export function renderList(){
     if(filter==='alles') return true;
     const s = statusOf(k);
     if(filter==='rood') return s==='red';
+    if(filter==='offline') return s==null; // geen rating (bewust geen sensor) of nog geen MQTT-data ontvangen
     return s==='amber' || s==='red';
   }
   const subtreeMatchCache = new Map();
@@ -116,7 +117,21 @@ export function renderList(){
     });
   }
 
-  state.TOPO.generators.forEach(gen=>{
+  // specs/live-viewport-grote-monitor-plan.md: "sorteren op prioriteit" toont eerst de generatoren
+  // met de ergste onderliggende status (rood > amber > offline > normaal) — puur een weergave-
+  // volgorde voor renderList() zelf, dus een kopie sorteren i.p.v. state.TOPO.generators zelf te
+  // muteren (dat zou ook Beheer's eigen generatorentabel-volgorde ongewenst laten meeveranderen)
+  const PRIORITEIT_RANG = { red:0, amber:1, offline:2, green:3 };
+  function generatorRang(gen){
+    const kasten = collectDescendantKasten(gen);
+    if(!kasten.length) return PRIORITEIT_RANG.green;
+    return Math.min(...kasten.map(k=>PRIORITEIT_RANG[statusOf(k) || 'offline']));
+  }
+  const generatorenTeTonen = state.listSortPriority
+    ? [...state.TOPO.generators].sort((a,b)=>generatorRang(a)-generatorRang(b))
+    : state.TOPO.generators;
+
+  generatorenTeTonen.forEach(gen=>{
     if(searching && !subtreeMatches(gen)) return;
     const heeftKinderen = listChildrenOf(gen).length > 0;
     const gh = document.createElement('div');
@@ -212,10 +227,17 @@ document.getElementById('listSearch').addEventListener('input', (e)=>{
 // de Beheer-kastfilters en rapport-periodechips raakte en alleen klopte dankzij toevallige
 // script-volgorde/last-write-wins op .onclick) — zelfde eindresultaat, maar niet meer afhankelijk
 // van de volgorde waarin modules geladen worden.
-document.querySelectorAll('#listtools .chip').forEach(chip=>{
+document.querySelectorAll('#listtools .chip[data-filter]').forEach(chip=>{
   chip.onclick = ()=>{
     state.listStatusFilter = chip.dataset.filter;
-    document.querySelectorAll('#listtools .chip').forEach(c=>c.classList.toggle('active', c===chip));
+    document.querySelectorAll('#listtools .chip[data-filter]').forEach(c=>c.classList.toggle('active', c===chip));
     renderList();
   };
 });
+// los van de filter-chips hierboven (een toggle, geen exclusieve keuze) — zelfde .chip-stijl,
+// .ghost-variant (style.css) om 'm visueel te onderscheiden van de status-filters
+document.getElementById('sortPrioBtn').onclick = ()=>{
+  state.listSortPriority = !state.listSortPriority;
+  document.getElementById('sortPrioBtn').classList.toggle('active', state.listSortPriority);
+  renderList();
+};

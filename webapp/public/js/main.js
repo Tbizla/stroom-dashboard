@@ -25,6 +25,7 @@ import { t } from './i18n.js';
 import { initQrCodes } from './qrcodes.js';
 import { initKastStatusRoute } from './kaststatus.js';
 import { initAnomalyOpruiming } from './anomaly.js';
+import { initLiveTicker, ververLiveKpi } from './live-kpi.js';
 import { renderDetail } from './render-detail.js';
 import { renderList } from './render-list.js';
 import { controleerSessie } from './auth.js';
@@ -111,10 +112,12 @@ async function bootstrapApp(){
   initNotificaties();
   initAccounts();
   initQrCodes();
+  initLiveTicker();
   initAnomalyOpruiming(()=>{
     renderList(); renderPins();
     if(state.selectedId) renderDetail();
     ververOverzichtLiveWeergave();
+    ververLiveKpi();
   });
 
   // ---------- elke paar seconden topologie herladen, zodat kalibratie door een ander direct zichtbaar is ----------
@@ -128,6 +131,7 @@ async function bootstrapApp(){
     renderPins();
     refreshSimStatusIfTest();
     ververOverzichtLiveWeergave();
+    ververLiveKpi();
   }, 5000);
 
   loadTopology().then(()=>{

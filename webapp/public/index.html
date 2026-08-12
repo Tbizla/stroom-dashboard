@@ -39,6 +39,19 @@
     <button id="fullscreenBtn" title="Volledig scherm">⛶</button>
   </header>
 
+  <!-- specs/live-viewport-grote-monitor-plan.md: alert-ticker-strip, alleen zichtbaar op Live
+       (modes.js toont/verbergt 'm net als calbar/liveControls hierboven/onder) -->
+  <div class="liveticker" id="liveTicker" style="display:none">
+    <div class="ticker-counts">
+      <span class="count-chip rood">🔴 <b id="tickerRood">–</b> <span data-i18n="live.tickerRood">rood</span></span>
+      <span class="count-chip amber">🟠 <b id="tickerAmber">–</b> <span data-i18n="live.tickerAmber">amber</span></span>
+      <span class="count-chip normaal">🟢 <b id="tickerNormaal">–</b> <span data-i18n="live.tickerNormaal">normaal</span></span>
+      <span class="count-chip offline">⚪ <b id="tickerOffline">–</b> <span data-i18n="live.tickerOffline">offline</span></span>
+    </div>
+    <div class="ticker-msg" id="tickerMsg"></div>
+    <div class="ticker-live"><span class="pulse"></span><span data-i18n="live.tickerLive">live updates</span></div>
+  </div>
+
   <div class="calbar" id="calbar" style="display:none">
     <label class="uploadbtn"><span data-i18n="calbar.plattegrondUploaden">Plattegrond uploaden</span><input type="file" id="mapFile" style="display:none" accept=".png,.bmp,.svg,.pdf,image/png,image/bmp,image/svg+xml,application/pdf"></label>
     <span id="mapUploadErr" class="err" style="display:none"></span>
@@ -717,6 +730,13 @@
       <svg id="schemaSvg"></svg>
     </div>
     <aside>
+      <!-- specs/live-viewport-grote-monitor-plan.md: KPI-tegels, alleen zichtbaar op Live -->
+      <div class="livekpirow" id="liveKpiRow" style="display:none">
+        <div class="card" style="cursor:default"><div class="lbl" data-i18n="live.kpiTotaal">Tot. belasting</div><div class="val" id="kpiTotaal">–</div></div>
+        <div class="card" style="cursor:default"><div class="lbl" data-i18n="live.kpiPiek">Piek (nu)</div><div class="val" id="kpiPiek">–</div></div>
+        <div class="card" style="cursor:default"><div class="lbl" data-i18n="live.kpiAlerts">Actieve alerts</div><div class="val alert" id="kpiAlerts">–</div></div>
+        <div class="card" style="cursor:default"><div class="lbl" data-i18n="live.kpiOffline">Offline</div><div class="val" id="kpiOffline">–</div></div>
+      </div>
       <div class="listhead" data-i18n="aside.listhead">Generators &amp; kasten</div>
       <div class="listtools" id="listtools">
         <input type="text" id="listSearch" data-i18n-placeholder="aside.zoekPlaceholder" placeholder="Zoek op naam of afkorting...">
@@ -724,6 +744,8 @@
           <button class="chip active" data-filter="alles" data-i18n="common.alles">Alles</button>
           <button class="chip" data-filter="amber" data-i18n="aside.filterAmber">Amber+</button>
           <button class="chip" data-filter="rood" data-i18n="aside.filterRood">Alleen rood</button>
+          <button class="chip" data-filter="offline" data-i18n="aside.filterOffline">Offline</button>
+          <button class="chip ghost" id="sortPrioBtn" data-i18n="aside.sortPriority">↓ Prioriteit</button>
           <button class="collapseall" id="listToggleAllBtn" data-i18n="common.allesInklappen">Alles inklappen</button>
         </div>
       </div>

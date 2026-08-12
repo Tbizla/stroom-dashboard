@@ -374,10 +374,13 @@ zetten zonder code aan te passen.
   (indien uitgelezen) generators/groepen
 - Zij-lijst met generators en kasten is in-/uitklapbaar (met status-badges per generator en een
   "N onderliggend"-indicator bij geneste kasten), doorzoekbaar op naam/afkorting en filterbaar op
-  amber/rood; in-/uitklapstatus per item wordt onthouden. Een nieuw toegevoegde kast klapt de hele
-  generator-/parent-keten in deze zij-lijst automatisch open, ook als die daarvoor dichtgeklapt
-  stond — meteen zichtbaar in Kalibreren/Live na het aanmaken, geen handmatig uitklappen nodig. Een
-  generatorrij toont twee losse regels:
+  amber/rood/**offline** (geen rating ingesteld of nog geen MQTT-data ontvangen); in-/uitklapstatus
+  per item wordt onthouden. Een **"↓ Prioriteit"-schakelaar** sorteert generatoren op hun ergste
+  onderliggende status (rood eerst, dan amber, dan offline, normaal laatst) i.p.v. de vaste
+  topologie-volgorde. Een nieuw toegevoegde kast klapt de hele generator-/parent-keten in deze
+  zij-lijst automatisch open, ook als die daarvoor dichtgeklapt stond — meteen zichtbaar in
+  Kalibreren/Live na het aanmaken, geen handmatig uitklappen nodig. Een generatorrij toont twee
+  losse regels:
   bovenaan de eigen self-meter-status (stip) van de generator/groep zelf, daaronder expliciet
   gelabeld "onderliggend:" de opgetelde groen/amber/rood-badges van de kasten die eraan hangen — zelfde
   onderscheid ook op de Overzicht-kaarten (Rapportages-tabblad)
@@ -399,6 +402,20 @@ zetten zonder code aan te passen.
   rating/self-meter toont gewoon geen stip/waarde, geen verplichte migratie-actie voor bestaande
   topologieën (bestaande leden krijgen bij de eerstvolgende load automatisch een stabiele id +
   `mqtt_topic_prefix`, zelfde patroon als bij kasten)
+- **Alert-ticker-strip** (specs/live-viewport-grote-monitor-plan.md, alleen op Live, direct onder
+  de header): vaste tellingen rood/amber/normaal/offline, plus een doorlopend wisselende tekst
+  (elke ~3,2s) van de actieve amber/rood-kasten ("generator · kast — belasting%"); toont een vaste
+  "geen actieve alerts"-tekst als er niets aan de hand is. Pure reindexering van de al binnenkomende
+  MQTT-data, geen nieuwe databron
+- **KPI-tegels** (zelfde plek, bovenaan de zij-lijst, alleen op Live): tot. belasting (gemiddeld
+  belastingspercentage over kasten met rating+data), piek (nu) (hoogste belastingspercentage op dit
+  moment — een écht "piek vandaag" zou een InfluxDB-query vereisen, bewust buiten scope gehouden),
+  actieve alerts (aantal kasten amber+rood) en offline (aantal kasten zonder rating of zonder
+  MQTT-data)
+- **Trendlijn in de zij-detail** (alleen op Live): een kleine sparkline van de belasting over de
+  laatste ~60 punten sinds het laden van de pagina, voor de geselecteerde kast/generator/lid — een
+  eigen, kleine client-side rolling buffer (`live-spark.js`, los van grafieken.js' eigen 60-min-
+  live-buffer), geen historische InfluxDB-data. Overleeft geen page-reload
 - Fasekleuren NL-conventie: een klein rond kleurvlakje (bruin/antraciet/grijs, `--fase1`/`--fase2`/
   `--fase3`) vóór het fase-label in de kastpopup-tabelkop (A/B/C) en de aside-detail (Fase A/B/C-
   rijen) — losstaand naast de bestaande groen/amber/rood-statuskleur, geen samensmelting van de

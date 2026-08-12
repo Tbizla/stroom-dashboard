@@ -11,6 +11,7 @@ export const state = {
   openPopupKastId: null, // id van de kast waarvan de MQTT-databallon open staat op de plattegrond (Live-modus) — null = geen ballon open
   listSearchQuery: '',
   listStatusFilter: 'alles',
+  listSortPriority: false, // specs/live-viewport-grote-monitor-plan.md: generatoren sorteren op ergste onderliggende status (rood eerst), i.p.v. topologie-volgorde — alleen zinvol/zichtbaar op Live
   kastZoekQuery: '',
   kastTypeFilter: 'alles',
   rapportPeriodeChip: 'alles',
@@ -28,6 +29,13 @@ export const state = {
 
 export const liveData = {};
 export const liveEnergyData = {};
+// specs/live-viewport-grote-monitor-plan.md: kleine, puur-client-side rolling buffer voor de
+// trendlijn in het Live-detailpaneel — géén nieuwe databron (hergebruikt dezelfde MQTT-stream die
+// al binnenkomt), losstaand van grafieken.js' eigen (grotere, 60-min) live-buffer om dat bestand
+// niet te koppelen aan wat hier maar een klein sparkline-detail is. Alleen in-memory, per node-id
+// een array van {ts, val}, gecapt op LIVE_SPARK_MAX_PUNTEN — overleeft geen page-reload.
+export const liveSparkBuffer = {};
+export const LIVE_SPARK_MAX_PUNTEN = 60;
 
 // welke groepen (bijv. "Centrale Noord — 6 generators + CAT-batterij") hun ledenlijst opengeklapt
 // hebben staan; los van TOPO zodat het openklappen niet steeds dichtklapt na elke herlaad/opslaan-cyclus

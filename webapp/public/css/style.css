@@ -207,6 +207,7 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .chip{background:var(--panel2);border:1px solid var(--border);color:var(--text2);border-radius:0.75rem;padding:0.25rem 0.625rem;font-size:0.6875rem;cursor:pointer;font-family:var(--sans)}
 .chip:hover{border-color:var(--accent)}
 .chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.chip.ghost{color:var(--text3);border-style:dashed;background:transparent}
 .collapseall{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:0.375rem;padding:0.25rem 0.5625rem;font-size:0.6875rem;cursor:pointer;font-family:var(--sans)}
 .collapseall:hover{border-color:var(--accent);color:var(--text)}
 .collapseall.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
@@ -235,9 +236,36 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .lidrow-shelly,.lidtabel .lidrow-shelly{color:var(--accent);text-decoration:none;font-size:0.6875rem;margin-left:0.25rem}
 .empty{color:var(--text3);font-size:0.78125rem;padding:1.25rem 0.875rem}
 
+/* specs/live-viewport-grote-monitor-plan.md: kleine trendlijn onderaan de aside-detail, alleen op
+   Live (render-detail.js) — puur-client-side buffer, zie live-spark.js */
+.spark-wrap{margin-top:0.625rem}
+.spark-label{font-size:0.65625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:0.25rem}
+.spark-leeg{font-size:0.6875rem;color:var(--text3)}
+
 .calbar{padding:0.625rem 0.875rem;background:var(--panel2);border-bottom:1px solid var(--border);font-size:0.75rem;color:var(--text2);display:flex;gap:0.625rem;align-items:center;flex-wrap:wrap}
 .calbar b{color:var(--text)}
 .calbar .hint{color:var(--accent)}
+
+/* specs/live-viewport-grote-monitor-plan.md: alert-ticker-strip, alleen op Live (modes.js) */
+.liveticker{padding:0.5rem 0.875rem;background:linear-gradient(90deg, rgba(229,72,77,.08), var(--panel2) 20%);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.875rem;font-size:0.78125rem;color:var(--text2)}
+.liveticker .ticker-counts{display:flex;gap:0.625rem;flex:0 0 auto;padding-right:0.875rem;border-right:1px solid var(--border)}
+.count-chip{display:flex;align-items:center;gap:0.3125rem;font-weight:600;white-space:nowrap}
+.count-chip b{font-weight:700}
+.count-chip.rood b{color:var(--red)}
+.count-chip.amber b{color:var(--amber)}
+.count-chip.normaal b{color:var(--green)}
+.count-chip.offline b{color:var(--text3)}
+.liveticker .ticker-msg{flex:1;position:relative;height:1.125rem;overflow:hidden;min-width:0}
+.ticker-msg-item{position:absolute;inset:0;display:flex;align-items:center;gap:0.5rem;opacity:0;transform:translateY(4px);
+  transition:opacity .4s ease, transform .4s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ticker-msg-item.show{opacity:1;transform:translateY(0)}
+.ticker-tag{font-weight:700;padding:0.0625rem 0.375rem;border-radius:0.25rem;font-size:0.65625rem;letter-spacing:.02em}
+.ticker-tag.red{background:rgba(229,72,77,.16);color:var(--red)}
+.ticker-tag.amber{background:rgba(245,166,35,.16);color:var(--amber)}
+.liveticker .ticker-live{flex:0 0 auto;color:var(--text3);font-size:0.6875rem;display:flex;align-items:center;gap:0.375rem;white-space:nowrap}
+.liveticker .pulse{width:0.375rem;height:0.375rem;border-radius:50%;background:var(--red);animation:tickerpulse 1.6s infinite}
+@keyframes tickerpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(229,72,77,.5)}50%{opacity:.5;box-shadow:0 0 0 0.3125rem rgba(229,72,77,0)}}
 
 ::-webkit-scrollbar{width:0.5rem;height:0.5rem}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:0.25rem}
@@ -384,6 +412,16 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .card .val{font-family:var(--mono);font-size:1.125rem;color:var(--text);font-weight:600}
 .card .sub{font-size:0.65625rem;color:var(--text2);margin-top:0.25rem;display:flex;align-items:center}
 .dotstatus{width:0.4375rem;height:0.4375rem;border-radius:50%;display:inline-block;margin-right:0.3125rem;flex-shrink:0}
+
+/* specs/live-viewport-grote-monitor-plan.md: KPI-tegels in de Live-zijbalk — hergebruikt .card/.lbl/
+   .val (Rapportages > Overzicht) i.p.v. een eigen kaart-stijl, alleen krapper voor de smalle aside */
+.livekpirow{display:grid;grid-template-columns:repeat(4,1fr);gap:0.375rem;padding:0.625rem 0.875rem 0}
+.livekpirow .card{padding:0.5rem 0.375rem}
+.livekpirow .card:hover{border-color:var(--border)}
+.livekpirow .lbl{font-size:0.5625rem;margin-bottom:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.livekpirow .val{font-size:0.9375rem}
+.livekpirow .val.alert{color:var(--red)}
+.livekpirow .val small{font-size:0.65625rem;font-weight:500;color:var(--text2)}
 
 .overzicht-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:1rem}
 .panel{background:var(--panel2);border:1px solid var(--border);border-radius:0.5rem;padding:0.875rem;overflow-x:auto}

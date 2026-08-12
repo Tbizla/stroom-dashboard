@@ -6,6 +6,7 @@ import { renderBeheer } from './render-beheer.js';
 import { renderPins } from './render-pins.js';
 import { renderSchema } from './render-schema.js';
 import { renderKastPopup } from './kastpopup.js';
+import { renderDetail } from './render-detail.js';
 import { applyZoom, fitToScreen } from './zoom.js';
 import { zoomLevels } from './state.js';
 import { t } from './i18n.js';
@@ -13,12 +14,17 @@ import { toonOverzicht } from './overzicht.js';
 import { toonGrafieken } from './grafieken.js';
 import { verbindMqtt } from './mqtt.js';
 import { toonLocaties, toonLocatiesBeheren } from './hq-locaties.js';
+import { ververLiveKpi } from './live-kpi.js';
 
 function setActiveModeButton(id){
   ['modeBeheer','modeCal','modeSchema','modeLive','modeTest','modeRapportages','modeGrafieken'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
   // geen kaart meer zichtbaar (of niet meer Live) na een tabwissel, dus een eventueel open
   // MQTT-databalonnetje heeft dan geen ankerpunt meer
   if(state.openPopupKastId){ state.openPopupKastId = null; renderKastPopup(); }
+  // specs/live-viewport-grote-monitor-plan.md: #detail toont een trendlijn alleen op Live (state.
+  // mode-check zit in render-detail.js zelf) — hier herrenderen zodat die meteen verschijnt/verdwijnt
+  // bij elke tabwissel, niet pas bij de eerstvolgende toevallige aanleiding
+  renderDetail();
 }
 // specs/beheer-subtabs-plan.md: vier sub-tabs binnen Beheer (Topologie/Instellingen/Accounts/
 // Back-up), zelfde patroon als toonRapportSubnav() hieronder — een verhuizing van bestaande
@@ -57,6 +63,7 @@ document.getElementById('modeBeheer').onclick = ()=>{
   document.getElementById('liveControls').style.display='none';
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
+  document.getElementById('liveTicker').style.display='none';
   document.getElementById('mainBody').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -71,6 +78,8 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('liveControls').style.display='none';
   document.getElementById('calControls').style.display='flex';
   document.getElementById('calbar').style.display='flex';
+  document.getElementById('liveTicker').style.display='none';
+  document.getElementById('liveKpiRow').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -87,6 +96,8 @@ document.getElementById('modeSchema').onclick = ()=>{
   document.getElementById('liveControls').style.display='none';
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
+  document.getElementById('liveTicker').style.display='none';
+  document.getElementById('liveKpiRow').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -103,6 +114,8 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('liveControls').style.display='flex';
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
+  document.getElementById('liveTicker').style.display='flex';
+  document.getElementById('liveKpiRow').style.display='grid';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -113,6 +126,7 @@ document.getElementById('modeLive').onclick = ()=>{
   verbindMqtt();
   applyZoom();
   renderPins();
+  ververLiveKpi();
 };
 document.getElementById('modeTest').onclick = ()=>{
   state.mode='test';
@@ -120,6 +134,7 @@ document.getElementById('modeTest').onclick = ()=>{
   document.getElementById('liveControls').style.display='none';
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
+  document.getElementById('liveTicker').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('mainBody').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -149,6 +164,7 @@ document.getElementById('modeRapportages').onclick = ()=>{
   document.getElementById('liveControls').style.display='none';
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
+  document.getElementById('liveTicker').style.display='none';
   document.getElementById('mainBody').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
@@ -163,6 +179,7 @@ document.getElementById('modeGrafieken').onclick = ()=>{
   document.getElementById('liveControls').style.display='none';
   document.getElementById('calControls').style.display='none';
   document.getElementById('calbar').style.display='none';
+  document.getElementById('liveTicker').style.display='none';
   document.getElementById('mainBody').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
