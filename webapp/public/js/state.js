@@ -86,3 +86,16 @@ export const ZOOM_MIN = 0.05, ZOOM_MAX = 3, ZOOM_STEP = 0.05;
 export const ZOOM_STORAGE_KEY = 'stroomdash_zoom_v1';
 export const zoomLevels = { cal: null, schema: null, live: null, schemaSize: null };
 try { Object.assign(zoomLevels, JSON.parse(localStorage.getItem(ZOOM_STORAGE_KEY) || '{}')); } catch(e) {}
+
+// ---------- specs/live-viewport-grote-monitor-plan.md, fase 2: rotatiestand van de plattegrond,
+// in stappen van 90° (0/90/180/270) ----------
+// Bewust één globale waarde, gedeeld tussen Kalibreren en Live (niet per-mode zoals zoomLevels) —
+// beide tonen dezelfde fysieke plattegrond op hetzelfde fysieke scherm, dus als je 'm draait om 'm
+// bijv. op een portrait-monitor te laten passen, geldt dat voor beide weergaves tegelijk. Geldt niet
+// voor Schema (eigen auto-gelayoutte SVG-boomdiagram, geen plattegrond).
+export const ROTATIE_STORAGE_KEY = 'stroomdash_rotatie_v1';
+export const rotatieState = { graden: 0 };
+try { Object.assign(rotatieState, JSON.parse(localStorage.getItem(ROTATIE_STORAGE_KEY) || '{}')); } catch(e) {}
+export function saveRotatieState(){
+  try { localStorage.setItem(ROTATIE_STORAGE_KEY, JSON.stringify(rotatieState)); } catch(e) {}
+}

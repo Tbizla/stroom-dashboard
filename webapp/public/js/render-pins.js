@@ -1,4 +1,4 @@
-import { state, svg, mapimg, mapinner } from './state.js';
+import { state, svg, mapimg, mapinner, rotatieState } from './state.js';
 import { allNodes, isGen, nodeById, getSurfaceEl, statusClass, savePositie, saveKnikpunten, typeIcon } from './topology.js';
 import { renderList } from './render-list.js';
 import { renderDetail } from './render-detail.js';
@@ -6,6 +6,16 @@ import { renderKastPopup } from './kastpopup.js';
 import { t } from './i18n.js';
 import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
 import { currentZoom } from './zoom.js';
+import { naarContentFractie } from './rotatie.js';
+
+// specs/live-viewport-grote-monitor-plan.md, fase 2: elke muispositie-naar-percentage-conversie
+// (klikken/slepen op de kaart) moet door de actieve rotatiestand heen rekenen — getBoundingClientRect()
+// is zelf al rotatiebewust (geeft de gerenderde, dus eventueel breedte/hoogte-verwisselde rechthoek
+// terug), maar "hoeveel procent van links" betekent bij 90°/270° niet meer "hoeveel procent x_pct"
+function muisNaarPct(ev, rect){
+  const { fx, fy } = naarContentFractie((ev.clientX-rect.left)/rect.width, (ev.clientY-rect.top)/rect.height, rotatieState.graden);
+  return { x: Math.max(0,Math.min(100, fx*100)), y: Math.max(0,Math.min(100, fy*100)) };
+}
 
 // pins/knikpunten/labels blijven op een constante, leesbare schermgrootte ongeacht de kaart-zoom
 // (net als markers op een kaartprogramma) — het zijn plain siblings binnen #mapinner, dus zonder
@@ -23,7 +33,12 @@ function pinTegenschaal(){ return 1 / (currentZoom() || 1); }
 const EDGE_BASIS_DIKTE = 2;
 export function ververPinTegenschaal(){
   const s = pinTegenschaal();
-  mapinner.querySelectorAll('.pinanchor').forEach(el => el.style.transform = 'scale(' + s + ')');
+  // specs/live-viewport-grote-monitor-plan.md, fase 2: rotate(-graden) houdt pin-icoon + label
+  // rechtop, ongeacht de rotatiestand van de plattegrond zelf — #mapinner (de ouder) roteert het
+  // hele clustertje mee, deze tegenrotatie op de zero-size .pinanchor zelf draait 'm weer terug
+  // (rond hetzelfde ankerpunt, dus zonder de positie te verschuiven, net als scale() hierboven)
+  const tegenrotatie = -rotatieState.graden;
+  mapinner.querySelectorAll('.pinanchor').forEach(el => el.style.transform = 'scale(' + s + ') rotate(' + tegenrotatie + 'deg)');
   // .knik heeft geen label/badge ernaast (puur zelf-centrerend, geen asymmetrische offset zoals
   // .pinlabel), dus geen aparte wrapper nodig — regressie t.o.v. de vorige tegenschaal-fix:
   // hier was de tegenschaal per ongeluk helemaal weggevallen toen .pinanchor de losse per-element-
@@ -127,15 +142,13 @@ export function renderPins(){
         line.ondblclick = (ev)=>{
           ev.stopPropagation();
           const rect = getSurfaceEl().getBoundingClientRect();
-          const x = Math.max(0,Math.min(100, ((ev.clientX-rect.left)/rect.width)*100));
-          const y = Math.max(0,Math.min(100, ((ev.clientY-rect.top)/rect.height)*100));
+          const { x, y } = muisNaarPct(ev, rect);
           insertKnikpunt(k, segIdx, x, y);
         };
         line.oncontextmenu = (ev)=>{
           ev.preventDefault(); ev.stopPropagation();
           const rect = getSurfaceEl().getBoundingClientRect();
-          const x = Math.max(0,Math.min(100, ((ev.clientX-rect.left)/rect.width)*100));
-          const y = Math.max(0,Math.min(100, ((ev.clientY-rect.top)/rect.height)*100));
+          const { x, y } = muisNaarPct(ev, rect);
           showCtxMenu(ev.clientX, ev.clientY, [
             { label: t('knikpunt.invoegen'), onClick: ()=>insertKnikpunt(k, segIdx, x, y) },
             { label: t('knikpunt.rechtzetten'), danger:true, onClick: ()=>resetLijn(k) },
@@ -162,9 +175,7 @@ export function renderPins(){
           const move = (mv)=>{
             moved = true;
             const rect = getSurfaceEl().getBoundingClientRect();
-            let x = ((mv.clientX-rect.left)/rect.width)*100;
-            let y = ((mv.clientY-rect.top)/rect.height)*100;
-            x = Math.max(0,Math.min(100,x)); y = Math.max(0,Math.min(100,y));
+            const { x, y } = muisNaarPct(mv, rect);
             p.x_pct = x; p.y_pct = y;
             knik.style.left = (x/100*w)+'px'; knik.style.top = (y/100*h)+'px';
           };
@@ -223,9 +234,7 @@ export function renderPins(){
       if(state.mode!=='cal') return;
       const move = (mv)=>{
         const rect = getSurfaceEl().getBoundingClientRect();
-        let x = ((mv.clientX-rect.left)/rect.width)*100;
-        let y = ((mv.clientY-rect.top)/rect.height)*100;
-        x = Math.max(0,Math.min(100,x)); y = Math.max(0,Math.min(100,y));
+        const { x, y } = muisNaarPct(mv, rect);
         n.positie = {x_pct:x, y_pct:y};
         anchor.style.left = (x/100*w)+'px'; anchor.style.top = (y/100*h)+'px';
       };
@@ -265,8 +274,7 @@ mapinner.addEventListener('click', (ev)=>{
   if(state.mode==='live' && state.openPopupKastId){ state.openPopupKastId = null; renderKastPopup(); }
   if(state.mode!=='cal' || !state.armedId) return;
   const rect = getSurfaceEl().getBoundingClientRect();
-  const x = ((ev.clientX-rect.left)/rect.width)*100;
-  const y = ((ev.clientY-rect.top)/rect.height)*100;
+  const { x, y } = muisNaarPct(ev, rect);
   const n = nodeById(state.armedId);
   n.positie = {x_pct:x, y_pct:y};
   savePositie(n);

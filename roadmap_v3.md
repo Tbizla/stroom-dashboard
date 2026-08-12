@@ -1002,12 +1002,45 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       Op Live wisselt een selectie automatisch naar de Detail-tab (niet op Kalibreren/Schema — daar
       wil je typisch op de lijst blijven). In landscape blijft de aside ongewijzigd (tabbalk
       verborgen, lijst+detail allebei altijd zichtbaar).
-      **Nog niet gebouwd** (blijft dit item openstaand): de 90°-rotatieknop en de
-      viewport-kalibratiefunctie op Kalibreren (fase 2 en 3). **Nog niet getest in een echte
-      browser** (Docker Desktop viel tijdens het bouwen stil en is herstart, geen Playwright/
-      browser-tool beschikbaar in deze sessie) — alleen statisch geverifieerd (JS-syntax,
-      JSON-validiteit, DOM-elementen/nieuwe bestanden correct geserveerd, geen serverfouten in de
-      logs). Zie event_dashboard.md, Live-monitoring (Live-tabblad).
+      **Fase 2 (90°-rotatie), zelfde dag toegevoegd**: ⟳-knop in de kaart-toolbar (Kalibreren/Live,
+      niet Schema), stapsgewijs 0°→90°→180°→270°→0°, één globale stand gedeeld tussen Kalibreren en
+      Live (bewust geen aparte stand per tabblad — het is dezelfde fysieke plattegrond op hetzelfde
+      fysieke scherm). Kernaanpak: `rotate(graden)` toegevoegd aan `#mapinner`'s bestaande
+      `scale(z)`-transform (`transform-origin` van `top left` naar `center center`, veilig bij
+      rotatie 0), `.pin`/`.knik` en de percentage-plaatsingswiskunde (`x_pct/y_pct * clientWidth/
+      Height`) blijven **ongewijzigd** — `clientWidth/Height` is de ONgeroteerde layout-grootte, dus
+      de hele boel roteert automatisch correct mee als visuele eenheid via de ouder. Wat wél
+      rotatiebewust moest worden (nieuwe gedeelde module `rotatie.js`, alleen 0/90/180/270 dus
+      simpele fractie-swaps i.p.v. algemene trigonometrie):
+      - **Tegengeroteerde labels**: `.pinanchor` (render-pins.js) krijgt naast zijn bestaande
+        tegenschaal ook `rotate(-graden)`, zodat pin-icoon en naamlabel altijd rechtop blijven staan.
+      - **Klik-/sleepconversies** (pin plaatsen/verslepen, knikpunt toevoegen/verslepen/via
+        contextmenu, leeg-vlak-klik): alle 5 plekken in `render-pins.js` die muispositie naar
+        `x_pct/y_pct` omrekenen gebruiken nu `naarContentFractie()` i.p.v. een kale
+        `(clientX-rect.left)/rect.width`-deling — `getBoundingClientRect()` geeft zelf al de
+        gerenderde (dus breedte/hoogte-verwisselde) rechthoek terug, maar "hoeveel % van links"
+        betekent bij 90°/270° niet meer "hoeveel % x_pct".
+      - **`fitToScreenKaart()`/cursor-gecentreerd scrollwiel-zoomen** (`zoom.js`): het middelpunt
+        van de te fitten/te behouden content moet via `offsetRoteren()`/`offsetInverseRoteren()`
+        omgerekend worden tussen "offset t.o.v. het content-midden" en "offset t.o.v. het
+        gerenderde midden" (die twee vallen samen op hetzelfde schermpunt dankzij
+        `transform-origin:center center`, maar zijn bij rotatie ≠0 niet meer dezelfde richting).
+      - **Getilede plattegrond** (`map-tiles.js`, specs/plattegrond-tile-based-plan.md): de
+        zichtbare-tegel-berekening rekende voorheen de scrollpositie simpelweg terug door 'm door
+        de zoomfactor te delen — bij rotatie moeten in plaats daarvan de 4 hoekpunten van het
+        zichtbare scrollvlak elk via `naarContentFractie()` teruggerekend worden, wat bij deze
+        zuivere 90°-stappen een exacte (niet-scheve) rechthoek in volle-resolutie-tegelruimte
+        oplevert.
+      Elke formule is zo opgezet dat 'm bij rotatie 0 wiskundig exact reduceert tot de oude
+      berekening (met de hand geverifieerd tijdens het bouwen). Extra geverifieerd met een
+      automatisch testscript in de container (corner-mapping, round-trip offset-conversies, 4×90°
+      = identiteit) — alle testen slaagden.
+      **Fase 3 (viewport-kalibratie op Kalibreren) nog niet gebouwd** (blijft dit item openstaand).
+      **Nog niet getest in een echte browser** (Docker Desktop viel tijdens het bouwen stil en is
+      herstart, geen Playwright/browser-tool beschikbaar in deze sessie) — wel geverifieerd met
+      JS-syntax-checks, JSON-validiteit, geserveerde DOM-elementen/nieuwe bestanden, geen
+      serverfouten in de logs, en het automatische rotatie-wiskunde-testscript hierboven. Zie
+      event_dashboard.md, Live-monitoring (Live-tabblad) en Plattegrond & kalibratie.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

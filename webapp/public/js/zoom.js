@@ -1,9 +1,11 @@
 import { state, mapinner, mapwrap } from './state.js';
-import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ZOOM_STORAGE_KEY, zoomLevels } from './state.js';
+import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ZOOM_STORAGE_KEY, zoomLevels, rotatieState, saveRotatieState } from './state.js';
 import { allNodes, getSurfaceEl } from './topology.js';
 import { renderKastPopup } from './kastpopup.js';
+import { offsetRoteren, offsetInverseRoteren, isGewisseld } from './rotatie.js';
 
 const zoomLabelEl = document.getElementById('zoomLabel');
+const rotateLabelEl = document.getElementById('rotateLabel');
 
 export function currentZoom(){ return zoomLevels[state.mode] ?? 1; }
 export function applyZoom(){
@@ -11,11 +13,14 @@ export function applyZoom(){
   if(state.mode==='schema'){
     document.getElementById('schemaSvg').style.transform = 'scale(' + z + ')';
   } else {
-    mapinner.style.transform = 'scale(' + z + ')';
+    // specs/live-viewport-grote-monitor-plan.md, fase 2: scale() en rotate() commuteren hier
+    // probleemloos (uniforme scale, zelfde transform-origin), dus de volgorde maakt niets uit
+    mapinner.style.transform = 'scale(' + z + ') rotate(' + rotatieState.graden + 'deg)';
     // specs/plattegrond-tile-based-plan.md: map-tiles.js luistert hierop om te herberekenen welke
     // tegels zichtbaar zijn — een scale-wijziging verandert mapwrap.scrollLeft/Top niet altijd (zie
     // hieronder), maar wél welk volle-resolutiegebied zichtbaar is
     mapinner.dispatchEvent(new CustomEvent('kaartzoom'));
+    rotateLabelEl.textContent = rotatieState.graden + '°';
   }
   // niet overschrijven terwijl de gebruiker er zelf in aan het typen is (focus) — anders springt de
   // invoer tijdens het typen terug naar de nog-actieve waarde
@@ -40,15 +45,35 @@ export function setZoom(z, focal){
   try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(zoomLevels)); } catch(e) {}
 
   if(focal && state.mode!=='schema' && vorigeZoom){
+    // specs/live-viewport-grote-monitor-plan.md, fase 2: bij een rotatiestand ≠0 is "scrollpositie
+    // / zoom" niet meer hetzelfde als "content-px" (rotate() zit tussen scroll-ruimte en content-
+    // ruimte in) — reken via offsetInverseRoteren/offsetRoteren om, met het gerenderde middelpunt
+    // van #mapinner als tussenstap. Bij rotatie 0 reduceert dit exact tot de oude, simpele
+    // contentX = (scroll+viewport)/zoom-berekening (geverifieerd tijdens het bouwen).
+    const surface = getSurfaceEl();
+    const surfaceW = surface.clientWidth, surfaceH = surface.clientHeight;
+    const r = rotatieState.graden;
+    const gewisseld = isGewisseld(r);
     const rect = mapwrap.getBoundingClientRect();
     const viewportX = focal.clientX - rect.left, viewportY = focal.clientY - rect.top;
-    // het content-punt (in onverschaalde px) dat nu precies onder de cursor ligt
-    const contentX = (mapwrap.scrollLeft + viewportX) / vorigeZoom;
-    const contentY = (mapwrap.scrollTop + viewportY) / vorigeZoom;
+
+    const prevRenderedW = (gewisseld ? surfaceH : surfaceW) * vorigeZoom;
+    const prevRenderedH = (gewisseld ? surfaceW : surfaceH) * vorigeZoom;
+    const renderOffX = (mapwrap.scrollLeft + viewportX) - prevRenderedW / 2;
+    const renderOffY = (mapwrap.scrollTop + viewportY) - prevRenderedH / 2;
+    // het content-punt (ongeroteerde, onverschaalde px-offset t.o.v. het content-midden) dat nu
+    // precies onder de cursor ligt
+    const contentOff = offsetInverseRoteren(renderOffX / vorigeZoom, renderOffY / vorigeZoom, r);
+
     applyZoom();
-    // datzelfde content-punt na de nieuwe schaal weer onder diezelfde cursorpositie zetten
-    mapwrap.scrollLeft = contentX * z - viewportX;
-    mapwrap.scrollTop = contentY * z - viewportY;
+
+    // datzelfde content-punt na de nieuwe schaal (zelfde rotatie) weer onder diezelfde
+    // cursorpositie zetten
+    const nieuwRenderOff = offsetRoteren(contentOff.ox, contentOff.oy, r);
+    const newRenderedW = (gewisseld ? surfaceH : surfaceW) * z;
+    const newRenderedH = (gewisseld ? surfaceW : surfaceH) * z;
+    mapwrap.scrollLeft = newRenderedW / 2 + nieuwRenderOff.ox * z - viewportX;
+    mapwrap.scrollTop = newRenderedH / 2 + nieuwRenderOff.oy * z - viewportY;
   } else {
     applyZoom();
   }
@@ -154,14 +179,42 @@ export function fitToScreenKaart(){
   const contentW = (maxX - minX) / 100 * surfaceW;
   const contentH = (maxY - minY) / 100 * surfaceH;
   if(!contentW || !contentH) return;
-  const scale = Math.min(availW / contentW, availH / contentH, ZOOM_MAX);
+
+  // specs/live-viewport-grote-monitor-plan.md, fase 2: bij 90°/270° is de gerenderde (zichtbare)
+  // breedte/hoogte van zowel de bounding box als de volle surface verwisseld t.o.v. hun
+  // ongeroteerde betekenis — reduceert bij rotatie 0 exact tot de oude berekening (geverifieerd
+  // tijdens het bouwen: offsetRoteren(...,0) is de identiteit)
+  const r = rotatieState.graden;
+  const gewisseld = isGewisseld(r);
+  const renderedContentW = gewisseld ? contentH : contentW;
+  const renderedContentH = gewisseld ? contentW : contentH;
+  const scale = Math.min(availW / renderedContentW, availH / renderedContentH, ZOOM_MAX);
   setZoom(scale);
 
-  const centerX = (minX + maxX) / 2 / 100 * surfaceW * scale;
-  const centerY = (minY + maxY) / 2 / 100 * surfaceH * scale;
-  wrap.scrollLeft = centerX - wrap.clientWidth / 2;
-  wrap.scrollTop = centerY - wrap.clientHeight / 2;
+  // middelpunt van de bounding box als px-offset t.o.v. het content-midden, dan geroteerd naar
+  // een offset t.o.v. het gerenderde midden (dat op hetzelfde schermpunt valt, transform-
+  // origin:center center)
+  const bboxCenterX = (minX + maxX) / 2 / 100 * surfaceW;
+  const bboxCenterY = (minY + maxY) / 2 / 100 * surfaceH;
+  const offset = offsetRoteren(bboxCenterX - surfaceW / 2, bboxCenterY - surfaceH / 2, r);
+  const renderedW = (gewisseld ? surfaceH : surfaceW) * scale;
+  const renderedH = (gewisseld ? surfaceW : surfaceH) * scale;
+  const targetX = renderedW / 2 + offset.ox * scale;
+  const targetY = renderedH / 2 + offset.oy * scale;
+  wrap.scrollLeft = targetX - wrap.clientWidth / 2;
+  wrap.scrollTop = targetY - wrap.clientHeight / 2;
 }
+
+// specs/live-viewport-grote-monitor-plan.md, fase 2: stapsgewijs 90° draaien, alleen zinvol op
+// Kalibreren/Live (Schema is een auto-gelayoutte SVG-boom, geen plattegrond — de knop staat daar
+// sowieso verborgen, zie modes.js, maar deze check is een extra vangnet)
+export function roteerKaart(){
+  if(state.mode!=='cal' && state.mode!=='live') return;
+  rotatieState.graden = (rotatieState.graden + 90) % 360;
+  saveRotatieState();
+  fitToScreen();
+}
+document.getElementById('rotateBtn').onclick = roteerKaart;
 document.getElementById('zoomFitBtn').onclick = fitToScreen;
 
 document.getElementById('mainBody').addEventListener('wheel', (ev) => {

@@ -7,7 +7,8 @@
 // (topology.js) en de percentage-plaatsingswiskunde in render-pins.js/zoom.js ongewijzigd: die lezen
 // alleen surface.clientWidth/clientHeight/getBoundingClientRect(), zonder onderscheid tussen "één
 // image" en "een grid van tegel-<img>'s".
-import { state, mapwrap, mapinner, mapTiles, zoomLevels } from './state.js';
+import { state, mapwrap, mapinner, mapTiles, zoomLevels, rotatieState } from './state.js';
+import { naarContentFractie, isGewisseld } from './rotatie.js';
 
 let meta = null; // { width, height, tileSize, maxLevel } van de actieve tegel-piramide
 const geplaatst = new Map(); // "niveau/kolom_rij" -> <img>
@@ -48,8 +49,26 @@ export function ververTegels(){
   const tegelCss = meta.tileSize * schaalNaarVol;
 
   const z = huidigeZoom();
-  const zichtbaarL = mapwrap.scrollLeft / z, zichtbaarT = mapwrap.scrollTop / z;
-  const zichtbaarR = zichtbaarL + mapwrap.clientWidth / z, zichtbaarB = zichtbaarT + mapwrap.clientHeight / z;
+  // specs/live-viewport-grote-monitor-plan.md, fase 2: bij een rotatiestand ≠0 komt scrollpositie
+  // niet meer via een simpele deling door z overeen met "welk stuk volle-resolutie-content is
+  // zichtbaar" (rotate() zit ertussen) — de 4 hoekpunten van het zichtbare scrollvlak stuk voor stuk
+  // terugrekenen via naarContentFractie() geeft (bij deze zuivere 90°-stappen) een exacte, niet-
+  // scheve rechthoek terug; bij rotatie 0 reduceert dit tot dezelfde eenvoudige deling als voorheen.
+  const r = rotatieState.graden;
+  const gewisseld = isGewisseld(r);
+  const renderedW = (gewisseld ? meta.height : meta.width) * z;
+  const renderedH = (gewisseld ? meta.width : meta.height) * z;
+  const hoeken = [
+    [mapwrap.scrollLeft, mapwrap.scrollTop],
+    [mapwrap.scrollLeft + mapwrap.clientWidth, mapwrap.scrollTop],
+    [mapwrap.scrollLeft, mapwrap.scrollTop + mapwrap.clientHeight],
+    [mapwrap.scrollLeft + mapwrap.clientWidth, mapwrap.scrollTop + mapwrap.clientHeight],
+  ].map(([px, py]) => {
+    const { fx, fy } = naarContentFractie(px / renderedW, py / renderedH, r);
+    return [fx * meta.width, fy * meta.height];
+  });
+  const zichtbaarL = Math.min(...hoeken.map(p=>p[0])), zichtbaarR = Math.max(...hoeken.map(p=>p[0]));
+  const zichtbaarT = Math.min(...hoeken.map(p=>p[1])), zichtbaarB = Math.max(...hoeken.map(p=>p[1]));
   const kolommen = Math.ceil(niveauW / meta.tileSize), rijen = Math.ceil(niveauH / meta.tileSize);
 
   const kolStart = Math.max(0, Math.floor(zichtbaarL / tegelCss) - 1);

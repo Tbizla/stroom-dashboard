@@ -220,6 +220,7 @@
   "zoom.typTitel": "Type a percentage and press Enter",
   "zoom.inzoomen": "Zoom in",
   "zoom.fitToScreen": "Fit to screen",
+  "zoom.roteren": "Rotate floor plan 90°",
 
   "aside.listhead": "Generators & boxes",
   "aside.zoekPlaceholder": "Search by name or abbreviation...",

@@ -80,6 +80,9 @@ document.getElementById('modeCal').onclick = ()=>{
   document.getElementById('calbar').style.display='flex';
   document.getElementById('liveTicker').style.display='none';
   document.getElementById('liveKpiRow').style.display='none';
+  document.getElementById('rotateSep').style.display='inline-block';
+  document.getElementById('rotateBtn').style.display='inline-block';
+  document.getElementById('rotateLabel').style.display='inline-block';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -98,6 +101,11 @@ document.getElementById('modeSchema').onclick = ()=>{
   document.getElementById('calbar').style.display='none';
   document.getElementById('liveTicker').style.display='none';
   document.getElementById('liveKpiRow').style.display='none';
+  // specs/live-viewport-grote-monitor-plan.md, fase 2: geen rotatieknop op Schema (eigen
+  // auto-gelayoutte SVG-boomdiagram, geen plattegrond)
+  document.getElementById('rotateSep').style.display='none';
+  document.getElementById('rotateBtn').style.display='none';
+  document.getElementById('rotateLabel').style.display='none';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';
@@ -116,6 +124,9 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('calbar').style.display='none';
   document.getElementById('liveTicker').style.display='flex';
   document.getElementById('liveKpiRow').style.display='grid';
+  document.getElementById('rotateSep').style.display='inline-block';
+  document.getElementById('rotateBtn').style.display='inline-block';
+  document.getElementById('rotateLabel').style.display='inline-block';
   document.getElementById('beheerPanel').style.display='none';
   document.getElementById('testPanel').style.display='none';
   document.getElementById('rapportagesPanel').style.display='none';

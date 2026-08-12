@@ -356,6 +356,16 @@ zetten zonder code aan te passen.
   muispositie (het punt onder de cursor blijft op zijn plek staan), niet vanuit de linkerbovenhoek
   van de plattegrond — de zoomknoppen zelf blijven ongewijzigd (geen zinvol cursorpunt bij een
   klik op een vaste hoekknop)
+- **Plattegrond 90° draaien** (specs/live-viewport-grote-monitor-plan.md, fase 2, ⟳-knop in de
+  kaart-toolbar op Kalibreren/Live — niet op Schema, dat is een auto-gelayoutte SVG-boom zonder
+  plattegrond): draait de weergave stapsgewijs 0°→90°→180°→270°→0°, voor als de brondata een
+  liggende tekening is maar het scherm rechtop hangt (of andersom). Geldt voor Kalibreren én Live
+  tegelijk (één gedeelde stand, geen aparte rotatie per tabblad — het is dezelfde fysieke
+  plattegrond op hetzelfde fysieke scherm). Pin-/kastlabels en knikpunten blijven altijd leesbaar
+  rechtop staan, ongeacht de rotatiestand van de plattegrond zelf (tegengeroteerd). Werkt ook op
+  een getilede plattegrond (specs/plattegrond-tile-based-plan.md) — welke tegels geladen worden,
+  houdt rekening met de rotatie. Draaien past automatisch "fit to screen" toe zodat de gedraaide
+  weergave weer volledig in beeld komt
 
 **Schema-tabblad**
 - Automatisch gegenereerd stroomschema (boomdiagram) van de volledige parent/child-keten, generator
