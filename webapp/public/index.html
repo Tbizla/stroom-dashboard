@@ -737,6 +737,13 @@
         <div class="card" style="cursor:default"><div class="lbl" data-i18n="live.kpiAlerts">Actieve alerts</div><div class="val alert" id="kpiAlerts">–</div></div>
         <div class="card" style="cursor:default"><div class="lbl" data-i18n="live.kpiOffline">Offline</div><div class="val" id="kpiOffline">–</div></div>
       </div>
+      <!-- specs/live-viewport-grote-monitor-plan.md, fase 1e: alleen zichtbaar in portrait-stand
+           (@media in style.css) — lijst en detail wisselen elkaar dan af i.p.v. beide tegelijk
+           zichtbaar te zijn (te weinig verticale ruimte op een smal/hoog scherm) -->
+      <div class="livetabbar">
+        <button class="livetabbtn on" id="liveTabLijst" data-i18n="aside.tabStatuslijst">Statuslijst</button>
+        <button class="livetabbtn" id="liveTabDetail" data-i18n="aside.tabDetail">Detail</button>
+      </div>
       <div class="listhead" data-i18n="aside.listhead">Generators &amp; kasten</div>
       <div class="listtools" id="listtools">
         <input type="text" id="listSearch" data-i18n-placeholder="aside.zoekPlaceholder" placeholder="Zoek op naam of afkorting...">

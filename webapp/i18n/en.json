@@ -227,6 +227,8 @@
   "aside.filterRood": "Red only",
   "aside.filterOffline": "Offline",
   "aside.sortPriority": "↓ Priority",
+  "aside.tabStatuslijst": "Status list",
+  "aside.tabDetail": "Detail",
   "aside.detailLeeg": "Select a box to see details.",
   "aside.nietGeplaatst": "not placed",
   "aside.onderliggend": "{n} downstream",

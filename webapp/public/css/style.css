@@ -539,3 +539,25 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .anomaly-row{cursor:pointer;color:var(--accent)!important}
 .anomaly-row .k{color:var(--accent)!important}
 .anomaly-detail{font-size:0.6875rem;color:var(--text3);padding:0.125rem 0 0.375rem;border-bottom:1px dashed var(--border)}
+
+/* specs/live-viewport-grote-monitor-plan.md, fase 1e: portrait-lay-out voor Kalibreren/Live op een
+   grote monitor die rechtop hangt — plattegrond boven i.p.v. naast de zij-lijst. Enige @media-
+   breakpoint in dit bestand, bewust: ui-vloeiende-schaling-plan.md's clamp()-aanpak schaalt
+   chrome-grootte vloeiend, maar kan geen structurele flex-direction-ombouw (naast -> onder elkaar)
+   doen — dat is een ander soort probleem, geen inconsistentie met die eerdere keuze. */
+.livetabbar{display:none}
+@media (orientation: portrait){
+  .body{flex-direction:column}
+  .mapwrap{flex:1 1 55%;min-height:0}
+  aside{width:100%;height:auto;flex:1 1 45%;min-height:0;border-left:none;border-top:1px solid var(--border)}
+  .livekpirow{grid-template-columns:repeat(4,1fr)}
+  .livetabbar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+  .livetabbtn{flex:1;padding:0.5rem 0.5rem;text-align:center;font-size:0.78125rem;font-weight:600;
+    color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;font-family:var(--sans);background:none;border-top:none;border-left:none;border-right:none}
+  .livetabbtn.on{color:var(--accent);border-bottom-color:var(--accent)}
+  /* default (geen .tab-detail): Statuslijst-tab actief */
+  aside .list{display:block}
+  aside .detail{display:none}
+  aside.tab-detail .list{display:none}
+  aside.tab-detail .detail{display:block;flex:1;max-height:none}
+}

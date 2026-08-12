@@ -992,15 +992,22 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       reden om ze op Live te beperken). **Trendlijn in de zij-detail** (`live-spark.js`, alleen op
       Live): een kleine sparkline van de laatste ~60 punten voor de geselecteerde kast/generator/
       lid, een eigen kleine client-side rolling buffer los van grafieken.js' eigen 60-min-buffer.
-      **Nog niet gebouwd** (blijft dit item openstaand): de portrait-specifieke stacked/tabbed
-      lay-out (plattegrond boven, compacte KPI-strip, Statuslijst/Detail-tabs — momenteel werkt de
-      bestaande lay-out gewoon door op een smal/hoog scherm, alleen niet zo ruimte-efficiënt als de
-      portrait-mockup laat zien), de 90°-rotatieknop, en de viewport-kalibratiefunctie op
-      Kalibreren. **Nog niet getest in een echte browser** (Docker Desktop viel tijdens het bouwen
-      stil en is herstart, geen Playwright/browser-tool beschikbaar in deze sessie) — alleen
-      statisch geverifieerd (JS-syntax, JSON-validiteit, DOM-elementen/nieuwe bestanden correct
-      geserveerd, geen serverfouten in de logs). Zie event_dashboard.md, Live-monitoring
-      (Live-tabblad).
+      **Fase 1e (portrait), zelfde dag toegevoegd**: enige `@media`-breakpoint in `style.css`
+      (`(orientation: portrait)`, bewust — een structurele lay-out-ombouw, geen tegenstrijdigheid
+      met de vloeiende-schaling-aanpak die chrome-grootte betreft) zet de gedeelde Kalibreren/Live/
+      Schema-aside op een smal/hoog scherm om: plattegrond boven (`.body{flex-direction:column}`)
+      i.p.v. ernaast, en een nieuwe "Statuslijst"/"Detail"-tabbalk (`aside-tabs.js`, eigen
+      dependency-loze module om een circulaire import tussen render-list.js/render-detail.js te
+      voorkomen) omdat lijst en detail niet meer allebei tegelijk op de resterende hoogte passen.
+      Op Live wisselt een selectie automatisch naar de Detail-tab (niet op Kalibreren/Schema — daar
+      wil je typisch op de lijst blijven). In landscape blijft de aside ongewijzigd (tabbalk
+      verborgen, lijst+detail allebei altijd zichtbaar).
+      **Nog niet gebouwd** (blijft dit item openstaand): de 90°-rotatieknop en de
+      viewport-kalibratiefunctie op Kalibreren (fase 2 en 3). **Nog niet getest in een echte
+      browser** (Docker Desktop viel tijdens het bouwen stil en is herstart, geen Playwright/
+      browser-tool beschikbaar in deze sessie) — alleen statisch geverifieerd (JS-syntax,
+      JSON-validiteit, DOM-elementen/nieuwe bestanden correct geserveerd, geen serverfouten in de
+      logs). Zie event_dashboard.md, Live-monitoring (Live-tabblad).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

@@ -4,6 +4,7 @@ import { t, huidigeLocale } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
 import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
 import { sparklineSvg } from './live-spark.js';
+import { toonDetailTab } from './aside-tabs.js';
 
 // per-lid live rijen onder de bestaande ledenlijst van een groep (naam/kVA/soort blijft
 // ongewijzigd). Een lid zonder eigen rating_a heeft
@@ -58,6 +59,11 @@ export function metingenHtml(node, d){
 export function renderDetail(){
   const n = nodeById(state.selectedId);
   if(!n){ detailEl.innerHTML = '<div class="empty">'+t('aside.detailLeeg')+'</div>'; return; }
+  // specs/live-viewport-grote-monitor-plan.md, fase 1e: een kast/generator selecteren op Live
+  // wisselt in portrait-stand automatisch naar de Detail-tab (in landscape zonder effect, zie
+  // aside-tabs.js) — alleen op Live, niet op Kalibreren (daar wil je typisch op de lijst blijven
+  // om door te gaan met plaatsen) of Schema
+  if(state.mode==='live') toonDetailTab();
   const d = liveData[n.id];
   let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+'</h2>';
   if(heeftActieveAnomaly(n.id)){

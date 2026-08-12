@@ -416,6 +416,15 @@ zetten zonder code aan te passen.
   laatste ~60 punten sinds het laden van de pagina, voor de geselecteerde kast/generator/lid — een
   eigen, kleine client-side rolling buffer (`live-spark.js`, los van grafieken.js' eigen 60-min-
   live-buffer), geen historische InfluxDB-data. Overleeft geen page-reload
+- **Portrait-lay-out** (specs/live-viewport-grote-monitor-plan.md, fase 1e — geldt voor de
+  gedeelde Kalibreren/Live/Schema-aside): op een smal/hoog scherm (`@media (orientation:
+  portrait)`, de enige `@media`-breakpoint in `style.css` — een bewuste uitzondering op de
+  vloeiende-schaling-aanpak, want dit is een structurele lay-out-ombouw, geen chrome-grootte)
+  staat de plattegrond boven de zij-lijst i.p.v. ernaast. De zij-lijst krijgt dan een
+  "Statuslijst"/"Detail"-tabbalk (lijst en detail passen niet allebei tegelijk op de resterende
+  hoogte) — op Live wisselt het selecteren van een kast/generator automatisch naar de Detail-tab;
+  in landscape blijft deze tabbalk verborgen en werkt de aside ongewijzigd (lijst + detail allebei
+  altijd zichtbaar, zoals nu)
 - Fasekleuren NL-conventie: een klein rond kleurvlakje (bruin/antraciet/grijs, `--fase1`/`--fase2`/
   `--fase3`) vóór het fase-label in de kastpopup-tabelkop (A/B/C) en de aside-detail (Fase A/B/C-
   rijen) — losstaand naast de bestaande groen/amber/rood-statuskleur, geen samensmelting van de
