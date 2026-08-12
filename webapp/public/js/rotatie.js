@@ -42,6 +42,39 @@ export function offsetInverseRoteren(ox, oy, graden){
   return offsetRoteren(ox, oy, (360 - (((graden % 360) + 360) % 360)) % 360);
 }
 
+// ---------- #mapinner's transform-origin blijft bewust top-left (style.css) — een eerdere versie
+// van dit bestand ging uit van center-origin, wat de kaart-tegel-berekening brak zodra je scrolde/
+// zoomde (transform-origin:center schuift #mapinner's gerenderde positie t.o.v. mapwrap's scroll-
+// oorsprong al bij een gewone zoomwijziging, niet alleen bij rotatie). Met top-left-origin schuift
+// scale() niets (de linkerbovenhoek is het draaipunt), maar rotate() om diezelfde hoek duwt een
+// deel van de inhoud naar NEGATIEVE gerenderde coördinaten (browsers kunnen daar niet betrouwbaar
+// naartoe scrollen) — rotatieCompensatie() is de content-ruimte-verschuiving die dat rechtzet, vóór
+// de schaal toegepast wordt (transform: scale(z) translate(compX,compY) rotate(graden) in die
+// volgorde). naarGerenderdPunt/vanGerenderdPunt combineren rotatie+compensatie+schaal tot één
+// heen-en-terug-conversie tussen een content-punt (lokale px, linkerbovenhoek-relatief — exact
+// zoals x_pct/y_pct*surfaceW/H nu al werkt) en zijn gerenderde positie (scroll-ruimte-px, waar
+// (0,0) altijd #mapinner's eigen linkerbovenhoek is, ongeacht rotatie/schaal). ----------
+export function rotatieCompensatie(surfaceW, surfaceH, graden){
+  switch(((graden % 360) + 360) % 360){
+    case 90: return { x: surfaceH, y: 0 };
+    case 180: return { x: surfaceW, y: surfaceH };
+    case 270: return { x: 0, y: surfaceW };
+    default: return { x: 0, y: 0 };
+  }
+}
+
+export function naarGerenderdPunt(lx, ly, z, graden, surfaceW, surfaceH){
+  const rot = offsetRoteren(lx, ly, graden);
+  const comp = rotatieCompensatie(surfaceW, surfaceH, graden);
+  return { x: (rot.ox + comp.x) * z, y: (rot.oy + comp.y) * z };
+}
+
+export function vanGerenderdPunt(rx, ry, z, graden, surfaceW, surfaceH){
+  const comp = rotatieCompensatie(surfaceW, surfaceH, graden);
+  const rot = offsetInverseRoteren(rx / z - comp.x, ry / z - comp.y, graden);
+  return { x: rot.ox, y: rot.oy };
+}
+
 // of de content-breedte/-hoogte visueel verwisseld zijn t.o.v. hun ongeroteerde betekenis —
 // gebruikt door fitToScreenKaart()/map-tiles.js om de juiste dimensie tegen beschikbare
 // breedte/hoogte af te zetten

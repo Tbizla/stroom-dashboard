@@ -2,7 +2,7 @@ import { state, mapinner, mapwrap } from './state.js';
 import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ZOOM_STORAGE_KEY, zoomLevels, rotatieState, saveRotatieState } from './state.js';
 import { allNodes, getSurfaceEl } from './topology.js';
 import { renderKastPopup } from './kastpopup.js';
-import { offsetRoteren, offsetInverseRoteren, isGewisseld } from './rotatie.js';
+import { isGewisseld, rotatieCompensatie, naarGerenderdPunt, vanGerenderdPunt } from './rotatie.js';
 
 const zoomLabelEl = document.getElementById('zoomLabel');
 const rotateLabelEl = document.getElementById('rotateLabel');
@@ -13,9 +13,13 @@ export function applyZoom(){
   if(state.mode==='schema'){
     document.getElementById('schemaSvg').style.transform = 'scale(' + z + ')';
   } else {
-    // specs/live-viewport-grote-monitor-plan.md, fase 2: scale() en rotate() commuteren hier
-    // probleemloos (uniforme scale, zelfde transform-origin), dus de volgorde maakt niets uit
-    mapinner.style.transform = 'scale(' + z + ') rotate(' + rotatieState.graden + 'deg)';
+    // specs/live-viewport-grote-monitor-plan.md, fase 2 herzien: #mapinner blijft top-left-origin
+    // (style.css) — rotatieCompensatie() schuift de content vóór rotatie zo op dat rotate() 'm nooit
+    // naar negatieve gerenderde coördinaten duwt (zie rotatie.js voor de volledige uitleg). Bij
+    // rotatie 0 is de compensatie (0,0), dus dit reduceert dan tot de oorspronkelijke transform.
+    const surfaceEl = getSurfaceEl();
+    const comp = rotatieCompensatie(surfaceEl.clientWidth, surfaceEl.clientHeight, rotatieState.graden);
+    mapinner.style.transform = 'scale(' + z + ') translate(' + comp.x + 'px,' + comp.y + 'px) rotate(' + rotatieState.graden + 'deg)';
     // specs/plattegrond-tile-based-plan.md: map-tiles.js luistert hierop om te herberekenen welke
     // tegels zichtbaar zijn — een scale-wijziging verandert mapwrap.scrollLeft/Top niet altijd (zie
     // hieronder), maar wél welk volle-resolutiegebied zichtbaar is
@@ -50,35 +54,24 @@ export function setZoom(z, focal){
   try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(zoomLevels)); } catch(e) {}
 
   if(focal && state.mode!=='schema' && vorigeZoom){
-    // specs/live-viewport-grote-monitor-plan.md, fase 2: bij een rotatiestand ≠0 is "scrollpositie
-    // / zoom" niet meer hetzelfde als "content-px" (rotate() zit tussen scroll-ruimte en content-
-    // ruimte in) — reken via offsetInverseRoteren/offsetRoteren om, met het gerenderde middelpunt
-    // van #mapinner als tussenstap. Bij rotatie 0 reduceert dit exact tot de oude, simpele
-    // contentX = (scroll+viewport)/zoom-berekening (geverifieerd tijdens het bouwen).
+    // specs/live-viewport-grote-monitor-plan.md, fase 2 herzien: het content-punt (top-left-
+    // origin, lokale px) onder de cursor bepalen bij de oude zoom/rotatie via vanGerenderdPunt(),
+    // dan terugrekenen naar de gerenderde positie bij de nieuwe zoom via naarGerenderdPunt() en de
+    // scroll zo zetten dat dat content-punt weer onder dezelfde cursorpositie staat. Bij rotatie 0
+    // reduceert dit tot de oorspronkelijke contentX = (scroll+viewport)/zoom-berekening.
     const surface = getSurfaceEl();
     const surfaceW = surface.clientWidth, surfaceH = surface.clientHeight;
     const r = rotatieState.graden;
-    const gewisseld = isGewisseld(r);
     const rect = mapwrap.getBoundingClientRect();
     const viewportX = focal.clientX - rect.left, viewportY = focal.clientY - rect.top;
 
-    const prevRenderedW = (gewisseld ? surfaceH : surfaceW) * vorigeZoom;
-    const prevRenderedH = (gewisseld ? surfaceW : surfaceH) * vorigeZoom;
-    const renderOffX = (mapwrap.scrollLeft + viewportX) - prevRenderedW / 2;
-    const renderOffY = (mapwrap.scrollTop + viewportY) - prevRenderedH / 2;
-    // het content-punt (ongeroteerde, onverschaalde px-offset t.o.v. het content-midden) dat nu
-    // precies onder de cursor ligt
-    const contentOff = offsetInverseRoteren(renderOffX / vorigeZoom, renderOffY / vorigeZoom, r);
+    const contentPunt = vanGerenderdPunt(mapwrap.scrollLeft + viewportX, mapwrap.scrollTop + viewportY, vorigeZoom, r, surfaceW, surfaceH);
 
     applyZoom();
 
-    // datzelfde content-punt na de nieuwe schaal (zelfde rotatie) weer onder diezelfde
-    // cursorpositie zetten
-    const nieuwRenderOff = offsetRoteren(contentOff.ox, contentOff.oy, r);
-    const newRenderedW = (gewisseld ? surfaceH : surfaceW) * z;
-    const newRenderedH = (gewisseld ? surfaceW : surfaceH) * z;
-    mapwrap.scrollLeft = newRenderedW / 2 + nieuwRenderOff.ox * z - viewportX;
-    mapwrap.scrollTop = newRenderedH / 2 + nieuwRenderOff.oy * z - viewportY;
+    const nieuwRenderPunt = naarGerenderdPunt(contentPunt.x, contentPunt.y, z, r, surfaceW, surfaceH);
+    mapwrap.scrollLeft = nieuwRenderPunt.x - viewportX;
+    mapwrap.scrollTop = nieuwRenderPunt.y - viewportY;
   } else {
     applyZoom();
   }
@@ -117,16 +110,13 @@ function viewportRenderedRect(z){
   const surface = getSurfaceEl();
   const surfaceW = surface.clientWidth, surfaceH = surface.clientHeight;
   const r = rotatieState.graden;
-  const gewisseld = isGewisseld(r);
-  const renderedW = (gewisseld ? surfaceH : surfaceW) * z;
-  const renderedH = (gewisseld ? surfaceW : surfaceH) * z;
   const hoeken = [
     [vp.x_pct, vp.y_pct], [vp.x_pct + vp.w_pct, vp.y_pct],
     [vp.x_pct, vp.y_pct + vp.h_pct], [vp.x_pct + vp.w_pct, vp.y_pct + vp.h_pct],
   ].map(([xp, yp]) => {
     const cx = xp / 100 * surfaceW, cy = yp / 100 * surfaceH;
-    const offset = offsetRoteren(cx - surfaceW / 2, cy - surfaceH / 2, r);
-    return [renderedW / 2 + offset.ox * z, renderedH / 2 + offset.oy * z];
+    const p = naarGerenderdPunt(cx, cy, z, r, surfaceW, surfaceH);
+    return [p.x, p.y];
   });
   return {
     left: Math.min(...hoeken.map(p => p[0])), right: Math.max(...hoeken.map(p => p[0])),
@@ -268,18 +258,13 @@ export function fitToScreenKaart(){
     : Math.min(availW / renderedContentW, availH / renderedContentH, ZOOM_MAX);
   setZoom(scale);
 
-  // middelpunt van de bounding box als px-offset t.o.v. het content-midden, dan geroteerd naar
-  // een offset t.o.v. het gerenderde midden (dat op hetzelfde schermpunt valt, transform-
-  // origin:center center)
+  // middelpunt van de bounding box (content-ruimte, top-left-origin) omrekenen naar zijn gerenderde
+  // (scroll-ruimte) positie bij de nieuwe schaal/rotatie, en daar de viewport op centreren
   const bboxCenterX = (minX + maxX) / 2 / 100 * surfaceW;
   const bboxCenterY = (minY + maxY) / 2 / 100 * surfaceH;
-  const offset = offsetRoteren(bboxCenterX - surfaceW / 2, bboxCenterY - surfaceH / 2, r);
-  const renderedW = (gewisseld ? surfaceH : surfaceW) * scale;
-  const renderedH = (gewisseld ? surfaceW : surfaceH) * scale;
-  const targetX = renderedW / 2 + offset.ox * scale;
-  const targetY = renderedH / 2 + offset.oy * scale;
-  wrap.scrollLeft = targetX - wrap.clientWidth / 2;
-  wrap.scrollTop = targetY - wrap.clientHeight / 2;
+  const target = naarGerenderdPunt(bboxCenterX, bboxCenterY, scale, r, surfaceW, surfaceH);
+  wrap.scrollLeft = target.x - wrap.clientWidth / 2;
+  wrap.scrollTop = target.y - wrap.clientHeight / 2;
   clampPanBinnenViewport();
 }
 

@@ -1007,8 +1007,7 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       niet Schema), stapsgewijs 0°→90°→180°→270°→0°, één globale stand gedeeld tussen Kalibreren en
       Live (bewust geen aparte stand per tabblad — het is dezelfde fysieke plattegrond op hetzelfde
       fysieke scherm). Kernaanpak: `rotate(graden)` toegevoegd aan `#mapinner`'s bestaande
-      `scale(z)`-transform (`transform-origin` van `top left` naar `center center`, veilig bij
-      rotatie 0), `.pin`/`.knik` en de percentage-plaatsingswiskunde (`x_pct/y_pct * clientWidth/
+      `scale(z)`-transform, `.pin`/`.knik` en de percentage-plaatsingswiskunde (`x_pct/y_pct * clientWidth/
       Height`) blijven **ongewijzigd** — `clientWidth/Height` is de ONgeroteerde layout-grootte, dus
       de hele boel roteert automatisch correct mee als visuele eenheid via de ouder. Wat wél
       rotatiebewust moest worden (nieuwe gedeelde module `rotatie.js`, alleen 0/90/180/270 dus
@@ -1021,21 +1020,35 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
         `(clientX-rect.left)/rect.width`-deling — `getBoundingClientRect()` geeft zelf al de
         gerenderde (dus breedte/hoogte-verwisselde) rechthoek terug, maar "hoeveel % van links"
         betekent bij 90°/270° niet meer "hoeveel % x_pct".
-      - **`fitToScreenKaart()`/cursor-gecentreerd scrollwiel-zoomen** (`zoom.js`): het middelpunt
-        van de te fitten/te behouden content moet via `offsetRoteren()`/`offsetInverseRoteren()`
-        omgerekend worden tussen "offset t.o.v. het content-midden" en "offset t.o.v. het
-        gerenderde midden" (die twee vallen samen op hetzelfde schermpunt dankzij
-        `transform-origin:center center`, maar zijn bij rotatie ≠0 niet meer dezelfde richting).
+      - **`fitToScreenKaart()`/cursor-gecentreerd scrollwiel-zoomen/viewport-rechthoek** (`zoom.js`):
+        het middelpunt van de te fitten/te behouden content moet omgerekend worden tussen
+        content-ruimte (lokale px, linkerbovenhoek-relatief — exact zoals `x_pct/y_pct` al werkt)
+        en gerenderde/scroll-ruimte (waar (0,0) altijd `#mapinner`'s eigen gerenderde
+        linkerbovenhoek is), via de nieuwe `naarGerenderdPunt()`/`vanGerenderdPunt()`-helpers.
       - **Getilede plattegrond** (`map-tiles.js`, specs/plattegrond-tile-based-plan.md): de
         zichtbare-tegel-berekening rekende voorheen de scrollpositie simpelweg terug door 'm door
-        de zoomfactor te delen — bij rotatie moeten in plaats daarvan de 4 hoekpunten van het
-        zichtbare scrollvlak elk via `naarContentFractie()` teruggerekend worden, wat bij deze
-        zuivere 90°-stappen een exacte (niet-scheve) rechthoek in volle-resolutie-tegelruimte
-        oplevert.
+        de zoomfactor te delen — bij rotatie wordt in plaats daarvan elk van de 4 hoekpunten van
+        het zichtbare scrollvlak via `vanGerenderdPunt()` teruggerekend, wat bij deze zuivere
+        90°-stappen een exacte (niet-scheve) rechthoek in volle-resolutie-tegelruimte oplevert.
       Elke formule is zo opgezet dat 'm bij rotatie 0 wiskundig exact reduceert tot de oude
       berekening (met de hand geverifieerd tijdens het bouwen). Extra geverifieerd met een
       automatisch testscript in de container (corner-mapping, round-trip offset-conversies, 4×90°
       = identiteit) — alle testen slaagden.
+      **Bugfix, zelfde dag ontdekt en opgelost**: `transform-origin` was voor deze fase gewijzigd
+      van `top left` naar `center center`, met als (foute) redenering dat `rotate(0deg)`
+      origin-onafhankelijk is. Dat klopt, maar `scale()` is dat niet, en scale staat vrijwel altijd
+      aan (elk zoomniveau ≠100%) — met `center` als origin verschoof `#mapinner`'s gerenderde
+      positie t.o.v. `mapwrap`'s scroll-oorsprong al bij een gewone zoomwijziging, zonder ooit te
+      roteren, wat de kaart-tegel-zichtbaarheidsberekening brak zodra je scrolde/zoomde ("kaart
+      verdwijnt bij scrollen", door Mike gerapporteerd). Fix: `transform-origin` terug naar
+      `top left` (weer identiek aan vóór fase 2 bij rotatie 0), rotatie wordt nu opgelost met een
+      compenserende `translate()` (nieuwe `rotatieCompensatie()` in `rotatie.js`) die de geroteerde
+      inhoud terugschuift naar positieve gerenderde coördinaten t.o.v. dezelfde linkerbovenhoek —
+      `applyZoom()`/`setZoom()`/`fitToScreenKaart()`/`viewportRenderedRect()` (zoom.js) en
+      `map-tiles.js` herschreven op basis hiervan. Geverifieerd met een uitgebreider testscript
+      (round-trip, exacte reductie naar de oorspronkelijke pre-rotatie-formule bij rotatie 0, en dat
+      geen enkel hoekpunt ooit een negatieve gerenderde coördinaat oplevert — precies de garantie die
+      ontbrak).
       **Fase 3 (viewport-kalibratie op Kalibreren), zelfde dag afgerond**: "Viewport-kalibratie"-
       knop in de kaartbalk zet een sleepbaar/verkleinbaar kader (`#vpRect` + 4 hoek-handles + 4
       dempingsvlakken) over de plattegrond, aanvulling op de bestaande pin-plaatsing (niet

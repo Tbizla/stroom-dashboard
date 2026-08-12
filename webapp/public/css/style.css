@@ -74,10 +74,19 @@ header h1 span{color:var(--accent)}
 
 .body{display:flex;flex:1;min-height:0;position:relative}
 .mapwrap{flex:1;position:relative;overflow:auto;background:#0b0d10}
-/* transform-origin:center (i.p.v. top left) — nodig voor de fase 2 90°-rotatie
-   (specs/live-viewport-grote-monitor-plan.md), bij rotate(0deg) (het huidige gedrag) verandert een
-   ander draaipunt niets, dus dit is een veilige wijziging voor de niet-gedraaide situatie */
-.mapinner{position:relative;display:inline-block;transform-origin:center center;flex-shrink:0}
+/* transform-origin:top left blijft bewust ongewijzigd (specs/live-viewport-grote-monitor-plan.md,
+   fase 2 herzien) — een eerdere poging zette dit op "center center" met als redenering dat
+   rotate(0deg) origin-onafhankelijk is; dat klopt, maar scale() is dat NIET, en scale() staat
+   vrijwel altijd aan (elk zoomniveau ≠100%). Met center als origin verschuift #mapinner's
+   gerenderde positie t.o.v. mapwrap's scroll-oorsprong (0,0) al bij een gewone zoomwijziging,
+   zonder dat er ooit geroteerd wordt — brak de kaart-tegel-zichtbaarheidsberekening (bleef
+   scrollpositie/zoom aannemen = "linkerbovenhoek van #mapinner", wat alleen bij top-left-origin
+   klopt) zodra je scrolde/zoomde: "kaart verdwijnt bij scrollen". Rotatie wordt nu i.p.v. een
+   center-origin-model opgelost met een compenserende translate() (zie rotatieCompensatie() in
+   rotatie.js) die de geroteerde inhoud terugschuift naar positieve coördinaten t.o.v. dezelfde
+   linkerbovenhoek — bij rotatie 0 blijft dit dus exact de oorspronkelijke, altijd-werkende
+   berekening. */
+.mapinner{position:relative;display:inline-block;transform-origin:top left;flex-shrink:0}
 .zoomctl{position:absolute;top:10px;left:10px;z-index:10;display:flex;gap:0.25rem;align-items:center;
   background:rgba(18,21,26,.9);border:1px solid var(--border);border-radius:0.5rem;padding:0.25rem 0.375rem}
 .zoomctl button{background:var(--panel2);border:1px solid var(--border);color:var(--text);

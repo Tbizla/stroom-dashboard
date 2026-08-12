@@ -8,7 +8,7 @@
 // alleen surface.clientWidth/clientHeight/getBoundingClientRect(), zonder onderscheid tussen "één
 // image" en "een grid van tegel-<img>'s".
 import { state, mapwrap, mapinner, mapTiles, zoomLevels, rotatieState } from './state.js';
-import { naarContentFractie, isGewisseld } from './rotatie.js';
+import { vanGerenderdPunt } from './rotatie.js';
 
 let meta = null; // { width, height, tileSize, maxLevel } van de actieve tegel-piramide
 const geplaatst = new Map(); // "niveau/kolom_rij" -> <img>
@@ -49,23 +49,19 @@ export function ververTegels(){
   const tegelCss = meta.tileSize * schaalNaarVol;
 
   const z = huidigeZoom();
-  // specs/live-viewport-grote-monitor-plan.md, fase 2: bij een rotatiestand ≠0 komt scrollpositie
-  // niet meer via een simpele deling door z overeen met "welk stuk volle-resolutie-content is
-  // zichtbaar" (rotate() zit ertussen) — de 4 hoekpunten van het zichtbare scrollvlak stuk voor stuk
-  // terugrekenen via naarContentFractie() geeft (bij deze zuivere 90°-stappen) een exacte, niet-
-  // scheve rechthoek terug; bij rotatie 0 reduceert dit tot dezelfde eenvoudige deling als voorheen.
+  // specs/live-viewport-grote-monitor-plan.md, fase 2 herzien: scrollpositie (gerenderde px, top-
+  // left-origin t.o.v. #mapinner's eigen linkerbovenhoek) terugrekenen naar content-px (volle-
+  // resolutie, top-left-origin) via vanGerenderdPunt() — dezelfde conversie als zoom.js gebruikt
+  // voor cursor-gecentreerd zoomen. Bij rotatie 0 reduceert dit tot de oorspronkelijke deling door z.
   const r = rotatieState.graden;
-  const gewisseld = isGewisseld(r);
-  const renderedW = (gewisseld ? meta.height : meta.width) * z;
-  const renderedH = (gewisseld ? meta.width : meta.height) * z;
   const hoeken = [
     [mapwrap.scrollLeft, mapwrap.scrollTop],
     [mapwrap.scrollLeft + mapwrap.clientWidth, mapwrap.scrollTop],
     [mapwrap.scrollLeft, mapwrap.scrollTop + mapwrap.clientHeight],
     [mapwrap.scrollLeft + mapwrap.clientWidth, mapwrap.scrollTop + mapwrap.clientHeight],
   ].map(([px, py]) => {
-    const { fx, fy } = naarContentFractie(px / renderedW, py / renderedH, r);
-    return [fx * meta.width, fy * meta.height];
+    const p = vanGerenderdPunt(px, py, z, r, meta.width, meta.height);
+    return [p.x, p.y];
   });
   const zichtbaarL = Math.min(...hoeken.map(p=>p[0])), zichtbaarR = Math.max(...hoeken.map(p=>p[0]));
   const zichtbaarT = Math.min(...hoeken.map(p=>p[1])), zichtbaarB = Math.max(...hoeken.map(p=>p[1]));
