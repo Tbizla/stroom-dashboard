@@ -210,6 +210,16 @@
 
   "calbar.plattegrondUploaden": "Upload floor plan",
   "calbar.hint": "Click a generator or box in the list on the right, then click the map (or the empty area, if there's no floor plan yet) to place it. Placed pins can be dragged.",
+  "calbar.viewportKalibratie": "Viewport calibration",
+
+  "viewport.x": "X",
+  "viewport.y": "Y",
+  "viewport.w": "Width",
+  "viewport.h": "Height",
+  "viewport.toepassen": "Apply to Live",
+  "viewport.reset": "Reset to full drawing",
+  "viewport.toegepastStatus": "Applied — Live now shows only the marked region.",
+  "viewport.resetStatus": "Reset — Live shows the full drawing again.",
   "calbar.armedLabel": "Click the map now to place \"{naam}\"",
 
   "blankcanvas.hint": "No floor plan uploaded yet. You can place boxes freely here already — upload a floor plan later via the button above, positions stay as they are.",

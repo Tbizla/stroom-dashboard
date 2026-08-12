@@ -25,6 +25,13 @@ export const state = {
   herstelPollHandle: null,
   grafiekenPeriodeChip: '24u',
   kaartGetiled: false, // specs/plattegrond-tile-based-plan.md: true zolang de actieve plattegrond een tegel-piramide is (i.p.v. een platte #mapimg) — bepaalt wat getSurfaceEl() teruggeeft
+  // specs/live-viewport-grote-monitor-plan.md, fase 3: of het viewport-kalibratie-kader op
+  // Kalibreren actief getoond wordt (los van of er al een viewport is toegepast — dit is puur de
+  // "ben ik 'm nu aan het bewerken"-UI-state). Het kader zelf (x_pct/y_pct/w_pct/h_pct tijdens het
+  // slepen) staat in viewportBewerking, geïnitialiseerd vanuit TOPO.viewport (of de volledige
+  // tekening als er nog geen viewport is) zodra de kalibratie geopend wordt.
+  viewportKalibratieActief: false,
+  viewportBewerking: null,
 };
 
 export const liveData = {};

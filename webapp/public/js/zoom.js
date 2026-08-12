@@ -34,7 +34,12 @@ export function applyZoom(){
 // zinvol voor kaart/live (Schema centreert al op zijn eigen inhoud, zie centerContentInViewport).
 export function setZoom(z, focal){
   const vorigeZoom = currentZoom();
-  z = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)) * 100) / 100;
+  // specs/live-viewport-grote-monitor-plan.md, fase 3: op Live met een actieve viewport-kalibratie
+  // mag je nooit zo ver uitzoomen dat het uitgesloten gebied buiten de viewport in beeld komt —
+  // ondergrens dan dynamisch (het zoomniveau waarop de viewport het beschikbare vlak precies dekt)
+  // i.p.v. de vaste ZOOM_MIN
+  const ondergrens = (state.mode==='live' && state.TOPO.viewport) ? minZoomVoorViewport() : ZOOM_MIN;
+  z = Math.round(Math.max(ondergrens, Math.min(ZOOM_MAX, z)) * 100) / 100;
   zoomLevels[state.mode] = z;
   // elke zoomwijziging (ook handmatig via +/-/scrollwiel, niet alleen de fit-knop) legt vast voor welke
   // schemagrootte dit percentage gold, zodat een latere topologiewijziging dit als verouderd herkent
@@ -77,6 +82,7 @@ export function setZoom(z, focal){
   } else {
     applyZoom();
   }
+  clampPanBinnenViewport();
 }
 
 // transform:scale() krimpt alleen de visuele weergave, niet de layout-/scrollbox van de wrap (die blijft
@@ -99,6 +105,61 @@ export function centerContentInViewport(){
   const deltaY = (contentRect.top + contentRect.height / 2) - (wrapRect.top + wrapRect.height / 2);
   wrap.scrollLeft += deltaX;
   wrap.scrollTop += deltaY;
+}
+
+// specs/live-viewport-grote-monitor-plan.md, fase 3: het gerenderde (scroll-ruimte) rechthoek van
+// de actieve viewport-kalibratie bij een gegeven zoomfactor — dezelfde hoekpunten-aanpak als
+// map-tiles.js's zichtbare-tegel-berekening, maar dan de andere kant op (content-hoeken -> gerenderde
+// px i.p.v. gerenderde px -> content-fractie) en toegepast op het viewport-rechthoek zelf i.p.v. het
+// zichtbare scrollvlak
+function viewportRenderedRect(z){
+  const vp = state.TOPO.viewport;
+  const surface = getSurfaceEl();
+  const surfaceW = surface.clientWidth, surfaceH = surface.clientHeight;
+  const r = rotatieState.graden;
+  const gewisseld = isGewisseld(r);
+  const renderedW = (gewisseld ? surfaceH : surfaceW) * z;
+  const renderedH = (gewisseld ? surfaceW : surfaceH) * z;
+  const hoeken = [
+    [vp.x_pct, vp.y_pct], [vp.x_pct + vp.w_pct, vp.y_pct],
+    [vp.x_pct, vp.y_pct + vp.h_pct], [vp.x_pct + vp.w_pct, vp.y_pct + vp.h_pct],
+  ].map(([xp, yp]) => {
+    const cx = xp / 100 * surfaceW, cy = yp / 100 * surfaceH;
+    const offset = offsetRoteren(cx - surfaceW / 2, cy - surfaceH / 2, r);
+    return [renderedW / 2 + offset.ox * z, renderedH / 2 + offset.oy * z];
+  });
+  return {
+    left: Math.min(...hoeken.map(p => p[0])), right: Math.max(...hoeken.map(p => p[0])),
+    top: Math.min(...hoeken.map(p => p[1])), bottom: Math.max(...hoeken.map(p => p[1])),
+  };
+}
+
+// het kleinste zoomniveau waarbij de viewport het hele beschikbare mapwrap-vlak nog "dekt" (net als
+// CSS background-size:cover — het grootste van de twee assen bepaalt, niet het kleinste zoals bij
+// een normale fit) — daaronder zou er ruimte overblijven waar het uitgesloten deel van de tekening
+// zichtbaar zou worden, precies wat de viewport-kalibratie moet voorkomen
+function minZoomVoorViewport(){
+  if(!state.TOPO.viewport) return ZOOM_MIN;
+  const rect1 = viewportRenderedRect(1); // eerst opmeten bij z=1, dan terugschalen naar wat nodig is
+  const w1 = rect1.right - rect1.left, h1 = rect1.bottom - rect1.top;
+  if(!w1 || !h1) return ZOOM_MIN;
+  const nodig = Math.max(mapwrap.clientWidth / w1, mapwrap.clientHeight / h1);
+  return Math.max(ZOOM_MIN, nodig);
+}
+
+function clampBinnenBereik(lo, hi, grootte, huidig){
+  if(hi - lo <= grootte) return (lo + hi) / 2 - grootte / 2; // regio kleiner dan het scherm: centreren
+  return Math.max(lo, Math.min(hi - grootte, huidig));
+}
+
+// voorkomt pannen naar het door de viewport-kalibratie uitgesloten deel van de tekening — alleen op
+// Live (Kalibreren blijft de volledige tekening altijd tonen/beweegbaar, de viewport is puur een
+// "wat toont Live"-instelling)
+export function clampPanBinnenViewport(){
+  if(state.mode!=='live' || !state.TOPO.viewport) return;
+  const rect = viewportRenderedRect(currentZoom());
+  mapwrap.scrollLeft = clampBinnenBereik(rect.left, rect.right, mapwrap.clientWidth, mapwrap.scrollLeft);
+  mapwrap.scrollTop = clampBinnenBereik(rect.top, rect.bottom, mapwrap.clientHeight, mapwrap.scrollTop);
 }
 
 document.getElementById('zoomInBtn').onclick = () => setZoom(currentZoom() + ZOOM_STEP);
@@ -159,22 +220,33 @@ export function fitToScreenKaart(){
   const availW = wrap.clientWidth - 24, availH = wrap.clientHeight - 24;
   if(availW <= 0 || availH <= 0) return;
 
-  const geplaatst = allNodes().filter(n => n.positie && n.positie.x_pct != null);
-  // knikpuntcoördinaten meenemen in de bounding box — een bocht die ver van de rechte lijn tussen
-  // twee nodes afligt, mag "fit to screen" niet buiten beeld laten vallen
-  const knikpunten = state.TOPO.kasten.flatMap(k => k.knikpunten || []);
-  let minX = 0, maxX = 100, minY = 0, maxY = 100;
-  if(geplaatst.length){
-    const xs = geplaatst.map(n => n.positie.x_pct).concat(knikpunten.map(p => p.x_pct));
-    const ys = geplaatst.map(n => n.positie.y_pct).concat(knikpunten.map(p => p.y_pct));
-    minX = Math.min(...xs);
-    maxX = Math.max(...xs);
-    minY = Math.min(...ys);
-    maxY = Math.max(...ys);
-    const PAD = 4;
-    minX = Math.max(0, minX - PAD); maxX = Math.min(100, maxX + PAD);
-    minY = Math.max(0, minY - PAD); maxY = Math.min(100, maxY + PAD + 3); // iets extra onder voor het pin-label
-  } // niks geplaatst: val terug op de hele surface (0-100), zodat er alsnog iets zinnigs te zien is
+  // specs/live-viewport-grote-monitor-plan.md, fase 3: op Live met een actieve viewport-kalibratie
+  // is de viewport zelf de volledige "wereld" om op te fitten — geen bounding box van geplaatste
+  // content, en bewust geen PAD-marge (die zou een sliver van het uitgesloten gebied laten
+  // meekomen, precies wat de viewport-kalibratie moet voorkomen)
+  const liveViewport = state.mode === 'live' ? state.TOPO.viewport : null;
+  let minX, maxX, minY, maxY;
+  if(liveViewport){
+    minX = liveViewport.x_pct; maxX = liveViewport.x_pct + liveViewport.w_pct;
+    minY = liveViewport.y_pct; maxY = liveViewport.y_pct + liveViewport.h_pct;
+  } else {
+    const geplaatst = allNodes().filter(n => n.positie && n.positie.x_pct != null);
+    // knikpuntcoördinaten meenemen in de bounding box — een bocht die ver van de rechte lijn tussen
+    // twee nodes afligt, mag "fit to screen" niet buiten beeld laten vallen
+    const knikpunten = state.TOPO.kasten.flatMap(k => k.knikpunten || []);
+    minX = 0; maxX = 100; minY = 0; maxY = 100;
+    if(geplaatst.length){
+      const xs = geplaatst.map(n => n.positie.x_pct).concat(knikpunten.map(p => p.x_pct));
+      const ys = geplaatst.map(n => n.positie.y_pct).concat(knikpunten.map(p => p.y_pct));
+      minX = Math.min(...xs);
+      maxX = Math.max(...xs);
+      minY = Math.min(...ys);
+      maxY = Math.max(...ys);
+      const PAD = 4;
+      minX = Math.max(0, minX - PAD); maxX = Math.min(100, maxX + PAD);
+      minY = Math.max(0, minY - PAD); maxY = Math.min(100, maxY + PAD + 3); // iets extra onder voor het pin-label
+    } // niks geplaatst: val terug op de hele surface (0-100), zodat er alsnog iets zinnigs te zien is
+  }
 
   const contentW = (maxX - minX) / 100 * surfaceW;
   const contentH = (maxY - minY) / 100 * surfaceH;
@@ -188,7 +260,12 @@ export function fitToScreenKaart(){
   const gewisseld = isGewisseld(r);
   const renderedContentW = gewisseld ? contentH : contentW;
   const renderedContentH = gewisseld ? contentW : contentH;
-  const scale = Math.min(availW / renderedContentW, availH / renderedContentH, ZOOM_MAX);
+  // fase 3: bij een actieve Live-viewport "dekkend" schalen (max i.p.v. min van de twee assen) —
+  // anders zou fit to screen op een viewport met een andere verhouding dan het scherm letterboxen,
+  // met een sliver uitgesloten gebied als resultaat
+  const scale = liveViewport
+    ? Math.min(Math.max(availW / renderedContentW, availH / renderedContentH), ZOOM_MAX)
+    : Math.min(availW / renderedContentW, availH / renderedContentH, ZOOM_MAX);
   setZoom(scale);
 
   // middelpunt van de bounding box als px-offset t.o.v. het content-midden, dan geroteerd naar
@@ -203,6 +280,7 @@ export function fitToScreenKaart(){
   const targetY = renderedH / 2 + offset.oy * scale;
   wrap.scrollLeft = targetX - wrap.clientWidth / 2;
   wrap.scrollTop = targetY - wrap.clientHeight / 2;
+  clampPanBinnenViewport();
 }
 
 // specs/live-viewport-grote-monitor-plan.md, fase 2: stapsgewijs 90° draaien, alleen zinvol op
@@ -237,6 +315,9 @@ export function enablePanDrag(wrapEl){
     if(!panning) return;
     wrapEl.scrollLeft = startLeft - (ev.clientX - startX);
     wrapEl.scrollTop = startTop - (ev.clientY - startY);
+    // specs/live-viewport-grote-monitor-plan.md, fase 3: alleen relevant voor mapwrap (schemaWrap
+    // heeft geen viewport-concept) — clampPanBinnenViewport() zelf checkt ook al state.mode==='live'
+    if(wrapEl === mapwrap) clampPanBinnenViewport();
   });
   window.addEventListener('mouseup', () => {
     if(!panning) return;

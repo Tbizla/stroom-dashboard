@@ -9,6 +9,7 @@ import './render-detail.js';
 import './render-pins.js';
 import './kastpopup.js';
 import './aside-tabs.js';
+import './viewport-kalibratie.js';
 import './render-schema.js';
 import './render-beheer.js';
 import { initRapport } from './rapport.js';

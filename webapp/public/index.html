@@ -57,6 +57,10 @@
     <span id="mapUploadErr" class="err" style="display:none"></span>
     <span data-i18n="calbar.hint">Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.</span>
     <span class="hint" id="armedLabel"></span>
+    <!-- specs/live-viewport-grote-monitor-plan.md, fase 3: aanvulling op Kalibreren, geen
+         vervanging — pin-plaatsing/-slepen/lijnen blijven gewoon werken, dit toggelt alleen het
+         sleepbare kader-overlay aan/uit -->
+    <button id="viewportKalibratieBtn" class="collapseall" style="margin-left:auto" data-i18n="calbar.viewportKalibratie">Viewport-kalibratie</button>
   </div>
 
   <div id="beheerPanel" style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0">
@@ -728,7 +732,36 @@
           <div class="blankcanvas-hint" data-i18n="blankcanvas.hint">Nog geen plattegrond geüpload. Je kunt kasten hier alvast vrij plaatsen — upload later een plattegrond via de knop hierboven, de posities blijven staan.</div>
         </div>
         <svg id="svgoverlay"></svg>
+        <!-- specs/live-viewport-grote-monitor-plan.md, fase 3: viewport-kalibratie-overlay, alleen
+             opgebouwd/zichtbaar terwijl viewportKalibratieBtn actief staat (viewport-kalibratie.js) —
+             mask-vlakken dempen het gebied buiten het kader, kader zelf sleepbaar/verkleinbaar via
+             de 4 hoek-handles -->
+        <div class="vpmask" id="vpMaskTop" style="display:none"></div>
+        <div class="vpmask" id="vpMaskBottom" style="display:none"></div>
+        <div class="vpmask" id="vpMaskLeft" style="display:none"></div>
+        <div class="vpmask" id="vpMaskRight" style="display:none"></div>
+        <div class="vprect" id="vpRect" style="display:none">
+          <div class="vphandle" data-h="nw"></div>
+          <div class="vphandle" data-h="ne"></div>
+          <div class="vphandle" data-h="sw"></div>
+          <div class="vphandle" data-h="se"></div>
+        </div>
       </div>
+    </div>
+    <!-- readout + Toepassen/Reset, positie/stijl los van het kader zelf (blijft leesbaar ongeacht
+         zoom/rotatie, i.t.t. het kader dat wél meeschaalt/-roteert met de kaart) -->
+    <div class="vppanel" id="vpPanel" style="display:none">
+      <div class="vppanel-readout">
+        <div><span data-i18n="viewport.x">X</span> <b id="vpReadoutX">0%</b></div>
+        <div><span data-i18n="viewport.y">Y</span> <b id="vpReadoutY">0%</b></div>
+        <div><span data-i18n="viewport.w">Breedte</span> <b id="vpReadoutW">100%</b></div>
+        <div><span data-i18n="viewport.h">Hoogte</span> <b id="vpReadoutH">100%</b></div>
+      </div>
+      <div class="vppanel-actions">
+        <button id="vpApplyBtn" class="primary" data-i18n="viewport.toepassen">Toepassen op Live</button>
+        <button id="vpResetBtn" data-i18n="viewport.reset">Reset naar volledige tekening</button>
+      </div>
+      <div class="vppanel-status" id="vpStatus"></div>
     </div>
     <div class="mapwrap schemawrap" id="schemaWrap" style="display:none">
       <div class="blankcanvas-hint" id="schemaEmptyHint" style="position:static;display:none" data-i18n="schema.emptyHint">Nog geen generators/kasten. Voeg ze toe via "Beheer" — het schema wordt automatisch getekend.</div>

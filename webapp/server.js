@@ -303,6 +303,7 @@ const EDITOR_ONLY_PREFIXEN = [
   '/api/import', // Kalibreren-header
   '/api/topology/positie', // Kalibreren
   '/api/topology/knikpunten', // Kalibreren
+  '/api/topology/viewport', // Kalibreren — specs/live-viewport-grote-monitor-plan.md, fase 3
   '/api/topology/test-data', // Testdata
   '/api/simulator', // Testdata
   '/api/metingen/reset', // Testdata
@@ -981,6 +982,29 @@ app.post('/api/topology/knikpunten', (req, res) => {
   res.json({ ok: true, kast });
 });
 
+// ---------- viewport-kalibratie (specs/live-viewport-grote-monitor-plan.md, fase 3): welk deel van
+// de tekening Live toont — top-level veld op de topologie (net als generators/kasten), niet per node,
+// want dit is een eigenschap van de hele tekening. Server-side (i.p.v. alleen localStorage) omdat
+// dit voor ELKE viewer van Live hetzelfde moet zijn, geen per-browser-voorkeur zoals zoom/rotatie. ----------
+app.post('/api/topology/viewport', (req, res) => {
+  const { actief, x_pct, y_pct, w_pct, h_pct } = req.body || {};
+  const data = readTopo();
+  if (actief === false) {
+    data.viewport = null; // "Reset naar volledige tekening"
+  } else {
+    const velden = { x_pct, y_pct, w_pct, h_pct };
+    if (Object.values(velden).some((v) => typeof v !== 'number' || v < 0 || v > 100)) {
+      return res.status(400).json({ error: 'x_pct/y_pct/w_pct/h_pct zijn verplicht en moeten getallen tussen 0 en 100 zijn' });
+    }
+    if (w_pct <= 0 || h_pct <= 0 || x_pct + w_pct > 100 + 1e-6 || y_pct + h_pct > 100 + 1e-6) {
+      return res.status(400).json({ error: 'viewport moet binnen de tekening (0-100%) vallen en een positieve breedte/hoogte hebben' });
+    }
+    data.viewport = { x_pct, y_pct, w_pct, h_pct };
+  }
+  writeTopo(data);
+  res.json({ ok: true, viewport: data.viewport });
+});
+
 // ---------- generators beheren ----------
 // een generator-node is normaal gesproken één aggregaat ('generator') of accu ('batterij'), maar kan ook
 // een 'groep' zijn: één logische krachtbron die intern uit meerdere generators/accu's bestaat (bijv. een
@@ -1331,7 +1355,11 @@ app.post('/api/shelly/configureren', async (req, res) => {
 
 // ---------- alles wissen ----------
 app.post('/api/reset', (req, res) => {
-  writeTopo({ generators: [], kasten: [], toelichting: readTopo().toelichting });
+  const bestaand = readTopo();
+  // viewport is een eigenschap van de tekening zelf (welk deel Live toont), niet van de geplaatste
+  // generators/kasten — "Alles wissen" hoort een eerder ingestelde viewport-kalibratie dus niet mee
+  // te wissen, net als toelichting hiernaast
+  writeTopo({ generators: [], kasten: [], toelichting: bestaand.toelichting, viewport: bestaand.viewport });
   res.json({ ok: true });
 });
 

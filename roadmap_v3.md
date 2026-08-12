@@ -972,7 +972,8 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       naar een relatieve `calc(var(--edge-w) * 1.5)` bovenop de dynamische basisdikte, i.p.v. een
       losstaande vaste `3px` die bij uitzoomen weer dunner dan de niet-hover-lijn zou zijn geweest.
       Zie event_dashboard.md, Kalibreren-tabblad.
-- [ ] **Live-weergave & viewport-kalibratie voor grote monitoren.** Mike's verzoek (12 augustus
+- [x] **Live-weergave & viewport-kalibratie voor grote monitoren.** Afgerond — alle 3 fases
+      gebouwd op 12 augustus 2026. Mike's verzoek (12 augustus
       2026): het dashboard draait op een grote monitor, mogelijk in portrait-stand — nog niet
       vastgelegd welke kant op, dus beide moeten werken. Twee interactieve Cowork-mockups
       (landscape 16:9 4K en portrait), mockup akkoord bevonden, gefaseerde bouwvolgorde met Mike
@@ -1035,12 +1036,40 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       berekening (met de hand geverifieerd tijdens het bouwen). Extra geverifieerd met een
       automatisch testscript in de container (corner-mapping, round-trip offset-conversies, 4×90°
       = identiteit) — alle testen slaagden.
-      **Fase 3 (viewport-kalibratie op Kalibreren) nog niet gebouwd** (blijft dit item openstaand).
+      **Fase 3 (viewport-kalibratie op Kalibreren), zelfde dag afgerond**: "Viewport-kalibratie"-
+      knop in de kaartbalk zet een sleepbaar/verkleinbaar kader (`#vpRect` + 4 hoek-handles + 4
+      dempingsvlakken) over de plattegrond, aanvulling op de bestaande pin-plaatsing (niet
+      vervangend — allebei werken naast elkaar op hetzelfde tabblad). Kader-hoeken slepen hergebruikt
+      dezelfde `muisNaarPct()`-conversie als pin-/knikpuntinteractie (nu verplaatst naar `rotatie.js`
+      zodat beide bestanden 'm zonder circulaire import kunnen delen).
+      **Server**: nieuw top-level `viewport`-veld op de topologie (net als `generators`/`kasten`,
+      niet per node — het is een eigenschap van de hele tekening), server-side opgeslagen (niet
+      localStorage zoals zoom/rotatie) omdat dit voor elke Live-viewer hetzelfde moet zijn. Nieuwe
+      `POST /api/topology/viewport` (editor-only, validatie op 0-100%-bereik en een positieve
+      breedte/hoogte binnen de tekening), "Alles wissen" laat 'm bewust ongemoeid (eigenschap van de
+      tekening, niet van de geplaatste generators/kasten — zelfde uitzondering als `toelichting`).
+      Automatisch meegenomen in back-up/restore (zit al in `topologie.json`).
+      **Live**: `fitToScreenKaart()` fit op het viewport-rechthoek i.p.v. de bounding box van
+      geplaatste content zodra er een actieve viewport is, met een "dekkende" schaal (grootste van
+      de twee assen, geen letterbox-sliver van het uitgesloten gebied) i.p.v. de normale "fit"-
+      schaal. Nieuwe dynamische zoom-ondergrens (`minZoomVoorViewport()`) en een pan-klem
+      (`clampPanBinnenViewport()`, aangeroepen ná elke zoom-/sleepwijziging) zorgen dat je nooit
+      verder kunt uit-/wegzoomen dan waar de viewport het scherm nog vult — het uitgesloten deel
+      is dus nooit bereikbaar, niet via zoomen en niet via pannen. Beide houden rekening met een
+      eventuele rotatiestand (fase 2).
+      Elke formule is zo opgezet dat 'm bij rotatie 0 wiskundig exact reduceert tot de eerdere
+      berekening. Extra geverifieerd met een tweede automatisch testscript (dekkende-schaal-
+      berekening, pan-klem-grenzen, en dat het volledige-tekening-viewport bij elke rotatiestand
+      exact het hele gerenderde oppervlak teruggeeft) — alle testen slaagden, plus een live
+      API-round-trip tegen de draaiende stack (toepassen → GET bevestigt → validatie weigert
+      ongeldige waarden → reset → GET bevestigt weer leeg), geen wijziging aan de echte
+      generatoren/kasten geraakt.
       **Nog niet getest in een echte browser** (Docker Desktop viel tijdens het bouwen stil en is
       herstart, geen Playwright/browser-tool beschikbaar in deze sessie) — wel geverifieerd met
-      JS-syntax-checks, JSON-validiteit, geserveerde DOM-elementen/nieuwe bestanden, geen
-      serverfouten in de logs, en het automatische rotatie-wiskunde-testscript hierboven. Zie
-      event_dashboard.md, Live-monitoring (Live-tabblad) en Plattegrond & kalibratie.
+      JS-/server.js-syntax-checks, JSON-validiteit, geserveerde DOM-elementen/nieuwe bestanden, geen
+      serverfouten in de logs, de automatische rotatie-/viewport-wiskunde-testscripts, en de
+      live API-round-trip hierboven. Zie event_dashboard.md, Live-monitoring (Live-tabblad) en
+      Plattegrond & kalibratie.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

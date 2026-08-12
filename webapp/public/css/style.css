@@ -88,6 +88,26 @@ header h1 span{color:var(--accent)}
 .zoomctl .zoomlabel:hover{border-color:var(--border)}
 .zoomctl .zoomlabel:focus{outline:none;border-color:var(--accent);background:var(--panel2)}
 .toolbarsep{width:1px;height:1.125rem;background:var(--border);flex-shrink:0}
+
+/* specs/live-viewport-grote-monitor-plan.md, fase 3: viewport-kalibratie-overlay (Kalibreren).
+   .vprect/.vphandle/.vpmask zitten in #mapinner (zie index.html) en roteren/schalen dus automatisch
+   mee met de kaart, net als pins — .vppanel (readout + acties) is bewust een sibling van #mapwrap
+   (zelfde reden als .zoomctl hierboven: binnen #mapwrap zelf zou 'm meescrollen bij het pannen). */
+.vprect{position:absolute;border:2px solid var(--accent);background:rgba(79,209,197,.10);box-sizing:border-box;cursor:move;z-index:9}
+.vphandle{position:absolute;width:0.875rem;height:0.875rem;background:var(--accent);border:2px solid var(--bg);border-radius:0.1875rem;z-index:10}
+.vphandle[data-h="nw"]{left:-0.5rem;top:-0.5rem;cursor:nwse-resize}
+.vphandle[data-h="ne"]{right:-0.5rem;top:-0.5rem;cursor:nesw-resize}
+.vphandle[data-h="sw"]{left:-0.5rem;bottom:-0.5rem;cursor:nesw-resize}
+.vphandle[data-h="se"]{right:-0.5rem;bottom:-0.5rem;cursor:nwse-resize}
+.vpmask{position:absolute;background:rgba(11,13,16,.72);pointer-events:none;z-index:8}
+.vppanel{position:absolute;top:4rem;left:0.875rem;z-index:10;background:rgba(18,21,26,.95);
+  border:1px solid var(--border);border-radius:0.5rem;padding:0.75rem;font-size:0.75rem;color:var(--text2);min-width:11rem}
+.vppanel-readout{display:grid;grid-template-columns:1fr 1fr;gap:0.375rem 0.75rem;margin-bottom:0.625rem}
+.vppanel-readout b{color:var(--text);font-family:var(--mono)}
+.vppanel-actions{display:flex;flex-direction:column;gap:0.375rem}
+.vppanel-actions button{font-size:0.71875rem;padding:0.4375rem 0.5625rem}
+.vppanel-actions .primary{background:var(--accent);border-color:var(--accent);color:#06231f;font-weight:600}
+.vppanel-status{margin-top:0.5rem;font-size:0.6875rem;color:var(--accent)}
 /* -webkit-user-drag/user-select: voorkomt dat de browser tijdens het slepen van een pin/knikpunt
    zijn eigen afbeeldingsdrag/-selectie op de plattegrond eronder start (naast de preventDefault()
    in render-pins.js — dit dekt ook browsers waar dat niet genoeg is) */

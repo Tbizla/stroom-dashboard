@@ -210,6 +210,16 @@
 
   "calbar.plattegrondUploaden": "Plattegrond uploaden",
   "calbar.hint": "Klik een generator of kast in de lijst rechts, klik dan op de kaart (of het lege vlak, als er nog geen plattegrond is) om 'm te plaatsen. Al geplaatste pins kun je verslepen.",
+  "calbar.viewportKalibratie": "Viewport-kalibratie",
+
+  "viewport.x": "X",
+  "viewport.y": "Y",
+  "viewport.w": "Breedte",
+  "viewport.h": "Hoogte",
+  "viewport.toepassen": "Toepassen op Live",
+  "viewport.reset": "Reset naar volledige tekening",
+  "viewport.toegepastStatus": "Toegepast — Live toont nu alleen de gemarkeerde regio.",
+  "viewport.resetStatus": "Teruggezet — Live toont weer de volledige tekening.",
   "calbar.armedLabel": "Klik nu op de kaart om \"{naam}\" te plaatsen",
 
   "blankcanvas.hint": "Nog geen plattegrond geüpload. Je kunt kasten hier alvast vrij plaatsen — upload later een plattegrond via de knop hierboven, de posities blijven staan.",

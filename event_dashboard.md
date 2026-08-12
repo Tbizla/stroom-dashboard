@@ -366,6 +366,19 @@ zetten zonder code aan te passen.
   een getilede plattegrond (specs/plattegrond-tile-based-plan.md) — welke tegels geladen worden,
   houdt rekening met de rotatie. Draaien past automatisch "fit to screen" toe zodat de gedraaide
   weergave weer volledig in beeld komt
+- **Viewport-kalibratie** (specs/live-viewport-grote-monitor-plan.md, fase 3, "Viewport-kalibratie"-
+  knop in de kaartbalk op Kalibreren): een sleepbaar/verkleinbaar kader over de plattegrond om vast
+  te leggen welk deel Live straks toont — handig om bijv. bouwterreindetails buiten het eigenlijke
+  werkgebied uit te sluiten. Aanvulling op, geen vervanging van, de bestaande pin-plaatsing/-
+  slepen/lijnen-functionaliteit — beide werken los van elkaar op hetzelfde tabblad. "Toepassen op
+  Live" slaat het kader server-side op (percentages, niet pixels — blijft dus kloppen bij een
+  andere plattegrond of canvas-afmeting); "Reset naar volledige tekening" zet 'm terug. Eén vaste,
+  actieve viewport tegelijk (geen meerdere opgeslagen presets), en geldt voor iedereen die Live
+  bekijkt (server-side, geen per-browser voorkeur zoals zoom/rotatie). Live toont daarna alléén die
+  regio: "fit to screen" past zich aan, en pannen/uitzoomen voorbij de viewport-rand is niet
+  mogelijk — het uitgesloten deel is dus nooit zichtbaar, ook niet als je verder probeert uit te
+  zoomen. Werkt met én zonder geüploade plattegrond (ook op het lege 4800×3000-canvas), en houdt
+  rekening met een eventuele rotatiestand
 
 **Schema-tabblad**
 - Automatisch gegenereerd stroomschema (boomdiagram) van de volledige parent/child-keten, generator

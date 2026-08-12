@@ -7,7 +7,7 @@ import { renderPins } from './render-pins.js';
 import { renderSchema } from './render-schema.js';
 import { renderKastPopup } from './kastpopup.js';
 import { renderDetail } from './render-detail.js';
-import { applyZoom, fitToScreen } from './zoom.js';
+import { applyZoom, fitToScreen, setZoom, currentZoom } from './zoom.js';
 import { zoomLevels } from './state.js';
 import { t } from './i18n.js';
 import { toonOverzicht } from './overzicht.js';
@@ -15,6 +15,7 @@ import { toonGrafieken } from './grafieken.js';
 import { verbindMqtt } from './mqtt.js';
 import { toonLocaties, toonLocatiesBeheren } from './hq-locaties.js';
 import { ververLiveKpi } from './live-kpi.js';
+import { renderVpOverlay } from './viewport-kalibratie.js';
 
 function setActiveModeButton(id){
   ['modeBeheer','modeCal','modeSchema','modeLive','modeTest','modeRapportages','modeGrafieken'].forEach(b=>document.getElementById(b).classList.toggle('active', b===id));
@@ -25,6 +26,11 @@ function setActiveModeButton(id){
   // mode-check zit in render-detail.js zelf) — hier herrenderen zodat die meteen verschijnt/verdwijnt
   // bij elke tabwissel, niet pas bij de eerstvolgende toevallige aanleiding
   renderDetail();
+  // specs/live-viewport-grote-monitor-plan.md, fase 3: het viewport-kalibratie-kader hoort/verdwijnt
+  // alleen op Kalibreren (renderVpOverlay() zelf checkt state.mode) — hier al herrenderen i.p.v. pas
+  // bij de eerstvolgende kaartzoom, anders blijft het kader nog even zichtbaar op het net-verlaten
+  // tabblad
+  renderVpOverlay();
 }
 // specs/beheer-subtabs-plan.md: vier sub-tabs binnen Beheer (Topologie/Instellingen/Accounts/
 // Back-up), zelfde patroon als toonRapportSubnav() hieronder — een verhuizing van bestaande
@@ -135,7 +141,10 @@ document.getElementById('modeLive').onclick = ()=>{
   document.getElementById('schemaWrap').style.display='none';
   document.getElementById('mainBody').style.display='flex';
   verbindMqtt();
-  applyZoom();
+  // specs/live-viewport-grote-monitor-plan.md, fase 3: setZoom() i.p.v. een kaal applyZoom() —
+  // dwingt meteen de zoom-ondergrens + pan-clamp van een eventueel actieve viewport af, ook als
+  // die zojuist op Kalibreren is toegepast terwijl je nog niet op Live was
+  setZoom(currentZoom());
   renderPins();
   ververLiveKpi();
 };

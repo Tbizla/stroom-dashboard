@@ -49,3 +49,11 @@ export function isGewisseld(graden){
   const g = ((graden % 360) + 360) % 360;
   return g === 90 || g === 270;
 }
+
+// dunne, herbruikbare laag bovenop naarContentFractie() voor de twee plekken die een kale
+// muisklik/-sleepbeweging (via getBoundingClientRect()) naar x_pct/y_pct moeten omrekenen —
+// render-pins.js (pin/knikpunt-interactie) en viewport-kalibratie.js (kader-hoeken slepen)
+export function muisNaarPct(ev, rect, graden){
+  const { fx, fy } = naarContentFractie((ev.clientX-rect.left)/rect.width, (ev.clientY-rect.top)/rect.height, graden);
+  return { x: Math.max(0,Math.min(100, fx*100)), y: Math.max(0,Math.min(100, fy*100)) };
+}

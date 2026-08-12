@@ -6,16 +6,15 @@ import { renderKastPopup } from './kastpopup.js';
 import { t } from './i18n.js';
 import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
 import { currentZoom } from './zoom.js';
-import { naarContentFractie } from './rotatie.js';
+import { muisNaarPct as muisNaarPctRuw } from './rotatie.js';
 
 // specs/live-viewport-grote-monitor-plan.md, fase 2: elke muispositie-naar-percentage-conversie
 // (klikken/slepen op de kaart) moet door de actieve rotatiestand heen rekenen — getBoundingClientRect()
 // is zelf al rotatiebewust (geeft de gerenderde, dus eventueel breedte/hoogte-verwisselde rechthoek
-// terug), maar "hoeveel procent van links" betekent bij 90°/270° niet meer "hoeveel procent x_pct"
-function muisNaarPct(ev, rect){
-  const { fx, fy } = naarContentFractie((ev.clientX-rect.left)/rect.width, (ev.clientY-rect.top)/rect.height, rotatieState.graden);
-  return { x: Math.max(0,Math.min(100, fx*100)), y: Math.max(0,Math.min(100, fy*100)) };
-}
+// terug), maar "hoeveel procent van links" betekent bij 90°/270° niet meer "hoeveel procent x_pct".
+// Dunne wrapper die de huidige rotatiestand invult — muisNaarPct() zelf (rotatie.js) is generiek
+// (geen afhankelijkheid van state), ook hergebruikt door viewport-kalibratie.js.
+function muisNaarPct(ev, rect){ return muisNaarPctRuw(ev, rect, rotatieState.graden); }
 
 // pins/knikpunten/labels blijven op een constante, leesbare schermgrootte ongeacht de kaart-zoom
 // (net als markers op een kaartprogramma) — het zijn plain siblings binnen #mapinner, dus zonder
