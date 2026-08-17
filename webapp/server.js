@@ -1551,7 +1551,9 @@ function metUploadFoutafhandeling(middleware) {
 const TILE_SIZE = 256;
 const TILE_DREMPEL_LANGE_ZIJDE_PX = 2000;
 const TILE_DREMPEL_MEGAPIXEL = 3_000_000;
-const PDF_MAX_LANGE_ZIJDE_PX = 5500;
+// gedeeld tussen de PDF- en SVG-rasterisatie hieronder — beide zetten een vectorbron om naar een
+// PNG van vergelijkbare maximale grootte, vóórdat diezelfde PNG het normale tegel-drempelpad volgt
+const PLATTEGROND_MAX_LANGE_ZIJDE_PX = 5500;
 
 function execFileP(cmd, args) {
   return new Promise((resolve, reject) => {
@@ -1576,10 +1578,29 @@ async function pdfPaginaformaatInPunten(pdfPad) {
 async function rasteriseerPdfNaarPng(pdfPad, uitvoerBasispad) {
   const { w, h } = await pdfPaginaformaatInPunten(pdfPad);
   const langsteZijdePts = Math.max(w, h);
-  let dpi = Math.round((PDF_MAX_LANGE_ZIJDE_PX / langsteZijdePts) * 72);
+  let dpi = Math.round((PLATTEGROND_MAX_LANGE_ZIJDE_PX / langsteZijdePts) * 72);
   dpi = Math.max(72, Math.min(600, dpi));
   await execFileP('pdftoppm', ['-png', '-r', String(dpi), '-singlefile', '-f', '1', '-l', '1', pdfPad, uitvoerBasispad]);
   return uitvoerBasispad + '.png';
+}
+
+// een geüploade SVG-plattegrond (vaak een PDF->SVG-conversie: duizenden losse paden, hoge precisie,
+// laag-/groep-cruft van de conversietool) wordt vóór opslag altijd naar PNG gerasteriseerd i.p.v.
+// als vector bewaard — de browser hoeft dan nooit meer het hele, potentieel zeer zware vector-
+// document zelf te downloaden/parsen, en het resultaat volgt daarna hetzelfde tegel-drempelpad als
+// elke andere plattegrond. sharp/libvips rasteriseert SVG out-of-the-box (bundelt librsvg), geen
+// extra systeem-dependency nodig zoals bij PDF (poppler-utils). sharp's default input-density voor
+// SVG is 72dpi, dus metadata() zonder eigen density-optie geeft de "72dpi-brongrootte" terug —
+// zelfde dpi-vanuit-doelgrootte-berekening als de PDF-rasterisatie hierboven, nu op basis daarvan
+// i.p.v. PDF-paginapunten.
+async function rasteriseerSvgNaarPng(svgPad, uitvoerBasispad) {
+  const { width, height } = await sharp(svgPad).metadata();
+  const langsteZijdePx = Math.max(width, height);
+  let dpi = Math.round((PLATTEGROND_MAX_LANGE_ZIJDE_PX / langsteZijdePx) * 72);
+  dpi = Math.max(72, Math.min(600, dpi));
+  const uitvoerPad = uitvoerBasispad + '.png';
+  await sharp(svgPad, { density: dpi }).png().toFile(uitvoerPad);
+  return uitvoerPad;
 }
 
 async function moetTegelen(pngPad) {
@@ -1621,9 +1642,10 @@ function huidigeKaartMeta() {
   return { exists: false };
 }
 
-// hoofdverwerking voor een plattegrond-upload: PDF wordt eerst naar PNG gerasteriseerd, PNG boven de
-// drempel wordt getiled, alles daaronder (incl. BMP/SVG, zie specs/plattegrond-tile-based-plan.md
-// "BMP blijft altijd buiten tiling") blijft op het bestaande platte-bestand-pad.
+// hoofdverwerking voor een plattegrond-upload: PDF/SVG worden eerst naar PNG gerasteriseerd (een
+// SVG dus bewust nooit als vector opgeslagen, zie rasteriseerSvgNaarPng hierboven), PNG boven de
+// drempel wordt getiled, alles daaronder (incl. BMP, zie specs/plattegrond-tile-based-plan.md "BMP
+// blijft altijd buiten tiling") blijft op het bestaande platte-bestand-pad.
 async function verwerkKaartUpload(req, res) {
   const buffer = fs.readFileSync(req.file.path);
   let type = detecteerAfbeeldingType(buffer);
@@ -1637,6 +1659,10 @@ async function verwerkKaartUpload(req, res) {
   try {
     if (type === 'pdf') {
       bronPad = await rasteriseerPdfNaarPng(bronPad, req.file.path + '-gerasteriseerd');
+      opruimen.push(bronPad);
+      type = 'png';
+    } else if (type === 'svg') {
+      bronPad = await rasteriseerSvgNaarPng(bronPad, req.file.path + '-gerasteriseerd');
       opruimen.push(bronPad);
       type = 'png';
     }

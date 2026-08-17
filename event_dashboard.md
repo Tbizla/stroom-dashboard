@@ -325,7 +325,7 @@ zetten zonder code aan te passen.
   geüploade PNG boven ~2000px lange zijde/~3 megapixel wordt server-side (sharp/libvips) in een
   Deep-Zoom-tegel-piramide geknipt — de browser laadt dan alleen de tegels die op het huidige
   zoomniveau daadwerkelijk binnen beeld vallen, i.p.v. één grote afbeelding in zijn geheel te
-  decoderen. Kleinere PNG's, BMP en SVG blijven op het bestaande, platte weergavepad (BMP altijd,
+  decoderen. Kleinere PNG's en BMP blijven op het bestaande, platte weergavepad (BMP altijd,
   ongeacht grootte — sharp/libvips ondersteunt geen betrouwbare BMP-tegelgeneratie). Voor de
   gebruiker verandert er verder niets: zelfde upload-knop, dezelfde percentage-gebaseerde
   pin-plaatsing en fit-to-screen-zoom werken ongewijzigd door, of de plattegrond nu getiled is of
@@ -334,6 +334,13 @@ zetten zonder code aan te passen.
   (`poppler-utils`/`pdftoppm`, alleen de eerste pagina) — de renderresolutie wordt berekend uit de
   PDF's eigen paginaformaat (`pdfinfo`), gecapt op ~5500px lange zijde, i.p.v. een vaste DPI blind
   toe te passen. Het resultaat volgt daarna hetzelfde tegel-/drempelpad als elke andere PNG-upload
+- **SVG-plattegrond wordt altijd gerasteriseerd**: een geüploade SVG (vaak een PDF→SVG-conversie —
+  doorgaans duizenden losse paden, hoge precisie, laag-/groep-cruft van de conversietool, en dus
+  potentieel zwaar om in de browser te downloaden/parsen) wordt server-side met sharp/libvips naar
+  PNG omgezet vóór opslag, i.p.v. als vector bewaard te blijven — zelfde ~5500px-lange-zijde-cap en
+  daarna hetzelfde tegel-/drempelpad als een PDF-upload. Geen nieuwe systeem-dependency nodig (sharp
+  ondersteunt SVG-rasterisatie out-of-the-box). Bestaande, al eerder geüploade SVG-plattegronden
+  worden niet automatisch gemigreerd — pas bij een nieuwe upload wordt een SVG gerasteriseerd
 - **Vaste witte ondergrond achter de plattegrond**: een upload met transparante delen (bijv. een uit
   PDF geconverteerde SVG) toonde voorheen het donkere dashboardthema erdoorheen, waardoor donkere
   lijnen onleesbaar werden. De plattegrond-surface (platte afbeelding én getilede tegels) heeft nu
