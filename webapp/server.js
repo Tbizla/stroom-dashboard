@@ -1535,7 +1535,9 @@ function verwerkAfbeeldingUpload(req, res, basename) {
 }
 
 const upload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 }, fileFilter: afbeeldingFileFilter });
-const kaartUpload = multer({ dest: DATA_DIR, limits: { fileSize: 25 * 1024 * 1024 }, fileFilter: kaartFileFilter });
+// plattegrond-upload ruimer dan het logo: een uit PDF geconverteerde SVG-plattegrond kan met veel
+// vectorpaden een stuk groter zijn dan een simpel logo-bestand
+const kaartUpload = multer({ dest: DATA_DIR, limits: { fileSize: 300 * 1024 * 1024 }, fileFilter: kaartFileFilter });
 // multer geeft een fileFilter-afwijzing door aan de Express-errorhandler; die hier meteen
 // als nette 400 afvangen voorkomt dat de upload eindigt in een generieke 500.
 function metUploadFoutafhandeling(middleware) {

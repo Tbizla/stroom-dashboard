@@ -200,10 +200,11 @@ zetten zonder code aan te passen.
   databaseveld) — zodat "bewust geen sensor" onderscheiden is van "per ongeluk leeg gelaten". Overal
   waar tot nu toe stil niets werd getoond bij een ontbrekende rating (Live-zijlijst, aside-detail,
   schema-tabblad, kastpopup-ledentabel) staat nu een herkenbaar grijs "geen sensor"-label
-- Evenementlogo uploaden, zichtbaar in de header. Logo-uploads zijn beperkt tot .png/.bmp/.svg,
-  plattegronduploads tot .png/.bmp/.svg/.pdf (zie de tegel-based rendering hieronder) —
-  gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen de bestandsnaam),
-  zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
+- Evenementlogo uploaden, zichtbaar in de header. Logo-uploads zijn beperkt tot .png/.bmp/.svg (max.
+  25 MB), plattegronduploads tot .png/.bmp/.svg/.pdf (max. 300 MB — ruimer dan het logo omdat een
+  uit PDF geconverteerde SVG met veel vectorpaden een stuk groter kan zijn; zie de tegel-based
+  rendering hieronder) — gecontroleerd aan de hand van de daadwerkelijke bestandsinhoud (niet alleen
+  de bestandsnaam), zodat een verkeerd bestandstype met een vervalste extensie geweigerd wordt
 - **Systeeminstellingen**: evenementnaam en editie zijn nu bewerkbaar vanuit Beheer i.p.v. alleen
   via `.env` bij het opstarten (`GET`/`PUT /api/instellingen`, opgeslagen in `instellingen.json`) —
   gebruikt voor de `editie`/`evenement`-tags op meetdata en de naamsbotsing-check bij een
