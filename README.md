@@ -165,6 +165,14 @@ Na deze stap publiceert elke Shelly automatisch naar o.a.:
 - `site/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).
 - `site/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh), ongeveer eens per minuut
 
+**Uitzondering — kast met een "dubbel veld"** (zie event_dashboard.md, Topologiebeheer): heeft de
+kast een **Correctiefactor** ingevuld, dan publiceert de Shelly niet rechtstreeks naar de topics
+hierboven, maar naar dezelfde prefix met `/ruw` erachter (`site/<generator>/<kast>/ruw/status/
+em:0`/`emdata:0`) — een server-side relay leest die ruwe meting, vermenigvuldigt 'm, en publiceert
+het resultaat pas op de "echte" topic hierboven. De automatische configuratie (⚙️-knop) regelt dit
+vanzelf; stel je een Shelly handmatig in voor zo'n kast, voeg dan zelf `/ruw` toe aan de
+"Custom MQTT prefix".
+
 ### Optioneel: sneller dan 15s met een Shelly Script
 
 Voor een responsievere Live-weergave in de webapp (die zelf al direct reageert op elk binnenkomend MQTT-bericht, zonder eigen vertraging) kun je het vaste 15s-interval omzeilen met een **Shelly Script** — de ingebouwde scripting-engine van de Shelly, dus géén custom firmware nodig (en dat raden we ook af: Tasmota/ESPHome ondersteunen de Pro 3EM-hardware niet goed en kunnen 'm onbruikbaar maken). Het "ook het snelheidsscript installeren"-vinkje bij de automatische route hierboven doet dit al voor je — onderstaande stappen zijn alleen nodig bij de handmatige route.

@@ -415,6 +415,15 @@ export function renderKastSecties(){
     const shellyWrap = document.createElement('div');
     shellyWrap.className = 'shelly-cell';
     shellyWrap.appendChild(shellyInput);
+    // specs/dubbel-veld-meetfactor-plan.md: leeg = normale kast, geen correctie
+    const meetfactorInput = document.createElement('input');
+    meetfactorInput.className = 'meetfactor-input';
+    meetfactorInput.type = 'number'; meetfactorInput.step = '0.1'; meetfactorInput.min = '0';
+    meetfactorInput.value = k.meetfactor != null ? k.meetfactor : '';
+    meetfactorInput.placeholder = t('beheer.meetfactorPlaceholder');
+    meetfactorInput.title = t('beheer.meetfactorTitle');
+    meetfactorInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {meetfactor: meetfactorInput.value.trim() || null}); await loadTopology(); } catch(e){ alert(e.message); await loadTopology(); } };
+    shellyWrap.appendChild(meetfactorInput);
     const mqttCopyBtn = document.createElement('button');
     mqttCopyBtn.className = 'mqtt-copy-btn';
     mqttCopyBtn.textContent = '📋';

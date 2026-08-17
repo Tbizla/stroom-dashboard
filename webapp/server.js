@@ -12,6 +12,7 @@ const archiver = require('archiver');
 const AdmZip = require('adm-zip');
 const sharp = require('sharp');
 const { configureerShelly } = require('./shelly-rpc');
+const meetfactorRelay = require('./meetfactor-relay');
 
 // letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
 // env-var (SESSION_SECRET/INTERNAL_API_TOKEN) — een installatie die 'm per ongeluk laat staan mag
@@ -550,6 +551,7 @@ function readTopo() {
 function writeTopo(data) {
   fs.writeFileSync(TOPO_FILE, JSON.stringify(data, null, 2), 'utf8');
   syncTopologyToInflux(data).catch((e) => console.error('kon topologie niet naar InfluxDB syncen:', e.message));
+  meetfactorRelay.meldTopologieWijziging(data);
 }
 
 // Schrijft de parent/child-structuur (welke kast op welke kast/generator hangt) als losse
@@ -1240,7 +1242,7 @@ app.post('/api/kasten', (req, res) => {
   const id = uniekeId(slugify(naam), alleIds);
   const kast = {
     id, naam, rating_a: Number(rating_a), generator, parent: parent || null,
-    afkorting: afkorting || undefined, shelly_ip: null,
+    afkorting: afkorting || undefined, shelly_ip: null, meetfactor: null,
     type: type || 'kast', heeft_bypass: (type === 'batterij') && !!heeft_bypass,
     mqtt_topic_prefix: mqttPrefix(generator, id),
     positie: { x_pct: null, y_pct: null },
@@ -1254,7 +1256,7 @@ app.put('/api/kasten/:id', (req, res) => {
   const data = readTopo();
   const kast = data.kasten.find(k => k.id === req.params.id);
   if (!kast) return res.status(404).json({ error: 'kast niet gevonden' });
-  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip } = req.body || {};
+  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor } = req.body || {};
 
   const nieuweGenerator = generator || kast.generator;
   if (generator && !data.generators.find(g => g.id === generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
@@ -1281,6 +1283,21 @@ app.put('/api/kasten/:id', (req, res) => {
     const vervangingen = nieuweVervangingenArray(kast.shelly_ip, nieuweShellyIp, kast.vervangingen);
     if (vervangingen) kast.vervangingen = vervangingen;
     kast.shelly_ip = nieuweShellyIp;
+  }
+  // specs/dubbel-veld-meetfactor-plan.md: modelmatige correctiefactor voor een kast met een "dubbel
+  // veld" (2 parallelle Powerlock-sets naar dezelfde afnemer, maar ruimte voor maar 1 CT-klem) —
+  // leeg/null = geen correctie. Alleen zinvol met een ingevuld shelly_ip, maar geen harde
+  // validatiefout zonder: de meetfactor-relay (meetfactor-relay.js) negeert 'm dan gewoon.
+  if (meetfactor !== undefined) {
+    if (meetfactor === null || meetfactor === '') {
+      kast.meetfactor = null;
+    } else {
+      const nieuweFactor = Number(meetfactor);
+      if (!Number.isFinite(nieuweFactor) || nieuweFactor <= 0 || nieuweFactor > 10) {
+        return res.status(400).json({ error: 'meetfactor moet een getal tussen 0 en 10 zijn' });
+      }
+      kast.meetfactor = nieuweFactor;
+    }
   }
   kast.generator = nieuweGenerator;
   kast.parent = nieuweParent;
@@ -1344,8 +1361,14 @@ app.post('/api/shelly/configureren', async (req, res) => {
     }
   }
 
+  // specs/dubbel-veld-meetfactor-plan.md: een kast met een actieve meetfactor publiceert niet
+  // rechtstreeks op zijn eigen officiele topic, maar op een "ruwe" subtopic — meetfactor-relay.js
+  // leest die, vermenigvuldigt, en publiceert het resultaat pas op de officiele topic. Alleen van
+  // toepassing op kasten (huidige scope, zie plan); generators/leden altijd de gewone prefix.
+  const heeftMeetfactor = doelType === 'kast' && doel.meetfactor && Number(doel.meetfactor) !== 1;
+  const topicPrefix = heeftMeetfactor ? doel.mqtt_topic_prefix + '/ruw' : doel.mqtt_topic_prefix;
   const resultaat = await configureerShelly(doel.shelly_ip, {
-    topicPrefix: doel.mqtt_topic_prefix,
+    topicPrefix,
     brokerHost,
     metScript: !!script,
     scriptCode,
@@ -3221,6 +3244,8 @@ function bepaalHostLanIp() {
     return '';
   }
 }
+meetfactorRelay.start();
+meetfactorRelay.meldTopologieWijziging(readTopo());
 const server = app.listen(PORT, () => {
   console.log('Stroom-Dashboard luistert op poort ' + PORT);
   console.log('Open in de browser:');

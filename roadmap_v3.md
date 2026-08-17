@@ -1083,6 +1083,31 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       serverfouten in de logs, de automatische rotatie-/viewport-wiskunde-testscripts, en de
       live API-round-trip hierboven. Zie event_dashboard.md, Live-monitoring (Live-tabblad) en
       Plattegrond & kalibratie.
+- [x] **Meetfactor voor kasten met een "dubbel veld".** Afgerond — gebouwd conform
+      [specs/dubbel-veld-meetfactor-plan.md](specs/dubbel-veld-meetfactor-plan.md): een grote kast
+      (bijv. 4000A) met 2 parallelle Powerlock-sets naar dezelfde afnemer maar ruimte voor maar 1
+      CT-klem/Shelly kan nu een correctiefactor (bijv. 2) krijgen die de gemeten waarde modelmatig
+      opschaalt naar de werkelijke totale belasting. Nieuw optioneel veld `meetfactor` per kast
+      (Beheer, klein veld naast Shelly-IP). Kernaanpak: een nieuwe, altijd actieve server-side
+      MQTT-relay (`webapp/meetfactor-relay.js`, nieuwe `mqtt`-npm-dependency) leest de Shelly's ruwe
+      meting van een "ruwe" subtopic (`<mqtt_topic_prefix>/ruw/...` — waar de Shelly-auto-
+      configuratie 'm nu naartoe zet voor zo'n kast), vermenigvuldigt de belasting-gerelateerde
+      velden (stroom/vermogen, spanning/cosphi/frequentie blijven ongemoeid), en publiceert het
+      resultaat op de kast se normale, officiële topic — exact zoals de Shelly dat anders zelf zou
+      doen. Bewuste keuze boven puur browser-side vermenigvuldigen: de live-weergave (`mqtt.js`) en
+      Telegraf/InfluxDB (Grafana-grafieken, PDF-rapportages, de bestaande 90%-
+      overbelastingsalerts) lezen onafhankelijk van elkaar dezelfde ruwe MQTT-topic, dus alleen de
+      browser corrigeren zou de alerts op de halve waarde laten vertrouwen. Met deze relay-aanpak
+      blijven `mqtt.js` en `telegraf.conf` volledig ongewijzigd — beide lezen via hun bestaande
+      wildcard-subscriptie (`site/+/+/status/em:0`) automatisch de al-gecorrigeerde waarde, dus
+      live-weergave én Grafana/rapportages/alerts zijn gegarandeerd consistent. Uitgezocht en
+      verworpen: een Shelly-kalibratie-instelling die de meting zelf al verdubbeld verstuurt (Gen2
+      EM-RPC ondersteunt alleen vaste CT-types, geen vrije ratio) en een dubbele correctie in zowel
+      de browser als een Telegraf-Starlark-processor (werkt, maar 2 plekken die uit sync kunnen
+      raken). Geverifieerd met een live MQTT-round-trip tegen de draaiende stack (ruwe meting
+      gepubliceerd → correct verdubbelde waarde op de officiële topic ontvangen; meetfactor
+      verwijderd → relay stopt met publiceren). Scope bewust beperkt tot kasten (het concrete
+      4000A-voorbeeld). Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 

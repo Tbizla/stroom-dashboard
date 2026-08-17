@@ -243,6 +243,16 @@ zetten zonder code aan te passen.
   per-lid-tabel van een groep, aside-detail — incl. het ledenblok, de mobiele QR-statuspagina)
   verschijnt een "Open Shelly ↗"-link die de lokale Shelly-webinterface in een nieuw tabblad opent
   (alleen bruikbaar op het evenement-netwerk) — geen link zichtbaar als het veld leeg is
+- **Meetfactor voor kasten met een "dubbel veld"** (zie specs/dubbel-veld-meetfactor-plan.md): een
+  grote kast (bijv. 4000A) met 2 parallelle Powerlock-sets naar dezelfde afnemer maar ruimte voor
+  maar 1 CT-klem/Shelly krijgt zo de juiste (totale) waarde in het dashboard. Klein, optioneel
+  getal-veld naast Shelly-IP in de kasten-tabel (bijv. `2` om te verdubbelen) — een modelmatige
+  benadering (gaat uit van gelijke stroomverdeling over beide paden), geen echte tweede meting.
+  Werkt consistent op alle plekken: live-weergave én Grafana-grafieken/PDF-rapportages/de bestaande
+  90%-overbelastingsalerts (een server-side MQTT-relay corrigeert de meting vóórdat die op de kast
+  se officiële topic terechtkomt, i.p.v. alleen in de browser — zie de roadmap voor de technische
+  achtergrond). Bij het (opnieuw) automatisch configureren van de Shelly (⚙️-knop) wordt de
+  publicatie-topic vanzelf op de bijbehorende "ruwe" subtopic gezet, geen handmatige actie nodig
 - **Shelly/kast vervangen** (zie specs/shelly-vervanging-plan.md): 🔁-knop per kast-, generator- en
   groepslid-rij (naast de bestaande ⚙️-configureerknop) opent een klein inline formuliertje (nieuw
   Shelly-IP + "ook het snelheidsscript installeren"-vinkje, zelfde default aan) dat in één actie het

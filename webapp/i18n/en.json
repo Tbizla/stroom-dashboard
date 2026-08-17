@@ -428,6 +428,8 @@
   "beheer.shellyIpTitle": "Local IP address of the Shelly, used for the \"Open Shelly\" button next to the status",
   "beheer.mqttKopieerTitle": "Copy MQTT topic prefix (Custom MQTT prefix in the Shelly settings)",
   "beheer.shellyIpPlaceholder": "e.g. 192.168.1.50",
+  "beheer.meetfactorPlaceholder": "1×",
+  "beheer.meetfactorTitle": "Correction factor for a \"double field\" (2 parallel Powerlock sets to the same consumer, but room for only 1 CT clamp/Shelly) — e.g. 2 to double the measured value. A modeled approximation (assumes an even current split across both paths), not an actual second measurement. Leave empty for a normal cabinet.",
   "beheer.thGenerator": "Generator",
   "beheer.thGevoedVanaf": "Fed from",
   "beheer.typeKast": "Box",
