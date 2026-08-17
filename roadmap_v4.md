@@ -63,3 +63,10 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       sluit generators/batterijen bewust uit (geen mockup/ontwerp voor die variant). Dit item is
       de losse vervolgstap om die uitbreiding alsnog te ontwerpen, mocht daar behoefte aan blijken
       — geen spec/mockup nu.
+- [ ] **Benamingschema voor PNG-downloads bedenken.** Vandaag krijgen niet alle PNG-downloads een
+      onderscheidende bestandsnaam: een grafiek (`grafieken.js`) heet altijd letterlijk
+      `grafiek.png`, ongeacht welke kast/generator/periode/grafiektype het is — elke download
+      overschrijft dus dezelfde naam, niet meer te onderscheiden zonder handmatig hernoemen. Een
+      QR-code-download (`qrcodes.js`) heeft al wel een onderscheidende naam
+      (`qr-<afkorting-of-id>.png`). Uitzoeken welk schema logisch is (bijv. kastnaam/-afkorting +
+      grafiektype + periode) en dat toepassen waar het ontbreekt — geen spec/mockup nu.
