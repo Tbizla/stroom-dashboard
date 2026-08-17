@@ -1,5 +1,5 @@
 import { state, svg, mapimg, mapinner, rotatieState } from './state.js';
-import { allNodes, isGen, nodeById, getSurfaceEl, statusClass, savePositie, saveKnikpunten, typeIcon } from './topology.js';
+import { allNodes, isGen, nodeById, positieVoor, getSurfaceEl, statusClass, savePositie, saveKnikpunten, typeIcon } from './topology.js';
 import { renderList } from './render-list.js';
 import { renderDetail } from './render-detail.js';
 import { renderKastPopup } from './kastpopup.js';
@@ -122,9 +122,12 @@ export function renderPins(){
 
   state.TOPO.kasten.forEach(k=>{
     const from = k.parent ? nodeById(k.parent) : nodeById(k.generator);
-    if(!from || !from.positie || from.positie.x_pct==null || !k.positie || k.positie.x_pct==null) return;
+    // specs/kast-op-aggregaat-plan.md: k.generator kan een los lid zijn (geen eigen positie, zie
+    // topology.js) — positieVoor() valt dan terug op de positie van de groep waar dat lid bij hoort
+    const fromPositie = from && positieVoor(from);
+    if(!fromPositie || fromPositie.x_pct==null || !k.positie || k.positie.x_pct==null) return;
     const knikpunten = k.knikpunten || [];
-    const points = [from.positie, ...knikpunten, k.positie];
+    const points = [fromPositie, ...knikpunten, k.positie];
 
     for(let i=0; i<points.length-1; i++){
       const p1 = points[i], p2 = points[i+1];

@@ -12,7 +12,7 @@ const archiver = require('archiver');
 const AdmZip = require('adm-zip');
 const sharp = require('sharp');
 const { configureerShelly } = require('./shelly-rpc');
-const meetfactorRelay = require('./meetfactor-relay');
+const meetcorrectieRelay = require('./meetcorrectie-relay');
 
 // letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
 // env-var (SESSION_SECRET/INTERNAL_API_TOKEN) — een installatie die 'm per ongeluk laat staan mag
@@ -551,7 +551,7 @@ function readTopo() {
 function writeTopo(data) {
   fs.writeFileSync(TOPO_FILE, JSON.stringify(data, null, 2), 'utf8');
   syncTopologyToInflux(data).catch((e) => console.error('kon topologie niet naar InfluxDB syncen:', e.message));
-  meetfactorRelay.meldTopologieWijziging(data);
+  meetcorrectieRelay.meldTopologieWijziging(data);
 }
 
 // Schrijft de parent/child-structuur (welke kast op welke kast/generator hangt) als losse
@@ -607,6 +607,19 @@ function uniekeId(basis, bestaandeIds) {
   return id;
 }
 function mqttPrefix(generatorId, kastId) { return 'site/' + generatorId + '/' + kastId; }
+
+// specs/kast-op-aggregaat-plan.md: een kast.generator mag voortaan ook rechtstreeks naar één lid
+// van een groep wijzen (i.p.v. alleen naar een top-level generator/groep-id) — deze helper zoekt
+// op beide plekken, gebruikt door de kast-validatie hieronder
+function vindGeneratorOfLid(data, id) {
+  const gen = data.generators.find((g) => g.id === id);
+  if (gen) return gen;
+  for (const g of data.generators) {
+    const lid = (g.leden || []).find((l) => l.id === id);
+    if (lid) return lid;
+  }
+  return null;
+}
 
 // true als het instellen van kast[kastId].parent = nieuweParentId een cyclus zou maken
 function maaktCyclus(data, kastId, nieuweParentId) {
@@ -1232,7 +1245,7 @@ app.post('/api/kasten', (req, res) => {
   if (!naam || !rating_a || !generator) return res.status(400).json({ error: 'naam, rating_a en generator zijn verplicht' });
   if (type !== undefined && !KAST_TYPES.includes(type)) return res.status(400).json({ error: 'ongeldig type' });
   const data = readTopo();
-  if (!data.generators.find(g => g.id === generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
+  if (!vindGeneratorOfLid(data, generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
   if (parent) {
     const p = data.kasten.find(k => k.id === parent);
     if (!p) return res.status(400).json({ error: 'onbekende parent: ' + parent });
@@ -1242,7 +1255,7 @@ app.post('/api/kasten', (req, res) => {
   const id = uniekeId(slugify(naam), alleIds);
   const kast = {
     id, naam, rating_a: Number(rating_a), generator, parent: parent || null,
-    afkorting: afkorting || undefined, shelly_ip: null, meetfactor: null,
+    afkorting: afkorting || undefined, shelly_ip: null, meetfactor: null, optellen_bij_generator: false,
     type: type || 'kast', heeft_bypass: (type === 'batterij') && !!heeft_bypass,
     mqtt_topic_prefix: mqttPrefix(generator, id),
     positie: { x_pct: null, y_pct: null },
@@ -1256,10 +1269,10 @@ app.put('/api/kasten/:id', (req, res) => {
   const data = readTopo();
   const kast = data.kasten.find(k => k.id === req.params.id);
   if (!kast) return res.status(404).json({ error: 'kast niet gevonden' });
-  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor } = req.body || {};
+  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor, optellen_bij_generator } = req.body || {};
 
   const nieuweGenerator = generator || kast.generator;
-  if (generator && !data.generators.find(g => g.id === generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
+  if (generator && !vindGeneratorOfLid(data, generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
 
   let nieuweParent = parent === undefined ? kast.parent : (parent || null);
   if (nieuweParent) {
@@ -1287,7 +1300,7 @@ app.put('/api/kasten/:id', (req, res) => {
   // specs/dubbel-veld-meetfactor-plan.md: modelmatige correctiefactor voor een kast met een "dubbel
   // veld" (2 parallelle Powerlock-sets naar dezelfde afnemer, maar ruimte voor maar 1 CT-klem) —
   // leeg/null = geen correctie. Alleen zinvol met een ingevuld shelly_ip, maar geen harde
-  // validatiefout zonder: de meetfactor-relay (meetfactor-relay.js) negeert 'm dan gewoon.
+  // validatiefout zonder: de meetcorrectie-relay (meetcorrectie-relay.js) negeert 'm dan gewoon.
   if (meetfactor !== undefined) {
     if (meetfactor === null || meetfactor === '') {
       kast.meetfactor = null;
@@ -1299,6 +1312,11 @@ app.put('/api/kasten/:id', (req, res) => {
       kast.meetfactor = nieuweFactor;
     }
   }
+  // specs/kast-op-aggregaat-plan.md, deel B: expliciete opt-in — of de CT-klem van kast.generator
+  // (generator/groep/lid) deze kast se eigen verbruik al meetelt hangt af van de exacte fysieke
+  // klemplaatsing, dus GEEN automatische aanname op basis van "kast.generator is een lid". Default
+  // false/afwezig = geen correctie (zelfde niet-destructieve default-patroon als meetfactor).
+  if (optellen_bij_generator !== undefined) kast.optellen_bij_generator = !!optellen_bij_generator;
   kast.generator = nieuweGenerator;
   kast.parent = nieuweParent;
   kast.mqtt_topic_prefix = mqttPrefix(kast.generator, kast.id);
@@ -1361,12 +1379,16 @@ app.post('/api/shelly/configureren', async (req, res) => {
     }
   }
 
-  // specs/dubbel-veld-meetfactor-plan.md: een kast met een actieve meetfactor publiceert niet
-  // rechtstreeks op zijn eigen officiele topic, maar op een "ruwe" subtopic — meetfactor-relay.js
-  // leest die, vermenigvuldigt, en publiceert het resultaat pas op de officiele topic. Alleen van
-  // toepassing op kasten (huidige scope, zie plan); generators/leden altijd de gewone prefix.
+  // specs/dubbel-veld-meetfactor-plan.md + specs/kast-op-aggregaat-plan.md (deel B): een doel met
+  // een actieve meetcorrectie publiceert niet rechtstreeks op zijn eigen officiele topic, maar op
+  // een "ruwe" subtopic — meetcorrectie-relay.js leest die, corrigeert, en publiceert het resultaat
+  // pas op de officiele topic. Twee gevallen: een kast met een actieve meetfactor (dubbel veld), of
+  // een generator/groep/lid waar minstens 1 rechtstreeks aangesloten kast "optellen_bij_generator"
+  // heeft (rechtstreeks aangetapt vóór het CT-klem-meetpunt).
   const heeftMeetfactor = doelType === 'kast' && doel.meetfactor && Number(doel.meetfactor) !== 1;
-  const topicPrefix = heeftMeetfactor ? doel.mqtt_topic_prefix + '/ruw' : doel.mqtt_topic_prefix;
+  const heeftOptellen = (doelType === 'generator' || doelType === 'lid') &&
+    data.kasten.some((k) => k.optellen_bij_generator && !k.parent && k.generator === doel.id);
+  const topicPrefix = (heeftMeetfactor || heeftOptellen) ? doel.mqtt_topic_prefix + '/ruw' : doel.mqtt_topic_prefix;
   const resultaat = await configureerShelly(doel.shelly_ip, {
     topicPrefix,
     brokerHost,
@@ -1911,7 +1933,11 @@ app.get('/api/overzicht/energie', async (req, res) => {
   const data = readTopo();
   try {
     const resultaten = await Promise.all(data.generators.map(async (g) => {
-      const directeKasten = data.kasten.filter((k) => !k.parent && k.generator === g.id);
+      // specs/kast-op-aggregaat-plan.md: een kast rechtstreeks op één lid van een groep (i.p.v. op
+      // de groep als geheel) moet in het kWh-totaal van die groep blijven meetellen, anders
+      // verdwijnt zijn verbruik stilletjes uit de rapportage
+      const geldigeIds = new Set([g.id, ...(g.leden || []).map((l) => l.id)]);
+      const directeKasten = data.kasten.filter((k) => !k.parent && geldigeIds.has(k.generator));
       if (!directeKasten.length) return [g.id, 0];
       const kastFilter = directeKasten.map((k) => 'r.kast == "' + k.id + '"').join(' or ');
       const flux =
@@ -3244,8 +3270,8 @@ function bepaalHostLanIp() {
     return '';
   }
 }
-meetfactorRelay.start();
-meetfactorRelay.meldTopologieWijziging(readTopo());
+meetcorrectieRelay.start();
+meetcorrectieRelay.meldTopologieWijziging(readTopo());
 const server = app.listen(PORT, () => {
   console.log('Stroom-Dashboard luistert op poort ' + PORT);
   console.log('Open in de browser:');

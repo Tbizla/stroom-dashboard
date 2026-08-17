@@ -253,6 +253,20 @@ zetten zonder code aan te passen.
   se officiële topic terechtkomt, i.p.v. alleen in de browser — zie de roadmap voor de technische
   achtergrond). Bij het (opnieuw) automatisch configureren van de Shelly (⚙️-knop) wordt de
   publicatie-topic vanzelf op de bijbehorende "ruwe" subtopic gezet, geen handmatige actie nodig
+- **Kast rechtstreeks op een specifiek aggregaat binnen een groep** (zie
+  specs/kast-op-aggregaat-plan.md): een kast kan nu ook aan één los lid van een groep gekoppeld
+  worden i.p.v. alleen aan de groep als geheel — voor het geval een kast fysiek rechtstreeks op één
+  specifiek aggregaat is aangesloten (bijv. een CEE-stekker), los van de gedeelde/loadsharende bus.
+  Zichtbaar in Beheer's Generator-dropdown (leden staan ingesprongen onder hun groep) en in het
+  Schema-tabblad (zo'n aggregaat krijgt dan een eigen knoop in de boom, met de kast eronder). Geen
+  eigen pin op de plattegrond voor een los aggregaat — de groep blijft één fysieke locatie, de
+  verbindingslijn van de kast valt terug op de groep se positie.
+  **Optionele correctie erbij**: als de CT-klem-meting van dat aggregaat de rechtstreeks-aangetapte
+  kast niet al meetelt (afhankelijk van waar de klem fysiek zit), kan bij die kast "Optellen bij
+  generator/aggregaat" aangevinkt worden — telt de kast se eigen meting softwarematig bij de
+  aggregaat-meting op, weer consistent op alle plekken (live én Grafana/rapportages/alerts) via
+  dezelfde server-side relay-aanpak als de meetfactor hierboven. Bewust geen automatische aanname
+  (hangt af van de fysieke klemplaatsing) — expliciete, standaard uitgevinkte keuze per kast
 - **Shelly/kast vervangen** (zie specs/shelly-vervanging-plan.md): 🔁-knop per kast-, generator- en
   groepslid-rij (naast de bestaande ⚙️-configureerknop) opent een klein inline formuliertje (nieuw
   Shelly-IP + "ook het snelheidsscript installeren"-vinkje, zelfde default aan) dat in één actie het

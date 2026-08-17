@@ -430,6 +430,7 @@
   "beheer.shellyIpPlaceholder": "bijv. 192.168.1.50",
   "beheer.meetfactorPlaceholder": "1×",
   "beheer.meetfactorTitle": "Correctiefactor voor een \"dubbel veld\" (2 parallelle Powerlock-sets naar dezelfde afnemer, maar ruimte voor maar 1 CT-klem/Shelly) — bijv. 2 om de gemeten waarde te verdubbelen. Modelmatige benadering (gaat uit van gelijke stroomverdeling over beide paden), geen echte tweede meting. Leeg laten voor een normale kast.",
+  "beheer.optellenTitle": "Telt deze kast se eigen verbruik NIET al mee in de CT-klem-meting van de gekozen generator/aggregaat (bijv. rechtstreeks aangetapt vóór het meetpunt)? Vink aan om 'm softwarematig bij die meting op te tellen. Alleen zinvol zonder \"Gevoed vanaf\"-parent (rechtstreeks op de generator/aggregaat).",
   "beheer.thGenerator": "Generator",
   "beheer.thGevoedVanaf": "Gevoed vanaf",
   "beheer.typeKast": "Kast",

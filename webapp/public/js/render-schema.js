@@ -6,9 +6,14 @@ import { renderDetail } from './render-detail.js';
 import { t } from './i18n.js';
 
 export function schemaChildrenOf(node){
-  return isGen(node)
-    ? state.TOPO.kasten.filter(k=>k.generator===node.id && !k.parent)
-    : state.TOPO.kasten.filter(k=>k.parent===node.id);
+  if(!isGen(node)) return state.TOPO.kasten.filter(k=>k.parent===node.id);
+  const eigenKasten = state.TOPO.kasten.filter(k=>k.generator===node.id && !k.parent);
+  // specs/kast-op-aggregaat-plan.md: een groep se leden die zelf minstens 1 rechtstreeks
+  // aangesloten kast hebben, worden als extra kind-node meegenomen — isGen() is ook waar voor een
+  // lid-object (heeft altijd een vermogen_kva-key, zie normaliseerLeden() server.js), dus place()
+  // recursief hierna vanzelf correct door voor zo'n lid-node, geen apart geval nodig
+  const leden = node.type==='groep' ? (node.leden||[]).filter(l=>state.TOPO.kasten.some(k=>k.generator===l.id)) : [];
+  return [...eigenKasten, ...leden];
 }
 
 function computeSchemaLayout(){

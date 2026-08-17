@@ -289,8 +289,17 @@ document.getElementById('shellyBulkBtn').addEventListener('click', async ()=>{
   await Promise.all(Array.from({length: Math.min(MAX_TEGELIJK, doelen.length)}, werker));
 });
 
+// specs/kast-op-aggregaat-plan.md: een kast kan voortaan ook rechtstreeks aan één specifiek lid van
+// een groep gekoppeld worden (i.p.v. alleen aan de groep als geheel) — leden van een groep komen
+// daarom als extra, herkenbaar ingesprongen opties mee onder hun eigen groep
 export function vulGenSelect(select, geselecteerd){
-  select.innerHTML = state.TOPO.generators.map(g=>'<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>').join('');
+  select.innerHTML = state.TOPO.generators.map(g=>{
+    let html = '<option value="'+g.id+'"'+(g.id===geselecteerd?' selected':'')+'>'+typeIcon(g)+' '+g.naam+'</option>';
+    if(g.type==='groep'){
+      html += (g.leden||[]).map(l=>'<option value="'+l.id+'"'+(l.id===geselecteerd?' selected':'')+'>&nbsp;&nbsp;&nbsp;&nbsp;↳ '+l.naam+'</option>').join('');
+    }
+    return html;
+  }).join('');
 }
 export function vulParentSelect(select, generatorId, eigenId, geselecteerd){
   const opties = state.TOPO.kasten.filter(k=>k.generator===generatorId && k.id!==eigenId);
@@ -444,7 +453,19 @@ export function renderKastSecties(){
       catch(e){ alert(e.message); await loadTopology(); }
     };
     parentSel.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {parent: parentSel.value || null}); await loadTopology(); } catch(e){ alert(e.message); await loadTopology(); } };
-    kastVeld(tr, genSel, {style:'min-width:150px'});
+    // specs/kast-op-aggregaat-plan.md, deel B: alleen zinvol als de kast rechtstreeks (geen parent)
+    // op een generator/lid hangt — expliciete opt-in, geen automatische aanname
+    const optellenInput = document.createElement('input');
+    optellenInput.type = 'checkbox';
+    optellenInput.className = 'optellen-input';
+    optellenInput.checked = !!k.optellen_bij_generator;
+    optellenInput.title = t('beheer.optellenTitle');
+    optellenInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {optellen_bij_generator: optellenInput.checked}); await loadTopology(); } catch(e){ alert(e.message); await loadTopology(); } };
+    const genWrap = document.createElement('div');
+    genWrap.className = 'gen-cell';
+    genWrap.appendChild(genSel);
+    genWrap.appendChild(optellenInput);
+    kastVeld(tr, genWrap, {style:'min-width:170px'});
     kastVeld(tr, parentSel, {style:'min-width:190px'});
 
     const actieWrap = document.createElement('div');

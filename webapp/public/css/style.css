@@ -343,6 +343,11 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
    anders evenveel ruimte als het IP-veld laten opeisen */
 .shelly-cell input.meetfactor-input{flex:0 0 3rem!important;min-width:0;text-align:center;padding-left:0.25rem;padding-right:0.25rem}
 .mqtt-copy-btn{flex-shrink:0;padding:0.25rem 0.375rem!important;font-size:0.75rem!important;line-height:1}
+/* specs/kast-op-aggregaat-plan.md, deel B: klein "optellen bij generator/aggregaat"-vinkje naast
+   het Generator-dropdown */
+.gen-cell{display:flex;align-items:center;gap:0.3125rem}
+.gen-cell select{flex:1;min-width:0}
+.gen-cell .optellen-input{flex-shrink:0;width:auto!important}
 .shelly-toast{position:fixed;right:20px;bottom:20px;z-index:60;background:var(--panel);border:1px solid var(--border);border-radius:0.625rem;padding:0.875rem 2.5rem 0.875rem 1rem;box-shadow:0 8px 24px rgba(0,0,0,.35);min-width:15rem;max-width:21.25rem}
 .shelly-toast #shellyToastTitel{font-size:0.78125rem;font-weight:700;margin-bottom:0.375rem}
 .shelly-toast-regel{font-size:0.75rem;color:var(--text2);line-height:1.5}

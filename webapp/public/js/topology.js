@@ -6,10 +6,40 @@ import { renderSchema } from './render-schema.js';
 import { renderPins } from './render-pins.js';
 import { initMapTiles } from './map-tiles.js';
 
-export function allNodes(){ return [...state.TOPO.generators, ...state.TOPO.kasten]; }
+// specs/kast-op-aggregaat-plan.md: leden van een groep meegenomen zodat een kast die rechtstreeks
+// aan één specifiek lid hangt (i.p.v. aan de groep als geheel) via nodeById()/allNodes() vindbaar
+// is. Bestaande consumenten (zoom.js fit-to-screen, render-pins.js pin-plaatsing) filteren al op
+// n.positie — een lid heeft er bewust geen (geen eigen pin op de plattegrond, de groep blijft één
+// fysieke locatie), dus die blijven een lid vanzelf negeren zonder aparte uitzondering.
+export function allNodes(){
+  return [...state.TOPO.generators, ...state.TOPO.generators.flatMap(g=>g.leden||[]), ...state.TOPO.kasten];
+}
 export function isGen(n){ return n.vermogen_kva !== undefined; }
 export function nodeById(id){ return allNodes().find(n=>n.id===id); }
-export function genNaam(genId){ const g = state.TOPO.generators.find(g=>g.id===genId); return g ? g.naam : genId; }
+// de groep waar een lid-id bij hoort — o.a. voor positieVoor() (lijn-eindpunt-fallback) en
+// schemaChildrenOf() (render-schema.js)
+export function vindGroepVoorLid(lidId){
+  return state.TOPO.generators.find(g=>(g.leden||[]).some(l=>l.id===lidId));
+}
+// een lid heeft zelf geen positie (zie allNodes() hierboven) — voor alles wat een positie NODIG
+// heeft (bijv. het startpunt van een verbindingslijn, render-pins.js) valt dat terug op de positie
+// van de groep waar het lid bij hoort
+export function positieVoor(node){
+  if(!node) return null;
+  if(node.positie) return node.positie;
+  const groep = vindGroepVoorLid(node.id);
+  return groep ? groep.positie : null;
+}
+export function genNaam(genId){
+  const g = state.TOPO.generators.find(g=>g.id===genId);
+  if(g) return g.naam;
+  const groep = vindGroepVoorLid(genId);
+  if(groep){
+    const lid = (groep.leden||[]).find(l=>l.id===genId);
+    if(lid) return groep.naam + ' → ' + lid.naam;
+  }
+  return genId;
+}
 // visueel onderscheid tussen een los aggregaat, een accu en een groep (meerdere aggregaten/accu's die
 // samen als één krachtbron optreden, bijv. een centrale met 6 generators + een CAT-batterijcontainer)
 export function typeIcon(n){ return n.type==='batterij' ? '🔋' : n.type==='groep' ? '🏭' : '⚡'; }

@@ -1089,7 +1089,8 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       CT-klem/Shelly kan nu een correctiefactor (bijv. 2) krijgen die de gemeten waarde modelmatig
       opschaalt naar de werkelijke totale belasting. Nieuw optioneel veld `meetfactor` per kast
       (Beheer, klein veld naast Shelly-IP). Kernaanpak: een nieuwe, altijd actieve server-side
-      MQTT-relay (`webapp/meetfactor-relay.js`, nieuwe `mqtt`-npm-dependency) leest de Shelly's ruwe
+      MQTT-relay (`webapp/meetcorrectie-relay.js` — later hernoemd/verbreed, zie het
+      kast-op-aggregaat-item hieronder, nieuwe `mqtt`-npm-dependency) leest de Shelly's ruwe
       meting van een "ruwe" subtopic (`<mqtt_topic_prefix>/ruw/...` — waar de Shelly-auto-
       configuratie 'm nu naartoe zet voor zo'n kast), vermenigvuldigt de belasting-gerelateerde
       velden (stroom/vermogen, spanning/cosphi/frequentie blijven ongemoeid), en publiceert het
@@ -1108,6 +1109,48 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       gepubliceerd → correct verdubbelde waarde op de officiële topic ontvangen; meetfactor
       verwijderd → relay stopt met publiceren). Scope bewust beperkt tot kasten (het concrete
       4000A-voorbeeld). Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
+- [x] **Kast rechtstreeks op een specifiek aggregaat binnen een groep.** Afgerond — gebouwd conform
+      [specs/kast-op-aggregaat-plan.md](specs/kast-op-aggregaat-plan.md). Aanleiding: op locatie
+      voedt een groep loadsharende aggregaten via 240mm² lug-kabels een gedeelde-bus-kast ("Van
+      Stratum"), maar een losse 32A-kast tapt met een CEE-stekker rechtstreeks van één specifiek
+      aggregaat af — vóór het punt waar de CT-klem-Shelly van dat aggregaat meet. Kon voorheen niet:
+      een kast kon alleen aan de groep als geheel gekoppeld worden, nooit aan één los lid.
+      Twee delen, na een mockup met 2 opties (Mike koos optie 2 — rechtstreeks op het aggregaat,
+      dichter bij de werkelijke bekabeling dan een simpel label naast de groep):
+      **Deel A (topologie)**: `kast.generator` mag voortaan ook een lid-id zijn, niet alleen een
+      top-level generator/groep-id. Kernvondst: leden hebben al een stabiele, globaal-unieke id en
+      `isGen()` (topology.js) was toevallig al waar voor een lid-object — de bestaande schema-
+      boomopbouw (`schemaChildrenOf()`/`place()`, render-schema.js) werkte dus al correct zodra een
+      lid ooit als node meegenomen wordt, geen nieuw boomalgoritme nodig. Uitgebreid: `allNodes()`/
+      `nodeById()` (topology.js) nemen leden nu mee (bestaande `n.positie`-guards in zoom.js/
+      render-pins.js negeren een lid vanzelf — bewust géén eigen pin op de plattegrond, de groep
+      blijft één fysieke locatie); nieuwe `positieVoor()`-helper laat de verbindingslijn van zo'n
+      kast terugvallen op de positie van de groep (een lid heeft er zelf geen); `schemaChildrenOf()`
+      neemt leden-met-minstens-1-eigen-kast mee als extra kind-node; Beheer's Generator-dropdown
+      (`vulGenSelect`) toont leden nu ingesprongen onder hun groep; `/api/overzicht/energie` telt
+      een kast op een lid mee in het kWh-totaal van de bijbehorende groep (anders verdwijnt dat
+      verbruik stilletjes uit de rapportage); nieuwe servervalidatie-helper `vindGeneratorOfLid()`.
+      Bewust buiten scope: de app-eigen Sankey (`/api/grafieken/sankey`) en het Grafana-Sankey-paneel
+      tonen voor een lid-tag mogelijk nog de rauwe id i.p.v. een mooie naam — apart op te pakken als
+      het stoort.
+      **Deel B (meetgat)**: eerst uitgezocht of dit erg was — bleek van niet voor de kast/generator-
+      eigen status (groen/amber/rood is altijd al puur eigen-meting-t.o.v.-eigen-rating, geen
+      kasten-rollup, voor geen enkel node-type) — maar wél voor het aggregaat se eigen gerapporteerde
+      totaal: de CT-klem zit tussen de aggregaat-bus en de gedeelde-bus-kast in, dus de rechtstreeks
+      aangetapte 32A-kast wordt door die klem structureel gemist. Bewust GEEN automatische aanname
+      (verschilt per fysieke klemplaatsing) — nieuw, expliciet per-kast opt-in veld
+      `optellen_bij_generator` (default uit). De bestaande meetfactor-relay is hiervoor verbreed en
+      hernoemd naar `webapp/meetcorrectie-relay.js`: ondersteunt nu twee correctiesoorten op dezelfde
+      onderliggende infrastructuur (ruwe subtopic aftappen → corrigeren → op de officiële topic
+      herpubliceren) — "vermenigvuldig met factor X" (meetfactor, kastniveau) en "tel op bij de
+      eigen meting van kast Y" (optellen, generator/groep/lid-niveau). Voor "optellen" abonneert de
+      relay zich ook op de betrokken kast(en) hun eigen, gewone (ongewijzigde) topic om de laatste
+      meting te cachen, en telt die op bij elke nieuwe ruwe generatormeting. `/api/shelly/
+      configureren` zet zo'n generator/lid nu ook op een `/ruw`-subtopic, zelfde patroon als bij een
+      meetfactor-kast. Geverifieerd met een live MQTT-round-trip tegen de draaiende stack (kast se
+      eigen meting + ruwe CT-klem-meting gepubliceerd → correct opgetelde waarde op de officiële
+      aggregaat-topic ontvangen, spanning/pf/frequentie ongemoeid). Alle test-topologie na afloop
+      opgeruimd. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
