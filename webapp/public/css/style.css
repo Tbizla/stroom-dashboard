@@ -119,13 +119,19 @@ header h1 span{color:var(--accent)}
 .vppanel-status{margin-top:0.5rem;font-size:0.6875rem;color:var(--accent)}
 /* -webkit-user-drag/user-select: voorkomt dat de browser tijdens het slepen van een pin/knikpunt
    zijn eigen afbeeldingsdrag/-selectie op de plattegrond eronder start (naast de preventDefault()
-   in render-pins.js — dit dekt ook browsers waar dat niet genoeg is) */
-.mapinner img{display:block;max-width:none;-webkit-user-drag:none;user-select:none}
+   in render-pins.js — dit dekt ook browsers waar dat niet genoeg is). Witte achtergrondkleur: een
+   geüploade plattegrond met transparante delen (bijv. een uit PDF geconverteerde SVG) toonde
+   voorheen het donkere dashboardthema erdoorheen — bij donkere lijnen op een donkere ondergrond
+   onleesbaar. Vast wit, los van het dashboardthema, i.p.v. de PNG/SVG zelf server-side te
+   herschrijven — bestaande uploads hoeven dan niet opnieuw geüpload te worden. */
+.mapinner img{display:block;max-width:none;-webkit-user-drag:none;user-select:none;background:#fff}
 /* specs/plattegrond-tile-based-plan.md: vervangt #mapimg als "surface" wanneer de plattegrond
    getiled is — vaste breedte/hoogte (JS, map-tiles.js) gelijk aan de volle-resolutie-afmeting van
    de tegel-piramide, zodat getSurfaceEl()/fitToScreenKaart()/render-pins.js's percentage-wiskunde
-   ongewijzigd werken (die kennen geen verschil tussen "één image" en "een grid van tegel-<img>'s") */
-.maptiles{position:relative;background-color:#0b0d10}
+   ongewijzigd werken (die kennen geen verschil tussen "één image" en "een grid van tegel-<img>'s").
+   Achtergrondkleur wit (was donker) om dezelfde reden als hierboven bij .mapinner img — een
+   getilede plattegrond kan net zo goed transparante tegel-PNG's hebben. */
+.maptiles{position:relative;background-color:#fff}
 .maptiles img{position:absolute;display:block}
 .noMap{color:var(--text3);padding:3.75rem;text-align:center;font-size:0.8125rem}
 .blankcanvas{position:relative;width:4800px;height:3000px;background-color:#0b0d10;cursor:crosshair;

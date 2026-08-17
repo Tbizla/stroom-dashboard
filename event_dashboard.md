@@ -334,6 +334,11 @@ zetten zonder code aan te passen.
   (`poppler-utils`/`pdftoppm`, alleen de eerste pagina) — de renderresolutie wordt berekend uit de
   PDF's eigen paginaformaat (`pdfinfo`), gecapt op ~5500px lange zijde, i.p.v. een vaste DPI blind
   toe te passen. Het resultaat volgt daarna hetzelfde tegel-/drempelpad als elke andere PNG-upload
+- **Vaste witte ondergrond achter de plattegrond**: een upload met transparante delen (bijv. een uit
+  PDF geconverteerde SVG) toonde voorheen het donkere dashboardthema erdoorheen, waardoor donkere
+  lijnen onleesbaar werden. De plattegrond-surface (platte afbeelding én getilede tegels) heeft nu
+  een vaste witte achtergrond, los van het dashboardthema — geen her-upload nodig voor bestaand
+  materiaal. Het lege werkvlak zonder plattegrond (donker gestippeld grid) blijft ongewijzigd
 - Generators en kasten als pins plaatsen en verslepen. Pins, hun naamlabels, de status-/anomaly-
   badges en lijn-knikpunten houden een constante, leesbare schermgrootte ongeacht de kaart-zoom
   (net als markers op een kaartprogramma) — bij ver uitzoomen (bijv. 25%) blijven ze dus goed
