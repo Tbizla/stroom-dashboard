@@ -1625,8 +1625,9 @@ async function rasteriseerPdfNaarPng(pdfPad, uitvoerBasispad) {
   const langsteZijdePts = Math.max(w, h);
   let dpi = Math.round((PLATTEGROND_MAX_LANGE_ZIJDE_PX / langsteZijdePts) * 72);
   dpi = Math.max(72, Math.min(600, dpi));
-  await execFileP('pdftoppm', ['-png', '-r', String(dpi), '-singlefile', '-f', '1', '-l', '1', pdfPad, uitvoerBasispad]);
-  return uitvoerBasispad + '.png';
+  const ruwPad = uitvoerBasispad + '-ruw.png';
+  await execFileP('pdftoppm', ['-png', '-r', String(dpi), '-singlefile', '-f', '1', '-l', '1', pdfPad, uitvoerBasispad + '-ruw']);
+  return begrensAfmeting(ruwPad, uitvoerBasispad + '.png');
 }
 
 // een geüploade SVG-plattegrond (vaak een PDF->SVG-conversie: duizenden losse paden, hoge precisie,
@@ -1643,9 +1644,27 @@ async function rasteriseerSvgNaarPng(svgPad, uitvoerBasispad) {
   const langsteZijdePx = Math.max(width, height);
   let dpi = Math.round((PLATTEGROND_MAX_LANGE_ZIJDE_PX / langsteZijdePx) * 72);
   dpi = Math.max(72, Math.min(600, dpi));
-  const uitvoerPad = uitvoerBasispad + '.png';
-  await sharp(svgPad, { density: dpi }).png().toFile(uitvoerPad);
-  return uitvoerPad;
+  const ruwPad = uitvoerBasispad + '-ruw.png';
+  await sharp(svgPad, { density: dpi }).png().toFile(ruwPad);
+  return begrensAfmeting(ruwPad, uitvoerBasispad + '.png');
+}
+
+// veiligheidsnet bovenop de dpi-berekening hierboven: die gaat ervan uit dat de bron (PDF-
+// paginaformaat in punten, of een SVG's eigen 72dpi-afmeting) altijd "normaal" is, maar een SVG kan
+// een willekeurig grote letterlijke pixel-afmeting declareren (bijv. een CAD/PDF->SVG-conversietool
+// die millimeters 1-op-1 als px-eenheden wegschrijft) — dan faalt de dpi=max(72,...)-ondergrens-
+// clamp om de uitvoer te begrenzen (kan zelfs BOVEN de gevraagde 72dpi-brongrootte uitkomen zodra
+// die al groter is dan PLATTEGROND_MAX_LANGE_ZIJDE_PX). Resultaat was een gerasteriseerde plattegrond
+// van tienduizenden pixels breed — technisch nog wel tegel-drempel-waardig, maar zwaar genoeg om
+// zowel het laden als pannen/zoomen onwerkbaar traag te maken. Deze harde resize-stap ná de
+// rasterisatie garandeert de bedoelde bovengrens, ongeacht wat de bron declareert.
+async function begrensAfmeting(bronPad, doelPad) {
+  await sharp(bronPad)
+    .resize({ width: PLATTEGROND_MAX_LANGE_ZIJDE_PX, height: PLATTEGROND_MAX_LANGE_ZIJDE_PX, fit: 'inside', withoutEnlargement: true })
+    .png()
+    .toFile(doelPad);
+  fs.unlinkSync(bronPad);
+  return doelPad;
 }
 
 async function moetTegelen(pngPad) {

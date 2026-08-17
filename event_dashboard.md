@@ -364,7 +364,13 @@ zetten zonder code aan te passen.
   PNG omgezet vóór opslag, i.p.v. als vector bewaard te blijven — zelfde ~5500px-lange-zijde-cap en
   daarna hetzelfde tegel-/drempelpad als een PDF-upload. Geen nieuwe systeem-dependency nodig (sharp
   ondersteunt SVG-rasterisatie out-of-the-box). Bestaande, al eerder geüploade SVG-plattegronden
-  worden niet automatisch gemigreerd — pas bij een nieuwe upload wordt een SVG gerasteriseerd
+  worden niet automatisch gemigreerd — pas bij een nieuwe upload wordt een SVG gerasteriseerd. De
+  ~5500px-cap wordt sinds een bugfix afgedwongen met een expliciete resize-stap ná de rasterisatie
+  (`begrensAfmeting()`) i.p.v. alleen via de dpi-berekening — een SVG die zijn eigen afmeting in
+  letterlijke, grote pixel-aantallen declareert (bijv. een CAD/PDF→SVG-tool die millimeters 1-op-1
+  als px-eenheden wegschrijft) omzeilde anders de cap volledig en leverde een plattegrond van
+  tienduizenden pixels breed, zwaar genoeg om zowel laden als pannen/zoomen onwerkbaar traag te
+  maken
 - **Vaste witte ondergrond achter de plattegrond**: een upload met transparante delen (bijv. een uit
   PDF geconverteerde SVG) toonde voorheen het donkere dashboardthema erdoorheen, waardoor donkere
   lijnen onleesbaar werden. De plattegrond-surface (platte afbeelding én getilede tegels) heeft nu

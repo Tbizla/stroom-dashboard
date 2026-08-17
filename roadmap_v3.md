@@ -1151,6 +1151,24 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       eigen meting + ruwe CT-klem-meting gepubliceerd → correct opgetelde waarde op de officiële
       aggregaat-topic ontvangen, spanning/pf/frequentie ongemoeid). Alle test-topologie na afloop
       opgeruimd. Zie event_dashboard.md, Topologiebeheer (Beheer-tabblad).
+- [x] **Bugfix: SVG-rasterisatie kon een onbegrensd grote plattegrond opleveren.** Mike meldde dat de
+      webapp "bijna onwerkbaar" traag was geworden sinds een SVG-plattegrond-upload — zowel het
+      laden als pannen/zoomen erna. Root cause: de dpi-berekening in `rasteriseerSvgNaarPng()`
+      (v3.6.0) gaat ervan uit dat een SVG's eigen 72dpi-brongrootte altijd "normaal" is, maar een
+      SVG kan een willekeurig grote letterlijke pixel-afmeting declareren (bijv. een CAD/PDF→SVG-
+      conversietool die millimeters 1-op-1 als px-eenheden wegschrijft) — de `dpi = max(72, ...)`-
+      ondergrens-clamp begrensde de UITVOER dan niet meer, en render de plattegrond op zijn volle,
+      soms tienduizenden pixels brede oorspronkelijke grootte i.p.v. de bedoelde ~5500px. Bevestigd
+      met een testberekening (een 20000×12000-declarerende bron leverde ongeclampt een even grote
+      PNG op) en gereproduceerd met een synthetische "CAD-stijl" testSVG tegen de draaiende stack.
+      Fix: nieuwe, expliciete resize-stap ná de rasterisatie (`begrensAfmeting()`, sharp
+      `fit:'inside'`/`withoutEnlargement`) die de ~5500px-cap hard afdwingt, ongeacht wat de dpi-
+      berekening opleverde — ook toegepast op het PDF-rasterisatiepad (zelfde theoretische
+      kwetsbaarheid bij een pathologisch grote paginaformaat-opgave, defense-in-depth). Geverifieerd:
+      dezelfde testSVG (20000×12000) levert nu een correct geschaalde 5500×3300-plattegrond op.
+      Bestaande, al eerder (te groot) geüploade plattegronden migreren niet automatisch — pas bij een
+      nieuwe upload wordt de cap toegepast, dus opnieuw uploaden lost het op. Zie
+      event_dashboard.md, Plattegrond & kalibratie.
 
 ## Ideeën van Claude (ongefilterd, nog niet besproken/geprioriteerd met Mike)
 
