@@ -52,6 +52,7 @@
   "grafieken.kopieerLink": "Copy link",
   "grafieken.leegState": "Select at least one box or generator on the left to see a chart.",
   "grafieken.geenDataInPeriode": "No measurement data found in this period for the chosen selection.",
+  "grafieken.nogGeenLiveData": "No live measurement data received yet for this selection — a Shelly only publishes about once every 15 seconds, give it a moment.",
   "grafieken.linkGekopieerd": "Link copied!",
   "grafieken.linkKopieerHandmatig": "Copying to clipboard failed — copy this link manually:",
   "grafieken.periodeLive": "Live",

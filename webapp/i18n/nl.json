@@ -52,6 +52,7 @@
   "grafieken.kopieerLink": "Kopieer link",
   "grafieken.leegState": "Selecteer minstens één kast of generator links om een grafiek te zien.",
   "grafieken.geenDataInPeriode": "Geen meetdata gevonden in deze periode voor de gekozen selectie.",
+  "grafieken.nogGeenLiveData": "Nog geen live meetdata ontvangen voor deze selectie — een Shelly publiceert maar ongeveer eens per 15 seconden, wacht dat even af.",
   "grafieken.linkGekopieerd": "Link gekopieerd!",
   "grafieken.linkKopieerHandmatig": "Kopiëren naar klembord mislukt — kopieer deze link handmatig:",
   "grafieken.periodeLive": "Live",

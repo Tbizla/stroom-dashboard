@@ -419,7 +419,12 @@ function toonGrafState(status, foutmelding){
   document.getElementById('grafSankeySvg').style.display = (status==='chart' && sankeyActief) ? 'block' : 'none';
   const leeg = document.getElementById('grafLeegState');
   leeg.style.display = (status==='leeg' || status==='leeg-data') ? 'flex' : 'none';
-  leeg.textContent = status==='leeg-data' ? t('grafieken.geenDataInPeriode') : t('grafieken.leegState');
+  // "geen data in deze periode" leest in live-modus verwarrend als een definitief "hier komt nooit
+  // iets" — terwijl het meestal gewoon nog wacht op het eerste binnenkomende MQTT-bericht (een
+  // Shelly publiceert maar ~1x per 15s) — apart, geruststellend bericht voor dat geval
+  leeg.textContent = status==='leeg-data'
+    ? (liveActief() ? t('grafieken.nogGeenLiveData') : t('grafieken.geenDataInPeriode'))
+    : t('grafieken.leegState');
   document.getElementById('grafFoutState').style.display = status==='fout' ? 'flex' : 'none';
   if(status==='fout') document.getElementById('grafFoutInfo').textContent = foutmelding;
 }
