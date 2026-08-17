@@ -6,7 +6,11 @@
 
 - [roadmap_v2.md](roadmap_v2.md) — afgerond, uitgebracht als
   [v2.0.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v2.0.0)
-- [roadmap_v3.md](roadmap_v3.md) — actief, deels al gebouwd, incl. de ongefilterde
-  "Ideeën van Claude"-sectie
-- [roadmap_v4.md](roadmap_v4.md) — nog niet gestart, komt na v3. Acht punten die op 3 augustus
-  2026 met Mike geprioriteerd zijn (deels vanuit v3, deels vanuit diens "Ideeën van Claude"-sectie).
+- [roadmap_v3.md](roadmap_v3.md) — afgerond (alle punten `[x]`, "Ideeën van Claude"-sectie leeg).
+  Sinds de overstap naar echte semver (CLAUDE.md, §Versionering) geen eigen enkele release-tag zoals
+  v2 — de punten zijn incrementeel uitgebracht, van
+  [v2.1.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v2.1.0) (knikpunten, het eerste
+  afgeronde punt) t/m [v3.7.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v3.7.0)
+- [roadmap_v4.md](roadmap_v4.md) — volgende roadmap, nog niet gestart. Acht punten die op
+  3 augustus 2026 met Mike geprioriteerd zijn (deels vanuit v3, deels vanuit diens toenmalige
+  "Ideeën van Claude"-sectie).
