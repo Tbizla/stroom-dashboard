@@ -75,7 +75,7 @@ nog niet eerder gebruikte machine.)
    git clone <repo-url>
    cd event_stroom_dashboard
    ```
-   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.5.0`) — voor een nieuwe
+   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.5.1`) — voor een nieuwe
    locatie is dat de juiste branch. `dev` bevat nog niet-uitgebrachte ontwikkeling.
 5. **`.env` invullen**:
    ```
