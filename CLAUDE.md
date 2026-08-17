@@ -86,7 +86,7 @@ afspraak).
 
 **Branch**: één doorlopende `dev`-branch (geen versienummer in de naam — welk MAJOR/MINOR/PATCH-
 cijfer een release straks krijgt hangt af van wat er daadwerkelijk gebouwd wordt, niet vooraf vast
-te leggen in de branchnaam). `main` = laatst uitgebrachte versie, momenteel `v3.5.1`.
+te leggen in de branchnaam). `main` = laatst uitgebrachte versie, momenteel `v3.6.0`.
 
 **Tags/releases**:
 - Bij elke afgeronde feature/roadmap-item op `dev`: direct een pre-release tag zetten op het
