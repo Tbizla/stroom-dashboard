@@ -669,12 +669,16 @@
         </div>
         <div class="grafctlgroup" id="grafLiveVensterGroep" style="display:none">
           <div class="graflbl" data-i18n="grafieken.liveVensterLabel">Live-venster</div>
-          <div class="listfilters" id="grafLiveVensterRow">
-            <button class="chip" data-venster-min="5">5 min</button>
-            <button class="chip active" data-venster-min="15">15 min</button>
-            <button class="chip" data-venster-min="30">30 min</button>
-            <button class="chip" data-venster-min="60">60 min</button>
-          </div>
+          <select id="grafLiveVensterSelect">
+            <option value="5">5 min</option>
+            <option value="15" selected>15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+            <option value="120">2 uur</option>
+            <option value="180">3 uur</option>
+            <option value="360">6 uur</option>
+            <option value="720">12 uur</option>
+          </select>
         </div>
         <div class="grafctlgroup">
           <div class="graflbl" data-i18n="grafieken.editieLabel">Editie</div>

@@ -70,3 +70,12 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       QR-code-download (`qrcodes.js`) heeft al wel een onderscheidende naam
       (`qr-<afkorting-of-id>.png`). Uitzoeken welk schema logisch is (bijv. kastnaam/-afkorting +
       grafiektype + periode) en dat toepassen waar het ontbreekt — geen spec/mockup nu.
+- [x] **Meer opties + dropdown voor het live-venster op het Grafieken-tabblad (tweak, geen spec
+      nodig).** Afgerond — Mike vond 5/15/30/60 min te weinig keus. Erbij: 2/3/6/12 uur, en de
+      losse knoppenrij is vervangen door één dropdown (`#grafLiveVensterSelect`, zelfde stijl als de
+      Editie-select ernaast). De client-side rolling buffer (`liveBuffer`, grafieken.js) ging van een
+      vaste 60 minuten retentie naar 12 uur om de langere vensters ook daadwerkelijk te vullen, met
+      een nieuwe harde limiet van 3000 punten per kast/generator (`LIVE_BUFFER_MAX_PUNTEN`) als
+      geheugengrens onafhankelijk van de publicatiefrequentie — anders zou het optionele
+      snelheidsscript (~1 bericht/seconde) over 12 uur al ruim 43.000 punten per kast opleveren. Zie
+      event_dashboard.md, Grafieken-tabblad.

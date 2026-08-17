@@ -576,10 +576,13 @@ zetten zonder code aan te passen.
     Taart) staat hier wél meerdere ids toe — de enkele-keuze-beperking voor Taart is daar puur een
     frontend-renderkeuze, de server kent het onderscheid Staaf/Taart niet
 - **Live-modus** (gebouwd): vierde periode-optie "Live" naast hele evenement/laatste 24u/aangepast
-  — een schuifvenster (5/15/30/60 min) dat continu doorschuift, geen vast begin/eind. Hergebruikt
-  dezelfde MQTT-websocketverbinding als het Live-tabblad (geen nieuwe databron); een client-side
-  rolling buffer (altijd 60 min, ongeacht het gekozen venster) wordt gevuld zodra er een MQTT-
-  bericht binnenkomt, ongeacht welk tabblad actief is. Editie-select staat vast op de huidige editie
+  — een schuifvenster (dropdown: 5/15/30/60 min, 2/3/6/12 uur) dat continu doorschuift, geen vast
+  begin/eind. Hergebruikt dezelfde MQTT-websocketverbinding als het Live-tabblad (geen nieuwe
+  databron); een client-side rolling buffer (altijd 12 uur, ongeacht het gekozen venster — plus een
+  harde limiet van 3000 punten per kast/generator, onafhankelijk van de publicatiefrequentie, tegen
+  een te grote geheugenvraag bij het optionele snelheidsscript (~1 bericht/seconde) over zo'n lange
+  periode) wordt gevuld zodra er een MQTT-bericht binnenkomt, ongeacht welk tabblad actief is.
+  Editie-select staat vast op de huidige editie
   zolang Live actief is. Pulserende "LIVE"-indicator naast de grafiektype-knoppenrij (zelfde
   visuele taal als de anomaly-badge) en een pauzeren/hervatten-knop (puur client-side, de buffer
   blijft ondertussen doorlopen). Per grafiektype:

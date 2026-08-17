@@ -30,12 +30,17 @@ let aggregatie = 'piek';
 // ---------- live-modus (specs/grafieken-tabblad-plan.md, sectie "Live-modus") — hergebruikt de
 // bestaande MQTT-websocketverbinding van het Live-tabblad (mqtt.js roept verwerkGrafiekenLiveMessage()
 // aan per bericht, ongeacht welk tabblad actief is, zelfde patroon als liveData/anomaly.js), geen
-// eigen databron. De rolling buffer bewaart altijd de volle 60 minuten ongeacht het gekozen
+// eigen databron. De rolling buffer bewaart altijd de volle LIVE_BUFFER_MAX_MS ongeacht het gekozen
 // live-venster, zodat je het venster kan vergroten zonder eerder ontvangen data te verliezen. ----------
 let liveVensterMin = 15;
 let livePaused = false;
 let laatsteNietLivePeriode = '24u';
-const LIVE_BUFFER_MAX_MS = 60 * 60 * 1000;
+// Mikes verzoek om ook 2u/3u/6u/12u-vensters: 12u is dus de nieuwe retentie. Bij het (optionele)
+// snelheidsscript (~1 bericht/seconde i.p.v. de standaard ~15s) zou dat over 12u alleen al ruim
+// 43.000 punten per kast opleveren — LIVE_BUFFER_MAX_PUNTEN hieronder begrenst het geheugengebruik
+// ongeacht publicatiefrequentie/aantal kasten, los van de tijd-gebaseerde begrenzing hierboven.
+const LIVE_BUFFER_MAX_MS = 12 * 60 * 60 * 1000;
+const LIVE_BUFFER_MAX_PUNTEN = 3000;
 const liveBuffer = new Map(); // id -> [{ts, data}, ...]
 function liveActief(){ return state.grafiekenPeriodeChip === 'live'; }
 
@@ -253,14 +258,11 @@ document.querySelectorAll('#grafAggregatieRow .chip, #grafAggregatieRowLive .chi
   };
 });
 
-// ---------- live-venster-duur (5/15/30/60 min) ----------
-document.querySelectorAll('#grafLiveVensterRow .chip').forEach(chip=>{
-  chip.onclick = ()=>{
-    liveVensterMin = parseInt(chip.dataset.vensterMin, 10);
-    document.querySelectorAll('#grafLiveVensterRow .chip').forEach(c=>c.classList.toggle('active', c===chip));
-    if(liveActief()) verversLiveWeergave();
-  };
-});
+// ---------- live-venster-duur (5/15/30/60 min, 2/3/6/12 uur) ----------
+document.getElementById('grafLiveVensterSelect').onchange = (ev)=>{
+  liveVensterMin = parseInt(ev.target.value, 10);
+  if(liveActief()) verversLiveWeergave();
+};
 
 // ---------- pauzeren/hervatten (puur client-side — de buffer blijft doorlopen, alleen het
 // hertekenen stopt/hervat, spec Live-modus: "hervatten toont meteen de actuele stand, geen
@@ -868,14 +870,16 @@ function liveMoetTekenen(){
 
 // aangeroepen vanuit mqtt.js voor élk binnenkomend bericht, ongeacht actief tabblad — zelfde
 // altijd-actief patroon als liveData/anomaly.js, zodat de buffer al gevuld is zodra je naar Live
-// wisselt. Bewaart altijd de volle 60 minuten, los van het momenteel gekozen live-venster (zie
-// LIVE_BUFFER_MAX_MS hierboven), zodat het venster vergroten geen data kost.
+// wisselt. Bewaart altijd de volle LIVE_BUFFER_MAX_MS, los van het momenteel gekozen live-venster,
+// zodat het venster vergroten geen data kost — LIVE_BUFFER_MAX_PUNTEN is een aparte, harde
+// geheugengrens (zie toelichting hierboven), onafhankelijk van hoelang die punten al meelopen.
 export function verwerkGrafiekenLiveMessage(kastId, data){
   if(!liveBuffer.has(kastId)) liveBuffer.set(kastId, []);
   const buf = liveBuffer.get(kastId);
   buf.push({ ts: Date.now(), data });
   const grens = Date.now() - LIVE_BUFFER_MAX_MS;
   while(buf.length && buf[0].ts < grens) buf.shift();
+  while(buf.length > LIVE_BUFFER_MAX_PUNTEN) buf.shift();
   if(liveMoetTekenen()) verversLiveWeergave();
 }
 
