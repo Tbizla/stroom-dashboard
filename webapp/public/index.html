@@ -49,7 +49,7 @@
       <span class="count-chip offline">⚪ <b id="tickerOffline">–</b> <span data-i18n="live.tickerOffline">offline</span></span>
     </div>
     <div class="ticker-msg" id="tickerMsg"></div>
-    <div class="ticker-live"><span class="pulse"></span><span data-i18n="live.tickerLive">live updates</span></div>
+    <div class="ticker-live"><span class="pulse" id="tickerPulse"></span><span id="tickerLiveLabel" data-i18n="live.tickerLive">live updates</span></div>
   </div>
 
   <div class="calbar" id="calbar" style="display:none">
@@ -208,6 +208,31 @@
           <div class="field">
             <label data-i18n="beheer.externeMqttCaCert">Eigen CA-certificaat (optioneel — leeg laten werkt met een gewoon, publiek-vertrouwd certificaat)</label>
             <textarea id="externeMqttCaCert" rows="4" style="font-family:var(--mono);font-size:11px;width:100%" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+          </div>
+
+          <div class="veldlabel" data-i18n="beheer.externeMqttWeergaveLabel">Weergave in Live</div>
+          <div class="modechoice extern" id="externeMqttModusKeuze">
+            <div class="modecard" data-externmodus="alleen_lokaal">
+              <div class="lbl" data-i18n="beheer.externeMqttModusAlleenLokaalLbl">Alleen lokaal</div>
+              <div class="desc" data-i18n="beheer.externeMqttModusAlleenLokaalDesc">Bridge draait op de achtergrond, maar niets zichtbaar in de Live-weergave hier. Handig tijdens het inregelen.</div>
+            </div>
+            <div class="modecard active" data-externmodus="naast_lokaal">
+              <div class="lbl" data-i18n="beheer.externeMqttModusNaastLbl">Lokaal + extern ernaast</div>
+              <div class="desc" data-i18n="beheer.externeMqttModusNaastDesc">Het "Extern"-blok verschijnt naast de lokale meting in kastpopup en aside-detail. Statuskleuren/alerts blijven op lokaal gebaseerd.</div>
+            </div>
+            <div class="modecard" data-externmodus="vervangt_lokaal">
+              <div class="lbl" data-i18n="beheer.externeMqttModusVervangtLbl">Extern vervangt lokaal</div>
+              <div class="desc" data-i18n="beheer.externeMqttModusVervangtDesc">De externe meting wordt overal de primaire weergave — pins, tabellen, statuskleuren, sparklijn. Lokaal wordt niet meer getoond.</div>
+            </div>
+          </div>
+          <div class="warnbox" id="externeMqttVervangtWarn" style="display:none" data-i18n="beheer.externeMqttVervangtWaarschuwing">⚠ Statuskleuren (groen/amber/rood) en anomaly-alerts gaan voortaan op de externe meting af i.p.v. de lokale Shelly-data. Valt de externe bron weg, dan toont dit expliciet "geen data" — nooit een stille terugval op lokaal.</div>
+
+          <div class="optionrow" id="externeMqttAlertRow" style="margin-top:10px">
+            <input type="checkbox" id="externeMqttAlertCheckbox" checked>
+            <div>
+              <div class="lbl" data-i18n="beheer.externeMqttAlertLbl">Stuur een alert-notificatie als de externe bron wegvalt</div>
+              <div class="desc" data-i18n="beheer.externeMqttAlertDesc">Via het bestaande alert-notificatiekanaal hierboven (Telegram/Pushover/ntfy/e-mail). Geen apart kanaal hier in te stellen — dit vinkje bepaalt alleen óf er voor déze storing een notificatie verstuurd wordt.</div>
+            </div>
           </div>
         </div>
       </div>

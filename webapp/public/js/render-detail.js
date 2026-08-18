@@ -1,10 +1,11 @@
-import { state, detailEl, liveData } from './state.js';
-import { nodeById, isGen, genNaam, typeIcon, maxFaseStroom, statusClass } from './topology.js';
+import { state, detailEl, liveData, externBlokGesloten } from './state.js';
+import { nodeById, isGen, genNaam, typeIcon, maxFaseStroom, statusClass, primaireMeting, primaireEnergie, externIsPrimair, externStatusVoor } from './topology.js';
 import { t, huidigeLocale } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
 import { heeftActieveAnomaly, anomalyTekst, bevestigAnomaly } from './anomaly.js';
 import { sparklineSvg } from './live-spark.js';
 import { toonDetailTab } from './aside-tabs.js';
+import { externBadgeHtml, bronVervangenBadgeHtml, geenDataGrootHtml, geenDataCompactHtml, externMetricRijenHtml, externLaatsteKortHtml } from './extern-weergave.js';
 
 // per-lid live rijen onder de bestaande ledenlijst van een groep (naam/kVA/soort blijft
 // ongewijzigd). Een lid zonder eigen rating_a heeft
@@ -56,6 +57,19 @@ export function metingenHtml(node, d){
   return html;
 }
 
+// specs/externe-mqtt-ui-plan.md §1/§2: zelfde in-/uitklapbare Extern-blok als kastpopup.js, hier als
+// HTML-string omdat renderDetail() de hele aside in één keer via innerHTML opbouwt — alleen in modus
+// "naast lokaal", nooit voor groepen (zie externIsPrimair()/de aanroep in renderDetail hieronder)
+function externBlokHtml(nodeId){
+  const gesloten = externBlokGesloten.has(nodeId);
+  const status = externStatusVoor(nodeId);
+  const bodyHtml = status==='ok' ? externMetricRijenHtml(nodeId) : geenDataCompactHtml(nodeId);
+  return '<div class="extern-blok'+(gesloten?' dicht':'')+'" id="asideExternBlok">'+
+    '<div class="extern-head" id="asideExternHead"><span class="chev">'+(gesloten?'▸':'▾')+'</span>'+externBadgeHtml()+'<span class="laatste2">'+externLaatsteKortHtml(nodeId)+'</span></div>'+
+    '<div class="extern-body">'+bodyHtml+'</div>'+
+  '</div>';
+}
+
 export function renderDetail(){
   const n = nodeById(state.selectedId);
   if(!n){ detailEl.innerHTML = '<div class="empty">'+t('aside.detailLeeg')+'</div>'; return; }
@@ -64,8 +78,12 @@ export function renderDetail(){
   // aside-tabs.js) — alleen op Live, niet op Kalibreren (daar wil je typisch op de lijst blijven
   // om door te gaan met plaatsen) of Schema
   if(state.mode==='live') toonDetailTab();
-  const d = liveData[n.id];
-  let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+'</h2>';
+  // specs/externe-mqtt-ui-plan.md: groepen slaan de externe weergave altijd over (geen eigen enkele
+  // externe meting), ongeacht de site-brede modus — zie externIsPrimair() in topology.js
+  const externPrimair = externIsPrimair(n);
+  const externStatus = externPrimair ? externStatusVoor(n.id) : null;
+  const d = primaireMeting(n);
+  let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+(externPrimair?bronVervangenBadgeHtml():'')+'</h2>';
   if(heeftActieveAnomaly(n.id)){
     html += '<div class="metric anomaly-row" id="detailAnomalyRow"><span class="k">⚡ '+t('anomaly.badgeTitel')+'</span></div>'+
       '<div class="anomaly-detail">'+anomalyTekst(n.id)+'</div>';
@@ -75,7 +93,8 @@ export function renderDetail(){
     if(n.type==='batterij' && n.heeft_bypass){
       html += '<div class="metric"><span class="k">Bypass</span><span>'+t('detail.bypassUitleg')+'</span></div>';
     }
-    html += metingenHtml(n, d);
+    if(externPrimair && externStatus!=='ok') html += geenDataGrootHtml(n.id, state.externBridgeVerbrokenSinds);
+    else html += metingenHtml(n, d);
   } else {
     const typeLabel = n.type==='batterij' ? t('detail.typeBatterij') : n.type==='groep' ? t('detail.typeGroep') : t('detail.typeGenerator');
     html += '<div class="sub">'+typeIcon(n)+' '+typeLabel+(n.rating_a!=null?' · '+t('detail.ratingSuffix', {rating: n.rating_a}):'')+'</div>';
@@ -84,8 +103,14 @@ export function renderDetail(){
       html += '<div class="metric"><span class="k">'+t('detail.soortKoppeling')+'</span><span>'+soortLabel+'</span></div>';
       html += '<div class="metric"><span class="k">'+t('detail.leden', {n: n.leden.length})+'</span><span>'+n.leden.map(l=>typeIcon(l)+' '+l.naam+(l.vermogen_kva?' ('+l.vermogen_kva+'kVA)':'')).join(', ')+'</span></div>';
     }
-    html += metingenHtml(n, d);
+    if(externPrimair && externStatus!=='ok') html += geenDataGrootHtml(n.id, state.externBridgeVerbrokenSinds);
+    else html += metingenHtml(n, d);
     html += ledenblokHtml(n);
+  }
+  // specs/externe-mqtt-ui-plan.md §1: alleen in modus "naast lokaal", standaard open zolang de
+  // externe bron site-breed actief staat, ná metingenHtml()/ledenblokHtml(), vóór de sparklijn
+  if(!externPrimair && n.type!=='groep' && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='naast_lokaal'){
+    html += externBlokHtml(n.id);
   }
   // specs/live-viewport-grote-monitor-plan.md: trendlijn van de laatste minuten, alleen op Live —
   // #detail is gedeeld met Kalibreren (zie topology.js/getSurfaceEl()), dus expliciet op state.mode
@@ -104,4 +129,9 @@ export function renderDetail(){
   detailEl.innerHTML = html;
   const anomalyRow = document.getElementById('detailAnomalyRow');
   if(anomalyRow) anomalyRow.onclick = ()=>{ bevestigAnomaly(n.id); renderDetail(); };
+  const externHead = document.getElementById('asideExternHead');
+  if(externHead) externHead.onclick = ()=>{
+    if(externBlokGesloten.has(n.id)) externBlokGesloten.delete(n.id); else externBlokGesloten.add(n.id);
+    renderDetail();
+  };
 }

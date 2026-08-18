@@ -19,9 +19,16 @@ import { ververOverzichtLiveWeergave } from './overzicht.js';
 import { ververKastStatusPagina } from './kaststatus.js';
 import { verwerkAnomalyDetectie } from './anomaly.js';
 import { verwerkGrafiekenLiveMessage } from './grafieken.js';
-import { maxFaseStroom } from './topology.js';
+import { maxFaseStroom, nodeById, externIsPrimair } from './topology.js';
 import { ververLiveKpi } from './live-kpi.js';
 import { verwerkLiveSparkPunt } from './live-spark.js';
+
+// specs/externe-mqtt-ui-plan.md: mosquitto's bridge publiceert z'n eigen verbindingsstatus lokaal
+// onder dit topic zodra `notifications true` + `remote_clientid extern-bron` op de bridge-config
+// staat (zie bouwBridgeConf() in server.js) — retained, dus een verse subscriber krijgt de laatst
+// bekende status meteen. Bestaat pas zodra ooit een bridge geconfigureerd is geweest; blijft
+// onschadelijk (gewoon geen berichten) als dat nooit het geval was.
+const BRIDGE_STATE_TOPIC = '$SYS/broker/connection/extern-bron/state';
 
 // vervolgticket-toegang-van-buitenaf.md §4: een ticket is eenmalig bruikbaar en maar 30s geldig
 // (server.js) — mqtt.js' eigen ingebouwde reconnect-logica zou na de eerste onderbreking blijven
@@ -90,20 +97,49 @@ export async function verbindMqtt(){
       // bridge ook daadwerkelijk actief is (Beheer > Instellingen)
       client.subscribe('extern/site/+/+/status/em:0');
       client.subscribe('extern/site/+/+/status/emdata:0');
+      client.subscribe(BRIDGE_STATE_TOPIC);
     });
     client.on('error', (e)=>{ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; opnieuw(); });
     client.on('close', opnieuw);
     client.on('message', (topic, payload)=>{
+      // $SYS-topics zijn platte tekst ("1"/"0"), geen JSON-object — apart afgehandeld, vóór de
+      // generieke JSON.parse hieronder (die zou een kale "1" overigens ook prima parsen, alleen als
+      // getal 1 i.p.v. een object — dan zou de topic-routing hieronder 'm alsnog verkeerd interpreteren)
+      if(topic===BRIDGE_STATE_TOPIC){
+        const verbonden = payload.toString().trim()==='1';
+        if(state.externBridgeVerbonden !== verbonden){
+          state.externBridgeVerbonden = verbonden;
+          state.externBridgeVerbrokenSinds = verbonden ? null : Date.now();
+          renderPins(); renderList();
+          if(state.openPopupKastId) renderKastPopup();
+          if(state.selectedId) renderDetail();
+          ververLiveKpi();
+        }
+        return;
+      }
       const parts = topic.split('/');
       let data;
       try{ data = JSON.parse(payload.toString()); }catch(e){ return; }
-      // extern/site/<generator>/<kast>/status/em:0|emdata:0 — apart bijgehouden, bewust nog geen
-      // UI-weergave (zie het plan), dus hier alleen opslaan en meteen weer stoppen: geen van de
-      // bestaande render-/anomaly-/live-kpi-aanroepen hieronder is hierop van toepassing
+      // extern/site/<generator>/<kast>/status/em:0|emdata:0 — apart bijgehouden (liveDataExtern/
+      // liveEnergyDataExtern, state.js), zodat een externe meting nooit de lokale overschrijft.
+      // anomaly-detectie/sparklijn draaien hier alleen op mee als deze node's PRIMAIRE weergave
+      // ook daadwerkelijk extern is (modus "vervangt lokaal", zie externIsPrimair()) — in de
+      // andere modi is dit puur een extra, niet-primaire databron (specs/externe-mqtt-ui-plan.md)
       if(parts[0]==='extern'){
         const kastId = parts[3];
-        if(topic.endsWith('/status/emdata:0')) liveEnergyDataExtern[kastId] = { total_act: data.total_act, ts: Date.now() };
-        else liveDataExtern[kastId] = { ...data, ts: Date.now() };
+        if(topic.endsWith('/status/emdata:0')){
+          liveEnergyDataExtern[kastId] = { total_act: data.total_act, ts: Date.now() };
+        } else {
+          liveDataExtern[kastId] = { ...data, ts: Date.now() };
+          const node = nodeById(kastId);
+          if(node && externIsPrimair(node)){
+            verwerkAnomalyDetectie(kastId, maxFaseStroom(liveDataExtern[kastId]));
+            verwerkLiveSparkPunt(kastId, maxFaseStroom(liveDataExtern[kastId]));
+          }
+        }
+        renderList(); renderPins(); if(state.mode==='schema') renderSchema(); if(state.selectedId===kastId) renderDetail();
+        if(state.openPopupKastId===kastId) renderKastPopup();
+        ververLiveKpi();
         return;
       }
       const kastId = parts[2];

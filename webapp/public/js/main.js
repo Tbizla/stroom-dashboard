@@ -2,7 +2,7 @@
 // start tot slot de eerste databelading.
 import './i18n.js';
 import { state } from './state.js';
-import { loadTopology, loadMap, loadLogo } from './topology.js';
+import { loadTopology, loadMap, loadLogo, loadExterneMqttInstelling } from './topology.js';
 import './zoom.js';
 import './render-list.js';
 import './render-detail.js';
@@ -131,6 +131,7 @@ async function bootstrapApp(){
     if(state.mode==='beheer') return;
     const prevSelected = state.selectedId;
     await loadTopology();
+    await loadExterneMqttInstelling();
     state.selectedId = prevSelected;
     renderPins();
     refreshSimStatusIfTest();
@@ -138,6 +139,7 @@ async function bootstrapApp(){
     ververLiveKpi();
   }, 5000);
 
+  loadExterneMqttInstelling();
   loadTopology().then(()=>{
     loadMap();
     // een "Kopieer link"-URL van het Grafieken-tabblad (?mode=grafieken&...) opent dat tabblad

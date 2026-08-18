@@ -250,8 +250,22 @@ zetten zonder code aan te passen.
   hetzelfde `telegraf-herstarter`-servicetje dat al Telegraf herstart (nu met een `doel`-parameter,
   ondanks de naam ook mosquitto toegestaan — nog steeds maar twee vaste, whitelisted doelen, geen
   generieke Docker-toegang). De browser houdt een externe meting ook apart bij (`liveDataExtern`/
-  `liveEnergyDataExtern` in `mqtt.js`) — **nog geen zichtbare UI ervoor** (bewust uitgesteld, puur de
-  databron is nu geregeld)
+  `liveEnergyDataExtern` in `mqtt.js`).
+  **Zichtbare UI** (zie specs/externe-mqtt-ui-plan.md): een site-brede weergavemodus, als 3 modus-
+  kaarten in dezelfde Instellingen-sectie — "alleen lokaal" (bridge draait stil op de achtergrond),
+  "lokaal + extern ernaast" (default bij eerste activering) en "extern vervangt lokaal". In "naast
+  lokaal" krijgen de kastpopup en het aside-detailpaneel een in-/uitklapbaar "Extern"-blok met
+  dezelfde volledige fase-tabel als de lokale meting, standaard open; groepen (leden hebben elk hun
+  eigen lokale Shelly, geen eigen externe meting) slaan dit blok altijd over. In "extern vervangt
+  lokaal" wordt de externe meting overal (pins, tabellen, statuskleuren, sparklijn) de primaire
+  weergave — valt de bron weg, dan toont dat expliciet "geen data" met een van drie redenen (bridge
+  verbroken / wacht op eerste bericht / verouderd-stil) i.p.v. een stille terugval op lokaal, en
+  wordt de pin grijs (geen overbelasting, een databronprobleem). Een verbroken bridge (mosquitto's
+  `$SYS/broker/connection/extern-bron/state`) geeft ook een site-brede storingsmelding: een pinned
+  bericht vóór de gewone alert-ticker-rotatie op Live, plus optioneel (aan-/uitvinkbaar) een
+  alert-notificatie via het bestaande kanaal — verstuurd door een klein, los server-proces
+  (`extern-bridge-watchdog.js`, zelfde opzet als `meetcorrectie-relay.js`) zodat een storing ook
+  gemeld wordt als er niemand een tabblad open heeft staan
 - **Geheimen afgeschermd**: `GET /api/instellingen` geeft echte geheimen (Telegram-bot-token,
   Pushover-API-token, SMTP-wachtwoord, en bij Automatische back-up het SFTP-wachtwoord/S3-
   secret-key) nooit in platte tekst terug — alleen een `<veld>_ingesteld`-boolean. Een leeg gelaten

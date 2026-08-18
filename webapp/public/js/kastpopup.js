@@ -1,13 +1,49 @@
 // ---------- kast-databallon op de plattegrond (Live-modus) ----------
-import { state, liveData, liveEnergyData, mapwrap, mapinner } from './state.js';
-import { nodeById, genNaam, statusClass, maxFaseStroom, isGen, typeIcon } from './topology.js';
+import { state, liveData, liveEnergyData, mapwrap, mapinner, externBlokGesloten } from './state.js';
+import { nodeById, genNaam, statusClass, maxFaseStroom, isGen, typeIcon, primaireMeting, primaireEnergie, externIsPrimair, externStatusVoor } from './topology.js';
 import { t } from './i18n.js';
 import { faseSwatch } from './fasekleuren.js';
+import { externBadgeHtml, bronVervangenBadgeHtml, geenDataCompactHtml, geenDataGrootHtml, externTabelHtml, externLaatsteKortHtml } from './extern-weergave.js';
 
 function fmtVeld(v, eenheid, decimals){
   if(v==null) return '—';
   const d = decimals==null ? 2 : decimals;
   return v.toFixed(d) + (eenheid ? ' '+eenheid : '');
+}
+
+// fase-tabel + totale-stroom/-vermogen-rijen voor een gegeven meting d — ongewijzigd t.o.v. vóór de
+// externe-MQTT-UI, alleen uitgetrokken zodat 'm ook voor de primaire externe weergave (modus
+// "vervangt lokaal") hergebruikt kan worden
+function tabelEnTotaalHtml(d){
+  return '<table>'+
+      '<tr><th></th><th>'+faseSwatch(0)+'A</th><th>'+faseSwatch(1)+'B</th><th>'+faseSwatch(2)+'C</th></tr>'+
+      '<tr><td>'+t('kastpopup.stroom')+'</td><td>'+fmtVeld(d.a_current,'A')+'</td><td>'+fmtVeld(d.b_current,'A')+'</td><td>'+fmtVeld(d.c_current,'A')+'</td></tr>'+
+      '<tr><td>'+t('kastpopup.spanning')+'</td><td>'+fmtVeld(d.a_voltage,'V',0)+'</td><td>'+fmtVeld(d.b_voltage,'V',0)+'</td><td>'+fmtVeld(d.c_voltage,'V',0)+'</td></tr>'+
+      '<tr><td>'+t('kastpopup.actVermogen')+'</td><td>'+fmtVeld(d.a_act_power,'W',0)+'</td><td>'+fmtVeld(d.b_act_power,'W',0)+'</td><td>'+fmtVeld(d.c_act_power,'W',0)+'</td></tr>'+
+      '<tr><td>'+t('kastpopup.schijnbVermogen')+'</td><td>'+fmtVeld(d.a_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.b_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.c_aprt_power,'VA',0)+'</td></tr>'+
+      '<tr><td>'+t('kastpopup.cosPhi')+'</td><td>'+fmtVeld(d.a_pf,'',2)+'</td><td>'+fmtVeld(d.b_pf,'',2)+'</td><td>'+fmtVeld(d.c_pf,'',2)+'</td></tr>'+
+      '<tr><td>'+t('kastpopup.frequentie')+'</td><td>'+fmtVeld(d.a_freq,'Hz',1)+'</td><td>'+fmtVeld(d.b_freq,'Hz',1)+'</td><td>'+fmtVeld(d.c_freq,'Hz',1)+'</td></tr>'+
+    '</table>'+
+    '<div class="kprow"><span class="k">'+t('kastpopup.totaleStroom')+'</span><span>'+fmtVeld(d.total_current,'A')+'</span></div>'+
+    '<div class="kprow"><span class="k">'+t('kastpopup.totaalSchijnbVermogen')+'</span><span>'+fmtVeld(d.total_aprt_power,'VA',0)+'</span></div>';
+}
+
+// specs/externe-mqtt-ui-plan.md §1: in-/uitklapbaar blok met de externe meting, ná de statusbalk/
+// "laatste update"-regel, vóór de Shelly-link — alleen in modus "naast lokaal", nooit voor groepen
+function bouwExternBlok(k){
+  const wrap = document.createElement('div');
+  const gesloten = externBlokGesloten.has(k.id);
+  wrap.className = 'extern-blok' + (gesloten ? ' dicht' : '');
+  const status = externStatusVoor(k.id);
+  const bodyHtml = status==='ok' ? externTabelHtml(k.id) : geenDataCompactHtml(k.id);
+  wrap.innerHTML =
+    '<div class="extern-head"><span class="chev">'+(gesloten?'▸':'▾')+'</span>'+externBadgeHtml()+'<span class="laatste2">'+externLaatsteKortHtml(k.id)+'</span></div>'+
+    '<div class="extern-body">'+bodyHtml+'</div>';
+  wrap.querySelector('.extern-head').onclick = ()=>{
+    if(externBlokGesloten.has(k.id)) externBlokGesloten.delete(k.id); else externBlokGesloten.add(k.id);
+    renderKastPopup();
+  };
+  return wrap;
 }
 
 export function renderKastPopup(){
@@ -45,6 +81,9 @@ export function renderKastPopup(){
   closeBtn.onclick = ()=>{ state.openPopupKastId = null; renderKastPopup(); };
   el.appendChild(closeBtn);
 
+  const externPrimair = externIsPrimair(k);
+  const externStatus = externPrimair ? externStatusVoor(k.id) : null;
+
   const head = document.createElement('div');
   head.className = 'kastpopup-head';
   const dot = document.createElement('span');
@@ -53,6 +92,7 @@ export function renderKastPopup(){
   naam.className = 'naam';
   naam.textContent = (isGen(k) ? typeIcon(k)+' ' : (k.type==='batterij'?'🔋 ':'')) + k.naam;
   head.appendChild(dot); head.appendChild(naam);
+  if(externPrimair) head.insertAdjacentHTML('beforeend', bronVervangenBadgeHtml());
   el.appendChild(head);
 
   const sub = document.createElement('div');
@@ -73,10 +113,11 @@ export function renderKastPopup(){
   }
   el.appendChild(sub);
 
-  const d = liveData[k.id];
   if(k.type==='groep'){
     // groep heeft geen eigen zinvolle enkele fasemeting los van zijn leden (elk lid heeft zijn
-    // eigen Shelly) — compacte per-lid-tabel i.p.v. de A/B/C-fasetabel, zie §3 van de rework-spec
+    // eigen Shelly) — compacte per-lid-tabel i.p.v. de A/B/C-fasetabel, zie §3 van de rework-spec.
+    // Slaat de externe weergave altijd over (specs/externe-mqtt-ui-plan.md, beantwoorde open vraag),
+    // ongeacht de site-brede modus — geen eigen enkele externe meting om te tonen/vervangen.
     const tabel = document.createElement('table');
     tabel.className = 'lidtabel';
     // laatste kolom: klein "Open Shelly"-icoontje per lid, alleen als dat lid een shelly_ip heeft
@@ -96,54 +137,51 @@ export function renderKastPopup(){
         return '<tr><td><span class="dot2 '+statusClass(lid)+'" style="width:6px;height:6px;margin-right:5px"></span>'+typeIcon(lid)+' '+lid.naam+'</td><td>'+stroom+'</td><td>'+belasting+'</td><td>'+lidShelly(lid)+'</td></tr>';
       }).join('');
     el.appendChild(tabel);
-  } else if(!d){
-    const geen = document.createElement('div');
-    geen.className = 'geendata';
-    geen.textContent = t('kastpopup.geenDataBlok');
-    el.appendChild(geen);
+  } else if(externPrimair && externStatus!=='ok'){
+    // modus "extern vervangt lokaal" en de externe bron levert (nog) niets bruikbaars — de grote,
+    // centrale geen-data-melding mét reden is dan de ENIGE inhoud (geen tabel/barwrap/laatste-rij
+    // eronder om uit af te leiden, zie specs/mockups/externe-mqtt-geen-data-mockup.html §3)
+    el.insertAdjacentHTML('beforeend', geenDataGrootHtml(k.id, state.externBridgeVerbrokenSinds));
   } else {
-    const tabel = document.createElement('table');
-    tabel.innerHTML =
-      '<tr><th></th><th>'+faseSwatch(0)+'A</th><th>'+faseSwatch(1)+'B</th><th>'+faseSwatch(2)+'C</th></tr>'+
-      '<tr><td>'+t('kastpopup.stroom')+'</td><td>'+fmtVeld(d.a_current,'A')+'</td><td>'+fmtVeld(d.b_current,'A')+'</td><td>'+fmtVeld(d.c_current,'A')+'</td></tr>'+
-      '<tr><td>'+t('kastpopup.spanning')+'</td><td>'+fmtVeld(d.a_voltage,'V',0)+'</td><td>'+fmtVeld(d.b_voltage,'V',0)+'</td><td>'+fmtVeld(d.c_voltage,'V',0)+'</td></tr>'+
-      '<tr><td>'+t('kastpopup.actVermogen')+'</td><td>'+fmtVeld(d.a_act_power,'W',0)+'</td><td>'+fmtVeld(d.b_act_power,'W',0)+'</td><td>'+fmtVeld(d.c_act_power,'W',0)+'</td></tr>'+
-      '<tr><td>'+t('kastpopup.schijnbVermogen')+'</td><td>'+fmtVeld(d.a_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.b_aprt_power,'VA',0)+'</td><td>'+fmtVeld(d.c_aprt_power,'VA',0)+'</td></tr>'+
-      '<tr><td>'+t('kastpopup.cosPhi')+'</td><td>'+fmtVeld(d.a_pf,'',2)+'</td><td>'+fmtVeld(d.b_pf,'',2)+'</td><td>'+fmtVeld(d.c_pf,'',2)+'</td></tr>'+
-      '<tr><td>'+t('kastpopup.frequentie')+'</td><td>'+fmtVeld(d.a_freq,'Hz',1)+'</td><td>'+fmtVeld(d.b_freq,'Hz',1)+'</td><td>'+fmtVeld(d.c_freq,'Hz',1)+'</td></tr>';
-    el.appendChild(tabel);
+    const d = primaireMeting(k);
+    if(!d){
+      const geen = document.createElement('div');
+      geen.className = 'geendata';
+      geen.textContent = t('kastpopup.geenDataBlok');
+      el.appendChild(geen);
+    } else {
+      el.insertAdjacentHTML('beforeend', tabelEnTotaalHtml(d));
+    }
 
-    const totRow = document.createElement('div');
-    totRow.className = 'kprow';
-    totRow.innerHTML = '<span class="k">'+t('kastpopup.totaleStroom')+'</span><span>'+fmtVeld(d.total_current,'A')+'</span>';
-    el.appendChild(totRow);
-    const totRow2 = document.createElement('div');
-    totRow2.className = 'kprow';
-    totRow2.innerHTML = '<span class="k">'+t('kastpopup.totaalSchijnbVermogen')+'</span><span>'+fmtVeld(d.total_aprt_power,'VA',0)+'</span>';
-    el.appendChild(totRow2);
+    const ed = primaireEnergie(k);
+    const energieRow = document.createElement('div');
+    energieRow.className = 'kprow';
+    energieRow.innerHTML = '<span class="k">'+t('kastpopup.cumulatieveEnergie')+'</span><span>'+(ed && ed.total_act!=null ? (ed.total_act/1000).toFixed(2)+' kWh' : t('kastpopup.geenData'))+'</span>';
+    el.appendChild(energieRow);
+
+    // statusbalk: zelfde logica als de aside-detail (metingenHtml) — hoogste fase t.o.v. rating_a,
+    // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 7)
+    const maxFase = maxFaseStroom(d);
+    const pct = (maxFase!=null && k.rating_a!=null) ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
+    const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+    const barwrap = document.createElement('div');
+    barwrap.className = 'barwrap';
+    barwrap.style.marginTop = '8px';
+    barwrap.innerHTML = '<div class="bar" style="width:'+pct+'%;background:'+cls+'"></div>';
+    el.appendChild(barwrap);
+
+    const laatste = document.createElement('div');
+    laatste.className = 'laatste';
+    laatste.textContent = d ? (externPrimair ? t('kastpopup.laatsteUpdateExtern', {n: Math.max(0, Math.round((Date.now()-d.ts)/1000))}) : t('kastpopup.laatsteUpdate', {n: Math.max(0, Math.round((Date.now()-d.ts)/1000))})) : t('kastpopup.laatsteGeen');
+    el.appendChild(laatste);
+
+    // specs/externe-mqtt-ui-plan.md §1: alleen in modus "naast lokaal" — standaard open zolang de
+    // externe bron site-breed actief staat (dit is hier een primaire databron, niet iets om weg te
+    // stoppen), nooit voor groepen (die zijn al hierboven afgehandeld)
+    if(!externPrimair && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='naast_lokaal'){
+      el.appendChild(bouwExternBlok(k));
+    }
   }
-
-  const ed = liveEnergyData[k.id];
-  const energieRow = document.createElement('div');
-  energieRow.className = 'kprow';
-  energieRow.innerHTML = '<span class="k">'+t('kastpopup.cumulatieveEnergie')+'</span><span>'+(ed && ed.total_act!=null ? (ed.total_act/1000).toFixed(2)+' kWh' : t('kastpopup.geenData'))+'</span>';
-  el.appendChild(energieRow);
-
-  // statusbalk: zelfde logica als de aside-detail (metingenHtml) — hoogste fase t.o.v. rating_a,
-  // expliciet niet total_current tegen rating_a afzetten (zie README.md sectie 7)
-  const maxFase = maxFaseStroom(d);
-  const pct = (maxFase!=null && k.rating_a!=null) ? Math.min(100, (maxFase/k.rating_a)*100) : 0;
-  const cls = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-  const barwrap = document.createElement('div');
-  barwrap.className = 'barwrap';
-  barwrap.style.marginTop = '8px';
-  barwrap.innerHTML = '<div class="bar" style="width:'+pct+'%;background:'+cls+'"></div>';
-  el.appendChild(barwrap);
-
-  const laatste = document.createElement('div');
-  laatste.className = 'laatste';
-  laatste.textContent = d ? t('kastpopup.laatsteUpdate', {n: Math.max(0, Math.round((Date.now()-d.ts)/1000))}) : t('kastpopup.laatsteGeen');
-  el.appendChild(laatste);
 
   if(k.shelly_ip){
     const shellyLink = document.createElement('a');

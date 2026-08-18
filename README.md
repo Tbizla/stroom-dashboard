@@ -213,9 +213,13 @@ from(bucket: "stroomdata")
   |> filter(fn: (r) => r.bron == "lokaal" or r.bron == "extern")
 ```
 
-De live-weergave in de webapp zelf (Live-tabblad, Grafieken-live-modus) toont vooralsnog alleen de
-lokale meting — de externe meting komt al wel binnen (apart bijgehouden), maar heeft nog geen eigen
-zichtbare plek in de UI.
+Diezelfde Instellingen-sectie heeft ook een weergavemodus voor het Live-tabblad: "alleen lokaal"
+(bridge draait stil op de achtergrond), "lokaal + extern ernaast" (default — een in-/uitklapbaar
+"Extern"-blok naast de lokale meting in de kastpopup/aside-detail) of "extern vervangt lokaal" (de
+externe meting wordt overal — pins, tabellen, statuskleuren — de primaire weergave; valt de bron
+weg, dan toont dat expliciet "geen data" i.p.v. een stille terugval op lokaal). Valt de bridge zelf
+weg, dan verschijnt daar een pinned melding voor op Live, en optioneel (aan-/uitvinkbaar) een
+alert-notificatie via het bestaande kanaal.
 
 ## 4. Stack starten
 

@@ -32,6 +32,17 @@ export const state = {
   // tekening als er nog geen viewport is) zodra de kalibratie geopend wordt.
   viewportKalibratieActief: false,
   viewportBewerking: null,
+  // specs/externe-mqtt-ui-plan.md: site-brede weergave-instelling (Beheer > Instellingen), ververst
+  // vanuit loadExterneMqttInstelling() (topology.js) op dezelfde momenten als de topologie zelf —
+  // default hier = 'naast_lokaal' zodat een nog niet geladen instelling niet per ongeluk als
+  // "vervangt lokaal" leest vóórdat de eerste fetch klaar is
+  externeMqtt: { actief: false, weergave_modus: 'naast_lokaal', alert_bij_wegvallen: true },
+  // bridge-verbindingsstatus (mosquitto's $SYS/broker/connection/extern-bron/state, zie mqtt.js) —
+  // null = nog geen bericht ontvangen (onbekend), true/false = laatst bekende status
+  externBridgeVerbonden: null,
+  // tijdstip (Date.now()) waarop externBridgeVerbonden voor het laatst naar false omsloeg — voor de
+  // "sinds HH:MM" in de storingsmelding (live-kpi.js) en de grote geen-data-melding (extern-weergave.js)
+  externBridgeVerbrokenSinds: null,
 };
 
 export const liveData = {};
@@ -54,6 +65,13 @@ export const LIVE_SPARK_MAX_PUNTEN = 60;
 // welke groepen (bijv. "Centrale Noord — 6 generators + CAT-batterij") hun ledenlijst opengeklapt
 // hebben staan; los van TOPO zodat het openklappen niet steeds dichtklapt na elke herlaad/opslaan-cyclus
 export const expandedGroepen = new Set();
+
+// welke kasten/generators hun "Extern"-blok (kastpopup.js/render-detail.js, modus "naast lokaal")
+// dichtgeklapt hebben staan — default (niet in deze Set) = open, zie specs/externe-mqtt-ui-plan.md
+// §1. Los van TOPO/localStorage (puur voor de duur van deze paginasessie), want kastpopup/aside-
+// detail herbouwen hun HTML op elk MQTT-bericht — zonder deze Set zou een dichtgeklikt blok bij het
+// eerstvolgende bericht (typisch binnen een seconde) weer vanzelf openspringen.
+export const externBlokGesloten = new Set();
 
 export const listEl = document.getElementById('list');
 export const detailEl = document.getElementById('detail');

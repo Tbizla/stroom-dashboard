@@ -8,6 +8,10 @@
   /* fasekleuren NL-conventie (bruin/zwart/grijs), losstaand naast groen/amber/rood-statuskleur —
      puur zwart leest slecht op dit donkere thema, dus antraciet i.p.v. #000 voor fase 2 */
   --fase1:#8a5a3a; --fase2:#6b7280; --fase3:#b9bec7;
+  /* specs/externe-mqtt-ui-plan.md: eigen, desaturated kleur voor "dit is een externe bron"-labels —
+     bewust GEEN vijfde statuskleur (groen/amber/rood blijft uitsluitend stroom-t.o.v.-rating, zie
+     CLAUDE.md) en ook niet de bestaande --accent (die betekent elders al "interactief element") */
+  --extern:#8b9dfc; --extern-dim:#8b9dfc22;
 }
 /* vervolgticket-ui-schaling-4k.md: 19px-plafond bleef op écht brede/4K-viewports (bevestigd:
    1536px op een 16" 4K-laptop met Windows-schaling, 3840px op een 32" 4K-scherm zonder OS-schaling)
@@ -204,6 +208,41 @@ header h1 span{color:var(--accent)}
 .kastpopup .kprow .k{font-family:var(--sans);color:var(--text3)}
 .kastpopup .laatste{font-size:0.625rem;color:var(--text3);margin-top:0.4375rem;text-align:right}
 .kastpopup .geendata{padding:0.375rem 0;color:var(--text3);font-style:italic}
+
+/* specs/externe-mqtt-ui-plan.md §1: in-/uitklapbaar "Extern"-blok (kastpopup + aside-detail delen
+   deze opbouw) — de tabel/metric-rijen erin hergebruiken bewust de bestaande .kastpopup table/
+   .metric-stijlen hierboven (descendant-selectors matchen ook op deze geneste .extern-body), alleen
+   de kop/container hieronder zijn nieuw. */
+.extern-blok{margin-top:0.625rem;border:1px solid var(--border);border-radius:0.5rem;overflow:hidden}
+.extern-blok.dicht .extern-body{display:none}
+.extern-head{display:flex;align-items:center;gap:0.4375rem;padding:0.4375rem 0.625rem;background:var(--panel2);cursor:pointer}
+.extern-head .chev{color:var(--extern);font-size:1rem;width:.9rem;flex-shrink:0;text-align:center}
+.extern-badge{font-family:var(--mono);font-size:0.5625rem;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--extern);background:var(--extern-dim);border:1px solid rgba(139,157,252,.4);
+  border-radius:0.5rem;padding:0.0625rem 0.375rem;font-weight:700;flex-shrink:0}
+.extern-head .laatste2{margin-left:auto;font-size:0.625rem;color:var(--text3);font-family:var(--mono);white-space:nowrap}
+.extern-body{padding:0.5rem 0.625rem 0.625rem}
+.extern-body .metric{font-size:0.71875rem}
+/* modus "extern vervangt lokaal": badge naast de naam in kastpopup-head/aside-detail-h2 i.p.v. een
+   los blok — zelfde kleur/opmaak als .extern-badge, andere plek/marge */
+.bron-vervangen-badge{display:inline-flex;align-items:center;gap:.25rem;font-family:var(--mono);font-size:0.5625rem;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--extern);background:var(--extern-dim);
+  border:1px solid rgba(139,157,252,.4);border-radius:0.5rem;padding:0.0625rem 0.375rem;font-weight:700;margin-left:.375rem}
+
+/* "geen data" met reden — compact (in het Extern-blok, modus "naast lokaal") en groot/centraal
+   (enige inhoud in modus "extern vervangt lokaal"), zie specs/mockups/externe-mqtt-geen-data-mockup.html */
+.geen-data-compact{padding:0.5rem 0.125rem;color:var(--text3)}
+.geen-data-compact .titel{font-style:italic;font-size:0.6875rem}
+.geen-data-compact .reden{font-size:0.625rem;color:var(--text3);margin-top:0.125rem;display:flex;align-items:center;gap:0.25rem}
+.reden-stip{width:0.375rem;height:0.375rem;border-radius:50%;flex-shrink:0;display:inline-block}
+.reden-stip.rood{background:var(--red)}
+.reden-stip.amber{background:var(--amber)}
+.reden-stip.grijs{background:var(--grey)}
+.geen-data-groot{padding:1.25rem 0.5rem;text-align:center}
+.geen-data-groot .icoon{font-size:1.5rem;margin-bottom:0.5rem;opacity:.7}
+.geen-data-groot .titel{font-size:0.78125rem;font-weight:600;color:var(--text2)}
+.geen-data-groot .reden{font-size:0.6875rem;color:var(--text3);margin-top:0.3125rem;line-height:1.5}
+.geen-data-groot .sinds{font-size:0.625rem;color:var(--text3);margin-top:0.5rem;font-family:var(--mono)}
 .shellylink{display:block;font-size:0.71875rem;color:var(--accent);text-decoration:none;margin-top:0.375rem;text-align:right}
 .shellylink:hover{text-decoration:underline}
 .netnote{font-size:0.59375rem;color:var(--text3);margin-top:0.125rem;text-align:right}
@@ -288,6 +327,10 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 /* specs/live-viewport-grote-monitor-plan.md: alert-ticker-strip, alleen op Live (modes.js) */
 .liveticker{padding:0.5rem 0.875rem;background:linear-gradient(90deg, rgba(229,72,77,.08), var(--panel2) 20%);
   border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.875rem;font-size:0.78125rem;color:var(--text2)}
+/* specs/externe-mqtt-ui-plan.md §4: pinned storingsbericht bij een verbroken bridge — eigen paarse
+   gradient/tag/pulse i.p.v. de rood/amber-per-kast-kleuren, want dit is een databron-storing, geen
+   overbelasting (zie live-kpi.js se externStoringActief()) */
+.liveticker.extern-actief{background:linear-gradient(90deg, rgba(139,157,252,.12), var(--panel2) 20%)}
 .liveticker .ticker-counts{display:flex;gap:0.625rem;flex:0 0 auto;padding-right:0.875rem;border-right:1px solid var(--border)}
 .count-chip{display:flex;align-items:center;gap:0.3125rem;font-weight:600;white-space:nowrap}
 .count-chip b{font-weight:700}
@@ -302,8 +345,10 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .ticker-tag{font-weight:700;padding:0.0625rem 0.375rem;border-radius:0.25rem;font-size:0.65625rem;letter-spacing:.02em}
 .ticker-tag.red{background:rgba(229,72,77,.16);color:var(--red)}
 .ticker-tag.amber{background:rgba(245,166,35,.16);color:var(--amber)}
+.ticker-tag.extern{background:var(--extern-dim);color:var(--extern)}
 .liveticker .ticker-live{flex:0 0 auto;color:var(--text3);font-size:0.6875rem;display:flex;align-items:center;gap:0.375rem;white-space:nowrap}
 .liveticker .pulse{width:0.375rem;height:0.375rem;border-radius:50%;background:var(--red);animation:tickerpulse 1.6s infinite}
+.liveticker .pulse.extern{background:var(--extern)}
 @keyframes tickerpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(229,72,77,.5)}50%{opacity:.5;box-shadow:0 0 0 0.3125rem rgba(229,72,77,0)}}
 
 ::-webkit-scrollbar{width:0.5rem;height:0.5rem}
@@ -501,6 +546,13 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .modecard .desc{font-size:0.71875rem;color:var(--text2);margin-top:0.25rem;line-height:1.4}
 .warnbox{background:rgba(245,166,35,.1);border:1px solid var(--amber);border-radius:0.5rem;padding:0.625rem 0.875rem;
   font-size:0.71875rem;color:var(--amber);margin:0.625rem 0;line-height:1.5}
+/* label boven een modechoice-blok binnen een chancard (bijv. "Weergave in Live", Externe MQTT-broker) */
+.veldlabel{font-size:0.65625rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin:0.75rem 0 0.375rem}
+/* specs/externe-mqtt-ui-plan.md §2: externe-MQTT-moduskeuze hergebruikt .modechoice/.modecard
+   (Back-up > Herstellen), maar met de --extern-kleur i.p.v. --accent als "actief"-indicator — dit is
+   geen algemene modecard-restyling, alleen binnen deze ene kaart */
+.modechoice.extern .modecard.active{border-color:var(--extern);background:var(--extern-dim)}
+.modechoice.extern .modecard.active .lbl{color:var(--extern)}
 
 /* schuifknop (toggle switch): gebruikt voor de PDF-rapport-taalkeuze, los van de UI-taal-toggle
    in de header (.langswitch) — hier bewust een schuifknop i.p.v. een pill-toggle, op verzoek */

@@ -153,3 +153,40 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       `topic`-bridge-syntax een expliciete qos-level nodig te hebben (`topic site/# in 0 extern/`,
       niet `topic site/# in extern/`) — zonder die qos-level zette de bridge stilletjes niets door,
       pas ontdekt via de live test.
+- [x] **Externe MQTT-broker: de zichtbare UI-laag.** Afgerond — vervolg op het databron-item
+      hierboven, gebouwd conform [specs/externe-mqtt-ui-plan.md](specs/externe-mqtt-ui-plan.md)
+      (Cowork-mockups) + drie afstemvragen die Mike beantwoordde: groepen slaan het Extern-blok
+      altijd over (geen eigen enkele externe meting), default weergavemodus bij eerste activering is
+      "naast lokaal", en de bridge-verbindingsstatus-koppeling is meteen meegebouwd (niet als losse
+      vervolgstap).
+      **Live weergave**: in-/uitklapbaar "Extern"-blok (volledige fase-tabel, zelfde opbouw als de
+      lokale meting) in de kastpopup (plattegrond) en het aside-detailpaneel, standaard open zolang de
+      bron site-breed actief staat. Nieuwe site-brede weergavemodus in Beheer → Instellingen (naast de
+      bestaande verbindingsvelden): "alleen lokaal" / "naast lokaal" / "extern vervangt lokaal", als
+      3 mutueel-exclusieve modus-kaarten (hergebruikt het `.modechoice`/`.modecard`-patroon van Back-up
+      → Herstellen, met een eigen `--extern`-kleur i.p.v. `--accent`). In "extern vervangt lokaal"
+      worden pins/tabellen/statuskleuren/sparklijn overal de externe meting (nooit een stille
+      terugval op lokaal); "geen data" toont dan expliciet één van drie redenen (bridge verbroken /
+      wacht op eerste bericht / verouderd-stil), compact binnen het Extern-blok of groot-centraal als
+      enige inhoud, met een grijze (niet rode) pin — een databronprobleem, geen overbelasting.
+      **Site-brede storingsmelding** bij een verbroken bridge: een pinned bericht vóór de gewone
+      rood/amber-ticker-rotatie op Live, plus (optioneel, aan-/uitvinkbaar) een alert-notificatie via
+      het bestaande kanaal (Telegram/Pushover/ntfy/e-mail).
+      **Bridge-verbindingsstatus**: mosquitto's `$SYS/broker/connection/extern-bron/state` (retained,
+      "1"/"0"), rechtstreeks door de browser afgeluisterd voor de UI én door een nieuw, klein
+      server-side wachtprocesje (`extern-bridge-watchdog.js`, zelfde opzet als
+      `meetcorrectie-relay.js`: eigen MQTT-client naar de lokale mosquitto) voor de alert-notificatie
+      — bewust server-side i.p.v. vanuit de browser getriggerd, want (a) een storing moet ook gemeld
+      worden als er niemand een tabblad open heeft staan, en (b) voorkomt dubbele meldingen bij
+      meerdere open tabbladen/apparaten. Tijdens het bouwen bleek de bridge-config van het vorige item
+      dit topic per ongeluk had uitgezet (`notifications false`) en zonder vaste `remote_clientid` zou
+      mosquitto zelf een onvoorspelbare clientid (op basis van de containerhostname) gebruikt hebben —
+      beide gefixt (`notifications true` + `remote_clientid extern-bron`) en bevestigd met dezelfde
+      live-test-opzet (tijdelijke tweede mosquitto-container): het topic levert nu betrouwbaar "1"/"0"
+      op bij connect/disconnect, en de watchdog stuurt daadwerkelijk een notificatiepoging op de
+      overgang. De Cowork-mockup opperde hiervoor een Grafana "no data"-alertregel (naar analogie van
+      de bestaande 90%-drempel-alerts) — bleek bij nader inzien niet te bestaan als code-geprovisioneerde
+      regel (alleen contact points worden geprovisioneerd, alert-*regels* zijn kennelijk handmatig in
+      Grafana aangemaakt); de server-side watchdog hierboven levert dezelfde belofte aan Mike ("je
+      krijgt een melding als de bron wegvalt") zonder een nieuwe, ongeteste Grafana-alerting-integratie
+      te bouwen.

@@ -1,4 +1,4 @@
-import { state, liveData, mapimg, blankCanvas, mapTiles } from './state.js';
+import { state, liveData, liveEnergyData, liveDataExtern, liveEnergyDataExtern, mapimg, blankCanvas, mapTiles } from './state.js';
 import { renderList } from './render-list.js';
 import { renderDetail } from './render-detail.js';
 import { renderBeheer } from './render-beheer.js';
@@ -58,6 +58,24 @@ export async function loadTopology(){
   state.TOPO = await res.json();
   renderList(); renderDetail(); renderBeheer();
   if(state.mode==='schema') renderSchema();
+}
+
+// specs/externe-mqtt-ui-plan.md: site-brede weergave-instelling, opgehaald via het bestaande
+// /api/instellingen (al geredigeerd — de externeMqtt-secties wachtwoord komt hier nooit in mee,
+// en is voor deze puur-weergave-instelling ook niet nodig). Aangeroepen vanuit main.js op dezelfde
+// momenten als loadTopology() (bootstrap + de 5s-poll), zodat een wijziging in Beheer >
+// Instellingen door een ander scherm ook hier binnen een paar seconden doorwerkt.
+export async function loadExterneMqttInstelling(){
+  try{
+    const res = await fetch('/api/instellingen');
+    const data = await res.json();
+    const cfg = data.externeMqtt || {};
+    state.externeMqtt = {
+      actief: !!cfg.actief,
+      weergave_modus: cfg.weergave_modus || 'naast_lokaal',
+      alert_bij_wegvallen: cfg.alert_bij_wegvallen !== false,
+    };
+  }catch(e){ /* laatst bekende waarde laten staan */ }
 }
 
 export async function savePositie(node){
@@ -133,11 +151,50 @@ export function maxFaseStroom(d){
   return fasen.length ? Math.max(...fasen) : null;
 }
 
+// ---------- specs/externe-mqtt-ui-plan.md: gedeelde "welke bron/status geldt hier" afleiding —
+// hergebruikt door kastpopup.js, render-detail.js, render-pins.js (via statusOf() hieronder) en
+// live-kpi.js, zodat al die plekken exact dezelfde regels volgen i.p.v. de logica los te dupliceren ----------
+// hoe lang een externe meting nog als "vers" geldt vóór 'ie als "verouderd/stil" telt (zie
+// externStatusVoor) — zelfde soort marge als de "6 min geleden" uit de mockup
+export const EXTERN_VEROUDERD_MS = 5 * 60 * 1000;
+
+// vier mogelijke uitkomsten voor kastId (of null als de externe bron helemaal niet actief staat):
+// 'ok' | 'wacht' (bron actief, nog geen bericht voor déze kast) | 'verouderd' (stil gevallen) |
+// 'verbroken' (de bridge zelf ligt eruit, zie mqtt.js se $SYS/broker/connection/.../state-abonnement)
+export function externStatusVoor(kastId){
+  if(!state.externeMqtt || !state.externeMqtt.actief) return null;
+  if(state.externBridgeVerbonden === false) return 'verbroken';
+  const d = liveDataExtern[kastId];
+  if(!d) return 'wacht';
+  if(Date.now() - d.ts > EXTERN_VEROUDERD_MS) return 'verouderd';
+  return 'ok';
+}
+
+// of de externe meting voor déze node de PRIMAIRE weergave is (modus "extern vervangt lokaal") —
+// groepen slaan dit altijd over (geen eigen enkele externe meting, elk lid heeft zijn eigen lokale
+// Shelly, zie kastpopup.js se lidtabel-tak), ongeacht de site-brede modus
+export function externIsPrimair(node){
+  return !!(node && node.type!=='groep' && state.externeMqtt && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='vervangt_lokaal');
+}
+
+// welke live-meting voor tabellen/statuskleuren/pin-kleur gebruikt moet worden — lokaal, tenzij de
+// externe bron voor déze node de primaire weergave is (externIsPrimair) én daadwerkelijk 'ok' is;
+// anders null (geen stille terugval op een verouderde lokale waarde, zie het geen-data-met-reden-
+// ontwerp — de "vervangt lokaal"-modus toont dan expliciet geen data i.p.v. impliciet lokaal)
+export function primaireMeting(node){
+  if(externIsPrimair(node)) return externStatusVoor(node.id)==='ok' ? liveDataExtern[node.id] : null;
+  return liveData[node.id];
+}
+export function primaireEnergie(node){
+  if(externIsPrimair(node)) return externStatusVoor(node.id)==='ok' ? liveEnergyDataExtern[node.id] : null;
+  return liveEnergyData[node.id];
+}
+
 // werkt voor zowel kasten (rating_a altijd verplicht ingevuld) als generators (rating_a optioneel
 // — alleen gezet als die generator ook echt uitgelezen wordt, native of via een Shelly+CT-klem)
 export function statusOf(node){
   if(node.rating_a==null) return null;
-  const cur = maxFaseStroom(liveData[node.id]);
+  const cur = maxFaseStroom(primaireMeting(node));
   if(cur==null) return null;
   const pct = (cur / node.rating_a) * 100;
   if(pct >= 90) return 'red';

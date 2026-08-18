@@ -13,6 +13,7 @@ const AdmZip = require('adm-zip');
 const sharp = require('sharp');
 const { configureerShelly } = require('./shelly-rpc');
 const meetcorrectieRelay = require('./meetcorrectie-relay');
+const externBridgeWatchdog = require('./extern-bridge-watchdog');
 
 // letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
 // env-var (SESSION_SECRET/INTERNAL_API_TOKEN) — een installatie die 'm per ongeluk laat staan mag
@@ -660,7 +661,13 @@ const NOTIFICATIE_KANALEN_DEFAULT = {
 // bouwBridgeConf()/schrijfBridgeConf() hieronder), geen tweede verbinding vanuit Telegraf/de browser
 // zelf nodig. ca_cert optioneel: leeg = normale TLS met het systeem-CA-vertrouwen (werkt voor een
 // gewoon, publiek-vertrouwd certificaat), alleen invullen bij een eigen/interne CA (self-signed).
-const EXTERNE_MQTT_DEFAULT = { actief: false, host: '', poort: 8883, tls: true, ca_cert: '', username: '', wachtwoord: '' };
+// specs/externe-mqtt-ui-plan.md §2/§4: weergave_modus bepaalt hoe (of niet) de extern-data in de
+// Live-weergave verschijnt (kastpopup.js/render-detail.js/render-pins.js, via topology.js se
+// externIsPrimair()); alert_bij_wegvallen schakelt de storingsmelding via het bestaande alert-
+// notificatiekanaal aan/uit (extern-bridge-watchdog.js) — los van of de melding zelf al kán vuren
+// (dat kan pas als actief=true)
+const EXTERNE_MQTT_WEERGAVE_MODI = ['alleen_lokaal', 'naast_lokaal', 'vervangt_lokaal'];
+const EXTERNE_MQTT_DEFAULT = { actief: false, host: '', poort: 8883, tls: true, ca_cert: '', username: '', wachtwoord: '', weergave_modus: 'naast_lokaal', alert_bij_wegvallen: true };
 const EXTERNE_MQTT_GEHEIM_VELD = 'wachtwoord';
 // welk veld per kanaal/bestemming een echt geheim is (token/wachtwoord/secret-key) — die komen nooit
 // in platte tekst terug via GET /api/instellingen, zie specs/secrets-afscherming-plan.md. Overige
@@ -709,6 +716,11 @@ function readInstellingen() {
   // (route-handlers/async callbacks), niet tijdens het top-level inladen zelf
   if (!data.automatischeBackup) data.automatischeBackup = JSON.parse(JSON.stringify(AUTOMATISCHE_BACKUP_DEFAULT));
   if (!data.externeMqtt) data.externeMqtt = JSON.parse(JSON.stringify(EXTERNE_MQTT_DEFAULT));
+  // backwards-compatible aanvulling voor installaties die externeMqtt al hadden vóórdat
+  // weergave_modus/alert_bij_wegvallen bestonden (v3.10.0-alpha.1) — vult alleen de ontbrekende
+  // velden aan, laat een al opgeslagen host/poort/etc. ongemoeid
+  if (data.externeMqtt.weergave_modus == null) data.externeMqtt.weergave_modus = EXTERNE_MQTT_DEFAULT.weergave_modus;
+  if (data.externeMqtt.alert_bij_wegvallen == null) data.externeMqtt.alert_bij_wegvallen = EXTERNE_MQTT_DEFAULT.alert_bij_wegvallen;
   return data;
 }
 function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
@@ -774,6 +786,7 @@ function saniteerExterneMqtt(cfg, bestaand) {
     if (!host) throw new Error('host is verplicht als de externe MQTT-broker actief is');
     if (!Number.isInteger(poort) || poort < 1 || poort > 65535) throw new Error('poort moet een geldig poortnummer zijn (1-65535)');
   }
+  const weergaveModus = EXTERNE_MQTT_WEERGAVE_MODI.includes(bron.weergave_modus) ? bron.weergave_modus : (basis.weergave_modus || 'naast_lokaal');
   return {
     actief,
     host,
@@ -782,6 +795,8 @@ function saniteerExterneMqtt(cfg, bestaand) {
     ca_cert: typeof bron.ca_cert === 'string' ? bron.ca_cert.trim() : (basis.ca_cert || ''),
     username: typeof bron.username === 'string' ? bron.username.trim() : (basis.username || ''),
     wachtwoord: saniteerGeheimVeld(bron.wachtwoord, basis.wachtwoord),
+    weergave_modus: weergaveModus,
+    alert_bij_wegvallen: bron.alert_bij_wegvallen !== undefined ? !!bron.alert_bij_wegvallen : (basis.alert_bij_wegvallen !== false),
   };
 }
 // genereert mosquitto's bridge-config-syntax — "topic site/# in 0 extern/" abonneert op site/# op de
@@ -794,7 +809,15 @@ function bouwBridgeConf(cfg) {
     'address ' + cfg.host + ':' + cfg.poort,
     'topic site/# in 0 extern/',
     'cleansession true',
-    'notifications false',
+    // specs/externe-mqtt-ui-plan.md ("nu meteen meebouwen"): notifications true + een vaste
+    // remote_clientid laat mosquitto de bridge-verbindingsstatus lokaal (retained) publiceren op
+    // $SYS/broker/connection/extern-bron/state ("1"/"0") — zonder remote_clientid zou mosquitto
+    // zelf een clientid <naam>.<hostname> verzinnen (containerhostname, niet voorspelbaar), dus
+    // dan zou noch mqtt.js noch extern-bridge-watchdog.js weten op welk topic-suffix te abonneren.
+    // Dit is de bron voor zowel de "bridge-verbroken"-reden in de geen-data-UI als de site-brede
+    // storingsmelding (liveticker + alert-notificatiekanaal).
+    'notifications true',
+    'remote_clientid extern-bron',
   ];
   if (cfg.username) regels.push('remote_username ' + cfg.username);
   if (cfg.wachtwoord) regels.push('remote_password ' + cfg.wachtwoord);
@@ -3413,6 +3436,11 @@ function bepaalHostLanIp() {
 }
 meetcorrectieRelay.start();
 meetcorrectieRelay.meldTopologieWijziging(readTopo());
+// specs/externe-mqtt-ui-plan.md ("nu meteen meebouwen"): bewaakt de mosquitto-bridge-verbinding en
+// stuurt zelf (server-side, geen browser nodig) een alert-notificatie via de bestaande stuur*()-
+// functies bij het wegvallen/herstellen van de externe bron — zie extern-bridge-watchdog.js
+externBridgeWatchdog.init(readInstellingen, stuurNotificatie);
+externBridgeWatchdog.start();
 const server = app.listen(PORT, () => {
   console.log('Stroom-Dashboard luistert op poort ' + PORT);
   console.log('Open in de browser:');

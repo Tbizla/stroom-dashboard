@@ -8,6 +8,31 @@ import { apiCall } from './api.js';
 import { t } from './i18n.js';
 
 let wachtwoordGewist = false;
+let weergaveModus = 'naast_lokaal';
+
+// specs/externe-mqtt-ui-plan.md §2: 3 mutueel-exclusieve modus-kaarten i.p.v. losse toggles (zelfde
+// .modechoice/.modecard-patroon als Beheer > Back-up > Herstellen) — modus 2/3 zijn niet zinvol
+// zolang de broker zelf uit staat (geen bridge = geen extern-data om ernaast te tonen/te vervangen)
+function updateExterneMqttModusUI(){
+  const actief = document.getElementById('externeMqttToggle').classList.contains('on');
+  document.querySelectorAll('#externeMqttModusKeuze [data-externmodus]').forEach(el=>{
+    el.classList.toggle('active', el.dataset.externmodus===weergaveModus);
+    const grijzenUit = !actief && el.dataset.externmodus!=='alleen_lokaal';
+    el.classList.toggle('locked', grijzenUit);
+    el.style.opacity = grijzenUit ? '.5' : '';
+    el.style.cursor = grijzenUit ? 'default' : 'pointer';
+  });
+  document.getElementById('externeMqttVervangtWarn').style.display = (weergaveModus==='vervangt_lokaal') ? 'block' : 'none';
+  document.getElementById('externeMqttAlertRow').style.display = actief ? 'flex' : 'none';
+}
+document.querySelectorAll('#externeMqttModusKeuze [data-externmodus]').forEach(card=>{
+  card.onclick = ()=>{
+    const actief = document.getElementById('externeMqttToggle').classList.contains('on');
+    if(!actief && card.dataset.externmodus!=='alleen_lokaal') return; // vergrendeld zolang de broker uit staat
+    weergaveModus = card.dataset.externmodus;
+    updateExterneMqttModusUI();
+  };
+});
 
 function toonExterneMqttCard(naam){
   ['externeMqttStatusCard','externeMqttResultCard','externeMqttErrorCard'].forEach(id=>{
@@ -37,6 +62,7 @@ async function pollMosquittoHerstart(){
 document.getElementById('externeMqttToggle').onclick = (e)=>{
   e.currentTarget.classList.toggle('on');
   document.getElementById('externeMqttCard').classList.toggle('off', !e.currentTarget.classList.contains('on'));
+  updateExterneMqttModusUI();
 };
 document.getElementById('externeMqttTlsToggle').onclick = (e)=> e.currentTarget.classList.toggle('on');
 document.getElementById('externeMqttWachtwoordWis').onclick = ()=>{
@@ -59,6 +85,8 @@ document.getElementById('externeMqttOpslaanBtn').onclick = async ()=>{
     username: document.getElementById('externeMqttUsername').value.trim(),
     // leeg + niet expliciet gewist = veld weglaten -> server laat de bestaande waarde ongewijzigd
     wachtwoord: wachtwoordVeld ? wachtwoordVeld : (wachtwoordGewist ? null : undefined),
+    weergave_modus: weergaveModus,
+    alert_bij_wegvallen: document.getElementById('externeMqttAlertCheckbox').checked,
   };
   try{
     await apiCall('/api/instellingen/externe-mqtt', 'PUT', body);
@@ -86,6 +114,9 @@ export async function initExterneMqtt(){
     wachtwoordEl.placeholder = cfg.wachtwoord_ingesteld ? t('beheer.notifGeheimIngesteld') : t('beheer.notifGeheimNietIngesteld');
     wachtwoordEl.closest('.secretfield').classList.toggle('heeft-waarde', !!cfg.wachtwoord_ingesteld);
     wachtwoordGewist = false;
+    weergaveModus = cfg.weergave_modus || 'naast_lokaal';
+    document.getElementById('externeMqttAlertCheckbox').checked = cfg.alert_bij_wegvallen !== false;
+    updateExterneMqttModusUI();
   }catch(e){ /* lege velden zijn prima, gewoon opnieuw invullen */ }
   pollMosquittoHerstart(); // pikt een herstart die al liep vóór een page-refresh weer op
 }
