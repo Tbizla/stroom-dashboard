@@ -193,6 +193,30 @@ Het script staat kant-en-klaar in [`webapp/shelly-script/em-fast-publish.js`](we
 2. Settings > Scripts > "+ Add script", plak de inhoud van `em-fast-publish.js`, Save.
 3. Zet "Run on startup" aan en start het script.
 
+### Optioneel: een externe MQTT-broker ("kopie broker") als extra bron
+
+Krijg je van een externe partij een eigen broker met een kopie van je meetdata (bijv. omdat je MQTT
+ook naar die partij doorstuurt)? Beheer → Instellingen → "Externe MQTT-broker" laat je die
+toevoegen: host, poort, TLS (met een optioneel eigen CA-certificaatveld voor een self-signed
+broker — leeg werkt met een gewoon, publiek-vertrouwd certificaat), gebruikersnaam/wachtwoord.
+Onder de motorkap zet mosquitto's ingebouwde bridge-functionaliteit dit lokaal over onder een
+`extern/`-prefix (dus `extern/site/<generator>/<kast>/status/em:0` naast de bestaande
+`site/...`-topics) — Telegraf tagt die apart met `bron="extern"` (lokale metingen: `bron="lokaal"`),
+zodat je ze in Grafana/InfluxDB naast elkaar kunt zetten i.p.v. dat de een de ander overschrijft:
+
+```flux
+from(bucket: "stroomdata")
+  |> range(start: -15m)
+  |> filter(fn: (r) => r._measurement == "shelly_em")
+  |> filter(fn: (r) => r.kast == "podium1")
+  |> filter(fn: (r) => r._field == "total_current")
+  |> filter(fn: (r) => r.bron == "lokaal" or r.bron == "extern")
+```
+
+De live-weergave in de webapp zelf (Live-tabblad, Grafieken-live-modus) toont vooralsnog alleen de
+lokale meting — de externe meting komt al wel binnen (apart bijgehouden), maar heeft nog geen eigen
+zichtbare plek in de UI.
+
 ## 4. Stack starten
 
 ```

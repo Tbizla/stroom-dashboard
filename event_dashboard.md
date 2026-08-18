@@ -233,6 +233,25 @@ zetten zonder code aan te passen.
   webhook. Provisioning is best effort — mislukt die stap (Grafana onbereikbaar, onvolledig
   ingevuld kanaal), dan blijven de al opgeslagen instellingen en de overige, wél correcte kanalen
   gewoon staan; alleen het mislukte kanaal wordt gemeld
+- **Externe MQTT-broker** (zie specs/externe-mqtt-broker-plan.md): optioneel een "kopie broker" van
+  een externe partij als extra, apart herkenbare bron naast de bestaande lokale opstelling
+  (Shelly's/lokale mosquitto/Telegraf/live-weergave, die allemaal ongewijzigd blijven werken).
+  Nieuwe sectie in Beheer → Instellingen: host, poort, TLS aan/uit (met een optioneel eigen
+  CA-certificaatveld voor een self-signed broker — leeg werkt met een gewoon, publiek-vertrouwd
+  certificaat), gebruikersnaam/wachtwoord. Onder de motorkap: de lokale mosquitto krijgt een eigen
+  **bridge**-verbinding naar de externe broker (mosquitto's ingebouwde server-naar-server-relay,
+  geen tweede verbinding vanuit Telegraf of de browser nodig), die op de externe broker `site/#`
+  overneemt en dat lokaal herpubliceert onder een `extern/`-prefix — dus `extern/site/<generator>/
+  <kast>/status/em:0` naast de bestaande `site/...`-topics. Telegraf heeft daar een permanent
+  aanwezig (maar tot een bridge actief is stil) tweede inputblok voor, getagd met `bron="extern"`
+  (de bestaande lokale inputs kregen ter symmetrie `bron="lokaal"`) — zo blijven beide bronnen in
+  Grafana/InfluxDB uit elkaar te houden i.p.v. dat de een de ander overschrijft. Opslaan herstart
+  mosquitto kort (bridge-verbindingen blijken niet betrouwbaar te herladen zonder herstart) via
+  hetzelfde `telegraf-herstarter`-servicetje dat al Telegraf herstart (nu met een `doel`-parameter,
+  ondanks de naam ook mosquitto toegestaan — nog steeds maar twee vaste, whitelisted doelen, geen
+  generieke Docker-toegang). De browser houdt een externe meting ook apart bij (`liveDataExtern`/
+  `liveEnergyDataExtern` in `mqtt.js`) — **nog geen zichtbare UI ervoor** (bewust uitgesteld, puur de
+  databron is nu geregeld)
 - **Geheimen afgeschermd**: `GET /api/instellingen` geeft echte geheimen (Telegram-bot-token,
   Pushover-API-token, SMTP-wachtwoord, en bij Automatische back-up het SFTP-wachtwoord/S3-
   secret-key) nooit in platte tekst terug — alleen een `<veld>_ingesteld`-boolean. Een leeg gelaten

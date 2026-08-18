@@ -26,6 +26,11 @@ services:
     volumes:
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
+      # specs/externe-mqtt-broker-plan.md: mosquitto.conf's `include_dir` laadt elke .conf hierin —
+      # leeg bij een normale installatie (geen gedragswijziging), de webapp schrijft hier een
+      # bridge.conf in zodra een externe MQTT-broker geconfigureerd wordt (zie de webapp-mount
+      # hieronder bij die service)
+      - mosquitto-bridge-conf:/mosquitto/config/conf.d:ro
 
   influxdb:
     image: influxdb:2
@@ -166,6 +171,9 @@ services:
     volumes:
       - webapp-data:/data
       - lan-ip-shared:/shared:ro
+      # specs/externe-mqtt-broker-plan.md: schrijfbaar hier, alleen-lezen bij mosquitto zelf
+      # hierboven — de webapp genereert bridge.conf, mosquitto leest 'm bij een herstart
+      - mosquitto-bridge-conf:/mosquitto-bridge
 
   # alleen gestart met `docker compose --profile test up -d` — de webapp herkent zelf of deze
   # service bestaat (DNS-lookup op "simulator", zie isTestMode() in server.js) om de Testdata-tabblad
@@ -218,6 +226,7 @@ services:
 volumes:
   mosquitto-data:
   mosquitto-log:
+  mosquitto-bridge-conf:
   influxdb-data:
   grafana-data:
   webapp-data:

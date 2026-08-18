@@ -126,3 +126,30 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       aan een publieke repo gekoppeld wordt, erft die publieke zichtbaarheid automatisch. Bevestigd
       met een échte, uitgelogde `docker pull ghcr.io/tbizla/stroom-dashboard-webapp:v3.9.0` — lukt
       zonder inloggen.
+- [x] **Externe MQTT-broker (kopie-feed) als extra bron.** Afgerond — gebouwd conform
+      [specs/externe-mqtt-broker-plan.md](specs/externe-mqtt-broker-plan.md). Aanleiding: Mikes MQTT
+      gaat straks (ook) naar een externe partij, die een "kopie broker" teruggeeft — wilde die als
+      extra, apart herkenbare bron kunnen toevoegen zonder de bestaande lokale opstelling
+      (Shelly's/mosquitto/Telegraf/live-weergave) te wijzigen, en zonder dat een kast se lokale en
+      externe meting elkaar overschrijven.
+      Architectuur: mosquitto's eigen **bridge**-functionaliteit (server-naar-server, geen tweede
+      verbinding vanuit Telegraf/de browser) neemt `site/#` van de externe broker over en
+      herpubliceert dat lokaal onder een `extern/`-prefix — alles wat al op de lokale mosquitto
+      leest blijft daardoor ongewijzigd werken. Telegraf kreeg een permanent aanwezig (maar tot een
+      bridge actief is stil, want blijft op de LOKALE mosquitto lezen) tweede inputblok voor
+      `extern/site/+/+/status/em:0`/`emdata:0`, getagd `bron="extern"` (bestaande inputs kregen ter
+      symmetrie `bron="lokaal"`). Nieuwe sectie in Beheer → Instellingen (host/poort/TLS/optioneel
+      eigen CA-cert/gebruikersnaam/wachtwoord, zelfde geheimen-patroon als de notificatiekanalen) —
+      opslaan schrijft `bridge.conf` op een met mosquitto gedeeld volume en laat mosquitto herstarten
+      via `telegraf-herstarter` (uitgebreid met een `doel`-parameter — ondanks de naam nu ook
+      mosquitto toegestaan, nog steeds maar twee vaste whitelisted doelen). De browser houdt een
+      externe meting apart bij (`liveDataExtern`/`liveEnergyDataExtern`, `mqtt.js`) — **bewust nog
+      geen zichtbare UI ervoor**, dat is een aparte, nog niet ontworpen stap (zie het plan).
+      Geverifieerd met een volledige live end-to-end-test: een tijdelijke tweede mosquitto-container
+      als "externe broker", een testbericht daarop gepubliceerd, en bevestigd dat het via de bridge
+      lokaal op `extern/site/...` verschijnt én in InfluxDB met `bron="extern"` terechtkomt (los van
+      de bestaande `bron="lokaal"`-data) — plus de aan/uit-cyclus (bridge.conf verschijnt/verdwijnt,
+      mosquitto herstart schoon in beide gevallen). Tijdens het bouwen bleek mosquitto's
+      `topic`-bridge-syntax een expliciete qos-level nodig te hebben (`topic site/# in 0 extern/`,
+      niet `topic site/# in extern/`) — zonder die qos-level zette de bridge stilletjes niets door,
+      pas ontdekt via de live test.

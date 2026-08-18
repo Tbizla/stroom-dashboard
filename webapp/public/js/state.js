@@ -36,6 +36,13 @@ export const state = {
 
 export const liveData = {};
 export const liveEnergyData = {};
+// specs/externe-mqtt-broker-plan.md: aparte, niet-overschrijvende opslag voor metingen die via de
+// optionele mosquitto-bridge van een externe "kopie broker" binnenkomen (topic-prefix extern/site/
+// ... i.p.v. site/...) — bewust gescheiden van liveData/liveEnergyData hierboven, zodat een externe
+// meting nooit een lokale overschrijft (en andersom). Nog geen UI die dit toont (zie het plan voor
+// de scope-afbakening), puur de databron-plumbing.
+export const liveDataExtern = {};
+export const liveEnergyDataExtern = {};
 // specs/live-viewport-grote-monitor-plan.md: kleine, puur-client-side rolling buffer voor de
 // trendlijn in het Live-detailpaneel — géén nieuwe databron (hergebruikt dezelfde MQTT-stream die
 // al binnenkomt), losstaand van grafieken.js' eigen (grotere, 60-min) live-buffer om dat bestand

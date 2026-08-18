@@ -1,14 +1,19 @@
 // ---------- telegraf-herstarter ----------
 // Klein, doelbewust beperkt servicetje: krijgt de echte /var/run/docker.sock gemount, maar biedt
-// naar buiten toe maar precies één actie — "herstart telegraf met deze EVENT_NAME/EVENT_EDITION".
+// naar buiten toe maar precies één actie — POST /herstart met een `doel` (telegraf of mosquitto).
 // Bestaat omdat kant-en-klare socket-proxy's (tecnativa/docker-socket-proxy, en de
 // linuxserver.io-fork) bewust nooit DELETE-requests doorlaten, wat een echte container-recreate
 // (nodig omdat Telegraf zijn env vars alleen bij het *aanmaken* van het container inleest, niet bij
 // een kale restart) onmogelijk maakt via die route.
 //
-// Bewust: geen generieke Docker-API-doorgifte naar de webapp (die blijft dus zonder Docker-toegang) —
-// alleen dit ene servicetje heeft de socket, en het doet altijd exact dezelfde vaste
-// stop->remove->create->start-reeks op het "telegraf"-container, nooit iets anders.
+// specs/externe-mqtt-broker-plan.md: uitgebreid met een tweede, vaste toegestane doel ("mosquitto")
+// naast het oorspronkelijke "telegraf" — mosquitto's bridge-config (naar een externe MQTT-broker)
+// verandert net als Telegraf's EVENT_NAME/EVENT_EDITION niet met een kale restart (bridge-
+// verbindingen blijken bij mosquitto niet betrouwbaar via SIGHUP te herladen), maar hoeft geen
+// env-var-injectie: de bridge-config staat al klaar op het gedeelde volume vóórdat dit endpoint
+// aangeroepen wordt, een gewone recreate pikt 'm dan vanzelf op. Nog steeds geen generieke Docker-
+// API-doorgifte naar de webapp — alleen dit ene servicetje heeft de socket, en "doel" accepteert
+// uitsluitend deze twee vaste containernamen, nooit een door de aanroeper vrij te kiezen naam.
 const http = require('http');
 
 function dockerRequest(method, pad, body) {
@@ -42,16 +47,24 @@ function veilig(v) {
   return typeof v === 'string' && /^[a-zA-Z0-9_-]+$/.test(v) ? v : null;
 }
 
-async function herstartTelegraf(eventName, eventEdition) {
-  const inspect = await dockerRequest('GET', '/containers/telegraf/json');
+// generiek per containernaam: leest de huidige containerconfig, past optioneel een paar env-vars
+// aan (telegraf-geval), en doet dezelfde stop->remove->create->start-reeks. `envAanpassingen` mag
+// null zijn (mosquitto-geval: niets aan de env, alleen een verse container die het inmiddels al
+// bijgewerkte bestand op het gedeelde volume oppikt).
+async function herstartContainer(containerNaam, envAanpassingen) {
+  const inspect = await dockerRequest('GET', '/containers/' + containerNaam + '/json');
 
-  const env = (inspect.Config.Env || []).filter((e) => !e.startsWith('EVENT_NAME=') && !e.startsWith('EVENT_EDITION='));
-  env.push('EVENT_NAME=' + eventName, 'EVENT_EDITION=' + eventEdition);
+  let env = inspect.Config.Env || [];
+  if (envAanpassingen) {
+    const keys = Object.keys(envAanpassingen);
+    env = env.filter((e) => !keys.some((k) => e.startsWith(k + '=')));
+    keys.forEach((k) => env.push(k + '=' + envAanpassingen[k]));
+  }
   const netwerken = (inspect.NetworkSettings && inspect.NetworkSettings.Networks) || {};
 
-  await dockerRequest('POST', '/containers/telegraf/stop');
-  await dockerRequest('DELETE', '/containers/telegraf?force=true');
-  const created = await dockerRequest('POST', '/containers/create?name=telegraf', {
+  await dockerRequest('POST', '/containers/' + containerNaam + '/stop');
+  await dockerRequest('DELETE', '/containers/' + containerNaam + '?force=true');
+  const created = await dockerRequest('POST', '/containers/create?name=' + containerNaam, {
     Image: inspect.Config.Image,
     Env: env,
     Labels: inspect.Config.Labels,
@@ -72,19 +85,33 @@ const server = http.createServer((req, res) => {
   req.on('end', async () => {
     let payload;
     try { payload = JSON.parse(body || '{}'); } catch (e) { payload = {}; }
-    const eventName = veilig(payload.event_name);
-    const eventEdition = veilig(payload.event_edition);
-    if (!eventName || !eventEdition) {
+    // afwezig `doel` = "telegraf", voor bestaande aanroepers die dit veld nog niet meesturen
+    const doel = payload.doel === undefined || payload.doel === 'telegraf' ? 'telegraf'
+      : payload.doel === 'mosquitto' ? 'mosquitto' : null;
+    if (doel === null) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'event_name en event_edition zijn verplicht en mogen alleen letters, cijfers, "_" of "-" bevatten' }));
+      res.end(JSON.stringify({ error: 'doel moet "telegraf" of "mosquitto" zijn' }));
       return;
     }
+
+    let envAanpassingen = null;
+    if (doel === 'telegraf') {
+      const eventName = veilig(payload.event_name);
+      const eventEdition = veilig(payload.event_edition);
+      if (!eventName || !eventEdition) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'event_name en event_edition zijn verplicht en mogen alleen letters, cijfers, "_" of "-" bevatten' }));
+        return;
+      }
+      envAanpassingen = { EVENT_NAME: eventName, EVENT_EDITION: eventEdition };
+    }
+
     try {
-      await herstartTelegraf(eventName, eventEdition);
+      await herstartContainer(doel, envAanpassingen);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
     } catch (e) {
-      console.error('[telegraf-herstarter] herstart mislukt:', e.message);
+      console.error('[telegraf-herstarter] herstart (' + doel + ') mislukt:', e.message);
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e.message }));
     }

@@ -7,7 +7,7 @@
 // 'localhost', wat alleen toevallig werkte zolang je op hetzelfde lokale netwerk zat). Het
 // /api/mqtt-ticket-endpoint (al achter de gewone login-sessie) levert het bewijs dat de proxy nodig
 // heeft vóórdat 'ie doorverbindt naar mosquitto — mosquitto zelf is niet meer publiek bereikbaar.
-import { state, liveData, liveEnergyData } from './state.js';
+import { state, liveData, liveEnergyData, liveDataExtern, liveEnergyDataExtern } from './state.js';
 import { apiCall } from './api.js';
 import { renderList } from './render-list.js';
 import { renderPins } from './render-pins.js';
@@ -85,14 +85,28 @@ export async function verbindMqtt(){
       dot.className='dot ok'; label.textContent=t('header.connVerbonden');
       client.subscribe('site/+/+/status/em:0');
       client.subscribe('site/+/+/status/emdata:0');
+      // specs/externe-mqtt-broker-plan.md: optionele mosquitto-bridge herpubliceert een externe
+      // "kopie broker" lokaal onder dit prefix — altijd geabonneerd, levert alleen data zodra die
+      // bridge ook daadwerkelijk actief is (Beheer > Instellingen)
+      client.subscribe('extern/site/+/+/status/em:0');
+      client.subscribe('extern/site/+/+/status/emdata:0');
     });
     client.on('error', (e)=>{ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; opnieuw(); });
     client.on('close', opnieuw);
     client.on('message', (topic, payload)=>{
       const parts = topic.split('/');
-      const kastId = parts[2];
       let data;
       try{ data = JSON.parse(payload.toString()); }catch(e){ return; }
+      // extern/site/<generator>/<kast>/status/em:0|emdata:0 — apart bijgehouden, bewust nog geen
+      // UI-weergave (zie het plan), dus hier alleen opslaan en meteen weer stoppen: geen van de
+      // bestaande render-/anomaly-/live-kpi-aanroepen hieronder is hierop van toepassing
+      if(parts[0]==='extern'){
+        const kastId = parts[3];
+        if(topic.endsWith('/status/emdata:0')) liveEnergyDataExtern[kastId] = { total_act: data.total_act, ts: Date.now() };
+        else liveDataExtern[kastId] = { ...data, ts: Date.now() };
+        return;
+      }
+      const kastId = parts[2];
       if(topic.endsWith('/status/emdata:0')){
         liveEnergyData[kastId] = { total_act: data.total_act, ts: Date.now() };
         if(state.openPopupKastId===kastId) renderKastPopup();

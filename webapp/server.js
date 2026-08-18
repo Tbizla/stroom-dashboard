@@ -44,9 +44,14 @@ const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
 const INFLUX_ORG = process.env.INFLUX_ORG || 'site';
 const INFLUX_BUCKET = process.env.INFLUX_BUCKET || 'stroomdata';
 // klein, apart servicetje (telegraf-herstarter/) dat de échte /var/run/docker.sock heeft en
-// precies één actie aanbiedt: telegraf herstarten met nieuwe EVENT_NAME/EVENT_EDITION-waarden —
+// precies twee acties aanbiedt: telegraf herstarten met nieuwe EVENT_NAME/EVENT_EDITION-waarden, of
+// (specs/externe-mqtt-broker-plan.md) mosquitto herstarten na een bridge-configuratiewijziging —
 // de webapp zelf heeft nooit Docker-toegang.
 const TELEGRAF_HERSTARTER_URL = process.env.TELEGRAF_HERSTARTER_URL;
+// specs/externe-mqtt-broker-plan.md: gedeeld volume met mosquitto (die 'm alleen-lezend mount op
+// /mosquitto/config/conf.d, zie docker-compose.yml) — hier schrijft de webapp bridge.conf naartoe
+const MOSQUITTO_BRIDGE_DIR = '/mosquitto-bridge';
+const MOSQUITTO_BRIDGE_FILE = path.join(MOSQUITTO_BRIDGE_DIR, 'bridge.conf');
 const GRAFANA_URL = process.env.GRAFANA_URL || 'http://grafana:3000';
 const GRAFANA_DASHBOARD_UID = process.env.GRAFANA_DASHBOARD_UID || 'stroom-dashboard-overzicht';
 const GRAFANA_REPORT_TOKEN = process.env.GRAFANA_REPORT_TOKEN;
@@ -650,6 +655,13 @@ const NOTIFICATIE_KANALEN_DEFAULT = {
   ntfy: { aan: false, topic: '', server_url: '' },
   email: { aan: false, ontvangers: '', smtp_host: '', smtp_poort: '', smtp_gebruiker: '', smtp_wachtwoord: '' },
 };
+// specs/externe-mqtt-broker-plan.md: een "kopie broker" van een externe partij als extra, apart
+// herkenbare MQTT-bron — mosquitto's eigen bridge-functionaliteit haalt 'm op (zie
+// bouwBridgeConf()/schrijfBridgeConf() hieronder), geen tweede verbinding vanuit Telegraf/de browser
+// zelf nodig. ca_cert optioneel: leeg = normale TLS met het systeem-CA-vertrouwen (werkt voor een
+// gewoon, publiek-vertrouwd certificaat), alleen invullen bij een eigen/interne CA (self-signed).
+const EXTERNE_MQTT_DEFAULT = { actief: false, host: '', poort: 8883, tls: true, ca_cert: '', username: '', wachtwoord: '' };
+const EXTERNE_MQTT_GEHEIM_VELD = 'wachtwoord';
 // welk veld per kanaal/bestemming een echt geheim is (token/wachtwoord/secret-key) — die komen nooit
 // in platte tekst terug via GET /api/instellingen, zie specs/secrets-afscherming-plan.md. Overige
 // velden (chat-ID, ntfy-topic, SFTP-host/gebruiker, S3-access-key, enz.) zijn geen geheim en blijven
@@ -683,6 +695,10 @@ function redigeerGeheimen(data) {
       delete cfg[veld];
     });
   }
+  if (kopie.externeMqtt) {
+    kopie.externeMqtt[EXTERNE_MQTT_GEHEIM_VELD + '_ingesteld'] = !!kopie.externeMqtt[EXTERNE_MQTT_GEHEIM_VELD];
+    delete kopie.externeMqtt[EXTERNE_MQTT_GEHEIM_VELD];
+  }
   return kopie;
 }
 function readInstellingen() {
@@ -692,6 +708,7 @@ function readInstellingen() {
   // maar is hier al bruikbaar: deze functie wordt pas ná volledige module-evaluatie aangeroepen
   // (route-handlers/async callbacks), niet tijdens het top-level inladen zelf
   if (!data.automatischeBackup) data.automatischeBackup = JSON.parse(JSON.stringify(AUTOMATISCHE_BACKUP_DEFAULT));
+  if (!data.externeMqtt) data.externeMqtt = JSON.parse(JSON.stringify(EXTERNE_MQTT_DEFAULT));
   return data;
 }
 function writeInstellingen(data) { fs.writeFileSync(INSTELLINGEN_FILE, JSON.stringify(data, null, 2), 'utf8'); }
@@ -743,6 +760,108 @@ app.post('/api/instellingen/telegraf-herstart', (req, res) => {
 });
 
 app.get('/api/instellingen/telegraf-herstart/status', (req, res) => res.json(telegrafHerstartJob));
+
+// ---------- Externe MQTT-broker (specs/externe-mqtt-broker-plan.md) ----------
+// `bestaand` = de al opgeslagen config (ongeredigeerd) — nodig om een leeg-gelaten wachtwoordveld
+// te kunnen laten staan i.p.v. per ongeluk te wissen, zelfde patroon als saniteerKanaalConfig()
+function saniteerExterneMqtt(cfg, bestaand) {
+  const bron = cfg || {};
+  const basis = bestaand || EXTERNE_MQTT_DEFAULT;
+  const actief = !!bron.actief;
+  const host = typeof bron.host === 'string' ? bron.host.trim() : basis.host;
+  const poort = bron.poort != null && bron.poort !== '' ? Number(bron.poort) : basis.poort;
+  if (actief) {
+    if (!host) throw new Error('host is verplicht als de externe MQTT-broker actief is');
+    if (!Number.isInteger(poort) || poort < 1 || poort > 65535) throw new Error('poort moet een geldig poortnummer zijn (1-65535)');
+  }
+  return {
+    actief,
+    host,
+    poort,
+    tls: bron.tls !== undefined ? !!bron.tls : basis.tls,
+    ca_cert: typeof bron.ca_cert === 'string' ? bron.ca_cert.trim() : (basis.ca_cert || ''),
+    username: typeof bron.username === 'string' ? bron.username.trim() : (basis.username || ''),
+    wachtwoord: saniteerGeheimVeld(bron.wachtwoord, basis.wachtwoord),
+  };
+}
+// genereert mosquitto's bridge-config-syntax — "topic site/# in 0 extern/" abonneert op site/# op de
+// EXTERNE broker en herpubliceert dat lokaal onder het extern/-prefix (dus extern/site/<generator>/
+// <kast>/status/em:0), zodat alles wat al op de lokale mosquitto leest (Telegraf, de webapp se eigen
+// /mqtt-proxy) dit vanzelf oppikt zonder zelf een tweede verbinding te hoeven opzetten
+function bouwBridgeConf(cfg) {
+  const regels = [
+    'connection extern-bron',
+    'address ' + cfg.host + ':' + cfg.poort,
+    'topic site/# in 0 extern/',
+    'cleansession true',
+    'notifications false',
+  ];
+  if (cfg.username) regels.push('remote_username ' + cfg.username);
+  if (cfg.wachtwoord) regels.push('remote_password ' + cfg.wachtwoord);
+  if (cfg.tls) {
+    // de aanwezigheid van bridge_cafile/bridge_capath is bij mosquitto zelf al wat TLS voor deze
+    // bridge-verbinding activeert, geen apart "tls aan"-directief nodig
+    if (cfg.ca_cert) {
+      regels.push('bridge_cafile /mosquitto-bridge/extern-ca.pem');
+    } else {
+      // geen eigen CA opgegeven: vertrouw het systeem-CA-bestand (werkt voor een gewoon,
+      // publiek-vertrouwd certificaat, bijv. Let's Encrypt)
+      regels.push('bridge_capath /etc/ssl/certs');
+    }
+  }
+  return regels.join('\n') + '\n';
+}
+// schrijft (of verwijdert) bridge.conf op het met mosquitto gedeelde volume — mosquitto zelf mount
+// dit alleen-lezend en pikt een wijziging pas op na een herstart, zie herstartMosquitto() hieronder
+function schrijfBridgeConf(cfg) {
+  const caPad = path.join(MOSQUITTO_BRIDGE_DIR, 'extern-ca.pem');
+  if (!cfg.actief) {
+    if (fs.existsSync(MOSQUITTO_BRIDGE_FILE)) fs.unlinkSync(MOSQUITTO_BRIDGE_FILE);
+    if (fs.existsSync(caPad)) fs.unlinkSync(caPad);
+    return;
+  }
+  if (cfg.ca_cert) fs.writeFileSync(caPad, cfg.ca_cert, 'utf8');
+  else if (fs.existsSync(caPad)) fs.unlinkSync(caPad);
+  fs.writeFileSync(MOSQUITTO_BRIDGE_FILE, bouwBridgeConf(cfg), 'utf8');
+}
+async function herstartMosquitto() {
+  if (!TELEGRAF_HERSTARTER_URL) throw new Error('TELEGRAF_HERSTARTER_URL is niet ingesteld');
+  const res = await fetch(TELEGRAF_HERSTARTER_URL + '/herstart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ doel: 'mosquitto' }),
+  });
+  if (!res.ok) throw new Error('telegraf-herstarter gaf ' + res.status + ': ' + (await res.text()));
+}
+
+// zelfde conventie als telegrafHerstartJob hierboven
+let mosquittoHerstartJob = { status: 'idle', gestartOp: null, klaarOp: null, foutmelding: null };
+
+app.put('/api/instellingen/externe-mqtt', (req, res) => {
+  if (mosquittoHerstartJob.status === 'bezig') return res.status(409).json({ error: 'er loopt al een herstart' });
+  const bestaande = readInstellingen();
+  let externeMqtt;
+  try {
+    externeMqtt = saniteerExterneMqtt(req.body, bestaande.externeMqtt);
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
+  }
+  writeInstellingen({ ...bestaande, externeMqtt });
+
+  mosquittoHerstartJob = { status: 'bezig', gestartOp: new Date().toISOString(), klaarOp: null, foutmelding: null };
+  res.json({ ok: true });
+
+  (async () => {
+    schrijfBridgeConf(externeMqtt);
+    await herstartMosquitto();
+  })().then(() => {
+    mosquittoHerstartJob = { ...mosquittoHerstartJob, status: 'klaar', klaarOp: new Date().toISOString() };
+  }).catch((e) => {
+    mosquittoHerstartJob = { ...mosquittoHerstartJob, status: 'fout', foutmelding: e.message };
+    console.error('mosquitto-herstart (externe MQTT-broker) mislukt:', e.message);
+  });
+});
+app.get('/api/instellingen/externe-mqtt/status', (req, res) => res.json(mosquittoHerstartJob));
 
 // ---------- Alert-notificaties: kanaal waarop de bestaande Grafana-alert-condities (90%-
 // belastingsdrempel per fase) een bericht sturen (zie specs/notificatiekanaal-plan.md). Twee

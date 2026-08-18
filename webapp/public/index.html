@@ -183,6 +183,50 @@
       <div id="notifErrorCard" class="addform" style="display:none;margin-top:10px">
         <span id="notifErrorInfo" style="color:var(--red)"></span>
       </div>
+
+      <h2 style="margin-top:22px" data-i18n="beheer.externeMqtt">Externe MQTT-broker</h2>
+      <div class="subtitle" style="font-size:12px;color:var(--text3);margin-bottom:12px" data-i18n="beheer.externeMqttSubtitel">Optioneel: een "kopie broker" van een externe partij als extra, apart herkenbare bron naast de lokale metingen (bijv. `bron="extern"` in InfluxDB) — de lokale opstelling (Shelly's, Telegraf, live-weergave) blijft ongewijzigd.</div>
+
+      <div class="chancard" id="externeMqttCard">
+        <div class="chancard-head">
+          <div class="toggle" id="externeMqttToggle"><div class="knob"></div></div>
+          <div class="chancard-naam" data-i18n="beheer.externeMqtt">Externe MQTT-broker</div>
+        </div>
+        <div class="chancard-body wide">
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+            <div class="field"><label data-i18n="beheer.externeMqttHost">Host</label><input id="externeMqttHost" placeholder="mqtt.externepartij.nl"></div>
+            <div class="field"><label data-i18n="beheer.externeMqttPoort">Poort</label><input id="externeMqttPoort" type="number" value="8883"></div>
+          </div>
+          <div class="field" style="display:flex;align-items:center;gap:8px;flex-direction:row">
+            <div class="toggle" id="externeMqttTlsToggle"><div class="knob"></div></div>
+            <label data-i18n="beheer.externeMqttTls" style="margin:0">TLS</label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="field"><label data-i18n="beheer.externeMqttUsername">Gebruikersnaam (optioneel)</label><input id="externeMqttUsername"></div>
+            <div class="field secretfield"><label data-i18n="beheer.externeMqttWachtwoord">Wachtwoord (optioneel)</label><input id="externeMqttWachtwoord" type="password"><a class="wislink" id="externeMqttWachtwoordWis" data-i18n="beheer.notifWissen">Wissen</a></div>
+          </div>
+          <div class="field">
+            <label data-i18n="beheer.externeMqttCaCert">Eigen CA-certificaat (optioneel — leeg laten werkt met een gewoon, publiek-vertrouwd certificaat)</label>
+            <textarea id="externeMqttCaCert" rows="4" style="font-family:var(--mono);font-size:11px;width:100%" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="addform" style="margin-top:4px">
+        <button id="externeMqttOpslaanBtn" data-i18n="beheer.instellingenOpslaan">Wijzigingen doorvoeren</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px" data-i18n="beheer.externeMqttHint">Dit herstart mosquitto kort — een paar seconden aan metingen rond dit moment (lokaal én extern) kunnen daarbij gemist worden.</div>
+      <div id="externeMqttStatusCard" class="addform" style="display:none;margin-top:10px">
+        <div class="dot busy"></div>
+        <span data-i18n="beheer.externeMqttBezig">Wordt doorgevoerd (mosquitto herstart)...</span>
+      </div>
+      <div id="externeMqttResultCard" class="addform" style="display:none;margin-top:10px">
+        <div class="dot ok"></div>
+        <span data-i18n="beheer.externeMqttKlaar">Opgeslagen en mosquitto opnieuw gestart.</span>
+      </div>
+      <div id="externeMqttErrorCard" class="addform" style="display:none;margin-top:10px">
+        <span id="externeMqttErrorInfo" style="color:var(--red)"></span>
+      </div>
     </div>
     </div>
 

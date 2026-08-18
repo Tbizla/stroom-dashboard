@@ -17,6 +17,7 @@ import { initBackup } from './backup.js';
 import { initAutomatischeBackup } from './automatische-backup.js';
 import { initInstellingen } from './instellingen.js';
 import { initNotificaties } from './notificaties.js';
+import { initExterneMqtt } from './externe-mqtt.js';
 import { initAccounts } from './accounts.js';
 import { ververOverzichtLiveWeergave } from './overzicht.js';
 import './grafieken.js';
@@ -112,6 +113,7 @@ async function bootstrapApp(){
   initAutomatischeBackup();
   initInstellingen();
   initNotificaties();
+  initExterneMqtt();
   initAccounts();
   initQrCodes();
   initLiveTicker();
