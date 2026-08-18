@@ -120,6 +120,9 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       te bouwen". Geverifieerd: volledige stack lokaal herbouwd en gezond opgestart (webapp,
       mosquitto, telegraf, telegraf-herstarter, grafana), incl. een round-trip-test dat het
       snelheidsscript vanaf zijn nieuwe pad nog steeds correct gelezen wordt door
-      `/api/shelly/configureren`. **Nog niet geverifieerd**: de GitHub Actions-workflow zelf (pas
-      te testen bij de eerstvolgende echte release-tag) en de eenmalige, handmatige
-      package-zichtbaarheid-op-publiek-zetten-stap per image (kan pas ná de eerste geslaagde run).
+      `/api/shelly/configureren`. Ook de workflow zelf inmiddels geverifieerd bij de eerste echte
+      release-tag (`v3.9.0`): alle 7 jobs slaagden. De veronderstelde "eenmalige handmatige
+      package-op-publiek-zetten-stap" bleek niet nodig — een package die via de Actions-`GITHUB_TOKEN`
+      aan een publieke repo gekoppeld wordt, erft die publieke zichtbaarheid automatisch. Bevestigd
+      met een échte, uitgelogde `docker pull ghcr.io/tbizla/stroom-dashboard-webapp:v3.9.0` — lukt
+      zonder inloggen.
