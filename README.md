@@ -177,7 +177,7 @@ vanzelf; stel je een Shelly handmatig in voor zo'n kast, voeg dan zelf `/ruw` to
 
 Voor een responsievere Live-weergave in de webapp (die zelf al direct reageert op elk binnenkomend MQTT-bericht, zonder eigen vertraging) kun je het vaste 15s-interval omzeilen met een **Shelly Script** — de ingebouwde scripting-engine van de Shelly, dus géén custom firmware nodig (en dat raden we ook af: Tasmota/ESPHome ondersteunen de Pro 3EM-hardware niet goed en kunnen 'm onbruikbaar maken). Het "ook het snelheidsscript installeren"-vinkje bij de automatische route hierboven doet dit al voor je — onderstaande stappen zijn alleen nodig bij de handmatige route.
 
-Het script staat kant-en-klaar in [`shelly/em-fast-publish.js`](shelly/em-fast-publish.js) en publiceert elke seconde de actuele meting naar hetzelfde topic, in dezelfde vorm als de standaard-push — dus zonder dat Telegraf of de webapp aangepast hoeven te worden. Handmatige installatie per Shelly (identiek script, niets aan te passen):
+Het script staat kant-en-klaar in [`webapp/shelly-script/em-fast-publish.js`](webapp/shelly-script/em-fast-publish.js) en publiceert elke seconde de actuele meting naar hetzelfde topic, in dezelfde vorm als de standaard-push — dus zonder dat Telegraf of de webapp aangepast hoeven te worden. Handmatige installatie per Shelly (identiek script, niets aan te passen):
 1. Stel eerst de "Custom MQTT prefix" in zoals hierboven — het script leest die zelf uit.
 2. Settings > Scripts > "+ Add script", plak de inhoud van `em-fast-publish.js`, Save.
 3. Zet "Run on startup" aan en start het script.
@@ -191,6 +191,19 @@ docker compose up -d --build
 ```
 
 Dit start alles in één keer: Mosquitto, Telegraf, InfluxDB, Grafana (poort 3000), het stroomdashboard zelf (poort 8080), een klein `telegraf-herstarter`-servicetje (herstart Telegraf op de achtergrond zodra je de evenementnaam/editie in Beheer wijzigt, zie sectie 12 — heeft de Docker-socket nodig, maar biedt zelf maar één vaste actie aan), en een eenmalige `lan-ip-detector`-service (zie hieronder). Niets hoeft meer los gekopieerd of ingesteld te worden — geen apart wrapperscript, gewoon `docker compose` rechtstreeks aanroepen.
+
+### Updaten zonder lokaal te bouwen
+
+Elke eigen service (webapp, mosquitto, telegraf, telegraf-herstarter, grafana, caddy, simulator) staat ook als kant-en-klare image op GitHub Container Registry (gepubliceerd door CI bij elke release-tag, zie `.github/workflows/publish-images.yml`). Voor een al-lopende installatie hoef je dus niet steeds opnieuw te clonen en te bouwen:
+
+```
+docker compose pull
+docker compose up -d
+```
+
+`docker compose pull` haalt de door `STROOM_DASHBOARD_VERSION` in `.env` gekozen versie op (leeg/ontbrekend = `latest`). Voor een lopende locatie-installatie is het verstandig `STROOM_DASHBOARD_VERSION` expliciet op de laatst geteste versie te zetten (bijv. `v3.8.0`) — dan haalt een toekomstige `docker compose pull` nooit ongemerkt een nieuwere, nog niet geteste versie op vlak voor/tijdens een evenement; je werkt pas bij wanneer je dat zelf beslist (en dan gewoon het versienummer in `.env` aanpassen vóór de volgende `pull`).
+
+`docker compose up -d --build` (dus mét `--build`) blijft gewoon werken zoals altijd — bijvoorbeeld voor lokaal ontwikkelen, of als je zelf iets aan de broncode hebt aangepast.
 
 `lan-ip-detector` detecteert het LAN-IP van deze machine vóórdat de webapp opstart en geeft dat door; bij het opstarten toont de webapp in zijn logs (`docker logs webapp`) exact welk adres je moet intypen — dat werkt dan vanaf elk apparaat op hetzelfde lokale netwerk, dus je hele crew kan tegelijk meekijken. (Lukt de detectie een keer niet, dan valt de webapp terug op alleen `localhost` in de logs en zoek je het netwerk-IP zelf op met `ip addr`/`ipconfig`.) De eerste keer: gebruik de knop **"Plattegrond uploaden"** om de veldtekening in te laden, en plaats daarna de kasten via de kalibratiemodus. Upload optioneel ook een **evenementlogo** onderaan Beheer — dat verschijnt in de header. Posities, plattegrond en logo worden centraal op de server bewaard (in een Docker-volume), dus dat hoeft maar één keer per editie, door één persoon.
 

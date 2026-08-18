@@ -95,3 +95,31 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       lid-rijen via de gedelegeerde `data-shelly-cfg-type`-binding). Bewust NIET toegevoegd aan de
       "Shelly vervangen"-flow (`maakVervangForm()`) — die vereist al een nieuw IP intypen +
       expliciet op "Vervangen" klikken, dus een misklik kan daar al niet optreden.
+- [x] **Kant-en-klare images op ghcr.io, `docker compose pull` i.p.v. lokaal bouwen.** Afgerond —
+      gebouwd conform [specs/registry-images-plan.md](specs/registry-images-plan.md). Aanleiding:
+      Mike wilde op locatie kunnen updaten zonder eerst van GitHub te clonen en lokaal te bouwen.
+      Bleek 7 services te raken, niet alleen `webapp` — elke zelf-gebouwde service (webapp,
+      mosquitto, telegraf, telegraf-herstarter, grafana, caddy, simulator) bakt zijn configbestand(en)
+      al in bij het bouwen (`COPY telegraf.conf ...`, `COPY provisioning ...`, enz.), dus zodra al
+      die images vooraf gepubliceerd zijn is er voor een update geen enkel configbestand meer lokaal
+      nodig. Nieuwe workflow `.github/workflows/publish-images.yml`: matrix-build over alle 7
+      services, triggert op een definitieve release-tag (`v*`, expliciet niet de `-alpha.N`-reeks op
+      `dev`), publiceert multi-arch (amd64+arm64) naar `ghcr.io/tbizla/stroom-dashboard-<service>`
+      met zowel het versienummer als `latest` als tag. `docker-compose.yml`: elke service kreeg
+      `image:` toegevoegd NAAST de bestaande `build:` (niet i.p.v.) — `docker compose build` bouwt
+      dan nog steeds gewoon lokaal (ontwikkelen/testen ongewijzigd), `docker compose pull` haalt in
+      plaats daarvan de gepubliceerde image op. Nieuwe `STROOM_DASHBOARD_VERSION`-variabele in `.env`
+      pint een specifieke versie (leeg = `latest`) — bewust geen automatische meeloop naar `latest`
+      voor een al-lopend evenement, zelfde "expliciete actie, geen verrassingen"-principe als de
+      Shelly-configuratie hierboven. Enige overgebleven repo-afhankelijkheid was
+      `shelly/em-fast-publish.js` (bind-mount buiten webapp's build-context) — verplaatst naar
+      `webapp/shelly-script/em-fast-publish.js` (nu gewoon meegebakken via de bestaande `COPY . .`,
+      `SHELLY_SCRIPT_FILE`-pad in server.js aangepast) zodat ook die laatste afhankelijkheid weg is.
+      Eindresultaat: een bestaande installatie updaten is voortaan alleen `docker-compose.yml` +
+      `.env`, geen repo-clone meer nodig — zie het nieuwe README §4-onderdeel "Updaten zonder lokaal
+      te bouwen". Geverifieerd: volledige stack lokaal herbouwd en gezond opgestart (webapp,
+      mosquitto, telegraf, telegraf-herstarter, grafana), incl. een round-trip-test dat het
+      snelheidsscript vanaf zijn nieuwe pad nog steeds correct gelezen wordt door
+      `/api/shelly/configureren`. **Nog niet geverifieerd**: de GitHub Actions-workflow zelf (pas
+      te testen bij de eerstvolgende echte release-tag) en de eenmalige, handmatige
+      package-zichtbaarheid-op-publiek-zetten-stap per image (kan pas ná de eerste geslaagde run).

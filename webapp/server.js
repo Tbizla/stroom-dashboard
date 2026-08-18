@@ -32,9 +32,12 @@ const LOGO_BASENAME = path.join(DATA_DIR, 'logo');
 const DEFAULT_TOPO = path.join(__dirname, 'default_topologie.json');
 const TEST_TOPO_SIMPEL = path.join(__dirname, 'test_topologie_simpel.json');
 const TEST_TOPO_UITGEBREID = path.join(__dirname, 'test_topologie_uitgebreid.json');
-// specs/shelly-auto-configuratie-plan.md: bind-mount (docker-compose.yml), niet gedupliceerd in
-// webapp/ — één bronbestand, altijd actueel
-const SHELLY_SCRIPT_FILE = '/shelly-script/em-fast-publish.js';
+// specs/registry-images-plan.md: sinds de overstap naar gepubliceerde images (webapp/Dockerfile
+// kopieert dit gewoon mee via de bestaande `COPY . .`) niet meer een los bind-mount buiten de
+// build-context — vóór die wijziging stond dit op het aparte, top-level /shelly-script/-pad
+// (specs/shelly-auto-configuratie-plan.md), specifiek om buiten webapp/'s eigen build-context te
+// blijven; nu juist bewust ERbinnen, dus gewoon onder __dirname als elk ander meegeleverd bestand.
+const SHELLY_SCRIPT_FILE = path.join(__dirname, 'shelly-script', 'em-fast-publish.js');
 
 const INFLUX_URL = process.env.INFLUX_URL || 'http://influxdb:8086';
 const INFLUX_TOKEN = process.env.INFLUX_TOKEN;
