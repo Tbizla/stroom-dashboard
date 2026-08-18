@@ -3,9 +3,9 @@
 > Voor installatie- en gebruiksinstructies (stack starten, Shelly's koppelen, Grafana-queries):
 > zie [README.md](README.md). Dit document beschrijft wat het project ís en welke features er
 > zijn. Voor de roadmap zie [roadmap.md](roadmap.md) — een index naar
-> [roadmap_v2.md](roadmap_v2.md) (afgerond) en [roadmap_v3.md](roadmap_v3.md) (actief, plus
-> ongefilterde ideeën). Houd dit bestand bij als de featurelijst wijzigt, en het bijbehorende
-> roadmap-bestand als de roadmap wijzigt.
+> [roadmap_v2.md](roadmap_v2.md) (afgerond), [roadmap_v3.md](roadmap_v3.md) (afgerond) en
+> [roadmap_v4.md](roadmap_v4.md) (actief). Houd dit bestand bij als de featurelijst wijzigt, en het
+> bijbehorende roadmap-bestand als de roadmap wijzigt.
 
 ## Omschrijving
 
@@ -163,11 +163,13 @@ zetten zonder code aan te passen.
 - Generators aanmaken/bewerken/verwijderen (naam, kVA), met een type: gewone **generator**,
   **batterij** (los opslagsysteem), of **groep** — één logische krachtbron die intern uit meerdere
   generators/accu's bestaat (bijv. een centrale met meerdere aggregaten + een batterijcontainer die
-  load-sharen of elkaar met auto-start back-uppen). Kasten koppelen aan de groep zelf, niet aan een
-  los lid; een lid heeft naam/kVA/type en, sinds de generator-EM-rework, een eigen stabiele id +
+  load-sharen of elkaar met auto-start back-uppen). Kasten koppelen meestal aan de groep zelf, maar
+  kunnen ook rechtstreeks aan één specifiek lid gekoppeld worden (zie "Kast rechtstreeks op een
+  specifiek aggregaat binnen een groep" verderop) voor een kast die fysiek niet op de gedeelde bus
+  zit; een lid heeft naam/kVA/type en, sinds de generator-EM-rework, een eigen stabiele id +
   automatisch gegenereerde `mqtt_topic_prefix` en optionele rating (A) — alleen relevant als dat lid
-  ook echt een eigen Shelly+CT-klem heeft. Leden zijn nog steeds geen losse topologie-node (niet los
-  te plaatsen op de plattegrond)
+  ook echt een eigen Shelly+CT-klem heeft. Leden zijn nog steeds geen losse topologie-node op de
+  plattegrond (geen eigen pin — zie diezelfde sectie verderop voor de precieze reden)
 - **Bestaande generators samenvoegen tot een groep**: "Generators groeperen"-knop boven de
   generatorentabel zet een selectiemodus aan (checkbox per rij, groepen zelf niet selecteerbaar —
   geen geneste groepen); bij ≥2 geselecteerd verschijnt een actiebalk met een bevestigingsdialoog

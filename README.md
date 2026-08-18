@@ -75,7 +75,7 @@ nog niet eerder gebruikte machine.)
    git clone <repo-url>
    cd event_stroom_dashboard
    ```
-   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.8.0`) — voor een nieuwe
+   Standaard sta je dan op `main`, de laatst uitgebrachte versie (`v3.9.0`) — voor een nieuwe
    locatie is dat de juiste branch. `dev` bevat nog niet-uitgebrachte ontwikkeling.
 5. **`.env` invullen**:
    ```
@@ -130,7 +130,9 @@ Alles begint leeg. Open de webapp (zie §4), je start automatisch in **Beheer**-
 
 Elke kast krijgt automatisch een `mqtt_topic_prefix` (`site/<generator_id>/<kast_id>`) — die vul je in de Shelly zelf in onder Settings > MQTT > Custom MQTT prefix.
 
-Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontainer die samen als één krachtbron optreden)? Kasten koppel je dan aan de groep zelf. Wil je ook de losse leden van die groep live volgen, geef het lid dan een eigen rating (A) in de ledentabel (uitklapbaar via de generatorregel) — het lid krijgt dan net als een kast automatisch een eigen `mqtt_topic_prefix` (`site/<generator_id>/<lid_id>`).
+Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontainer die samen als één krachtbron optreden)? Kasten koppel je dan meestal aan de groep zelf. Wil je ook de losse leden van die groep live volgen, geef het lid dan een eigen rating (A) in de ledentabel (uitklapbaar via de generatorregel) — het lid krijgt dan net als een kast automatisch een eigen `mqtt_topic_prefix` (`site/<generator_id>/<lid_id>`).
+
+Zit een kast fysiek rechtstreeks op één specifiek aggregaat binnen de groep (bijv. een CEE-stekker direct in dat aggregaat), los van de gedeelde/loadsharende bus? Dan kun je die kast ook rechtstreeks aan dat ene lid koppelen i.p.v. aan de groep als geheel — de leden van een groep staan als extra, ingesprongen opties in hetzelfde "Gevoed vanaf"-dropdown. Zo'n kast krijgt dan een eigen knoop in het Schema-tabblad (onder het aggregaat, niet onder de groep). Als de CT-klem-meting van dat aggregaat de kast niet al meetelt (afhankelijk van waar de klem fysiek zit), vink dan bij die kast **"Optellen bij generator/aggregaat"** aan — telt de kast se eigen meting softwarematig bij de aggregaat-meting op (zie de `/ruw`-subtopic-uitleg verderop in deze sectie).
 
 ## 3. Shelly's instellen (eenmalig, per kast/generator/lid)
 
@@ -138,11 +140,13 @@ Is een generator een **groep** (bijv. meerdere aggregaten + een batterijcontaine
 generator/lid (Beheer), dan verschijnt daarnaast een **⚙️ Configureren**-knop (met een
 aanvinkvakje "ook het snelheidsscript installeren", standaard aan) — die zet MQTT aan, vult server
 en het juiste MQTT-topic-prefix in, herstart de Shelly, en installeert optioneel het
-snelheidsscript (zie hieronder), allemaal in één keer. Boven de generatorentabel staat ook **"Alle
-Shelly's configureren"** voor alle apparaten met een ingevuld IP-adres tegelijk (max. 2 tegelijk,
-met een resultaatoverzicht per apparaat). Werkt alleen voor Shelly **Gen2+** (Pro 3EM). Lukt het
-een keer niet (apparaat offline, eigen apparaatwachtwoord ingesteld, ...) dan toont de melding
-waarom — de handmatige route hieronder blijft altijd als fallback werken.
+snelheidsscript (zie hieronder), allemaal in één keer. Een bevestigingsvraag staat tussen de klik
+en de daadwerkelijke actie, zodat een misklik geen instellingen naar het fysieke apparaat stuurt.
+Werkt alleen voor Shelly **Gen2+** (Pro 3EM). Lukt het een keer niet (apparaat offline, eigen
+apparaatwachtwoord ingesteld, ...) dan toont de melding waarom — de handmatige route hieronder
+blijft altijd als fallback werken. Bewust **geen** knop om meerdere apparaten in één keer te
+configureren — dat is altijd een expliciete actie per apparaat, nooit automatisch voor meerdere
+tegelijk.
 
 Handmatig (of als automatisch een keer niet werkt): op elke Shelly Pro 3EM: **Settings → MQTT**
 - **Enable MQTT**: aan
@@ -165,13 +169,20 @@ Na deze stap publiceert elke Shelly automatisch naar o.a.:
 - `site/<generator>/<kast>/status/em:0` — live spanning/stroom/vermogen per fase. Standaard op een vast interval van **~15 seconden**, dat niet via de UI te verkorten is (met tussendoor eerder een update bij een grote sprong in de meting).
 - `site/<generator>/<kast>/status/emdata:0` — cumulatieve energietelling (kWh), ongeveer eens per minuut
 
-**Uitzondering — kast met een "dubbel veld"** (zie event_dashboard.md, Topologiebeheer): heeft de
-kast een **Correctiefactor** ingevuld, dan publiceert de Shelly niet rechtstreeks naar de topics
-hierboven, maar naar dezelfde prefix met `/ruw` erachter (`site/<generator>/<kast>/ruw/status/
-em:0`/`emdata:0`) — een server-side relay leest die ruwe meting, vermenigvuldigt 'm, en publiceert
-het resultaat pas op de "echte" topic hierboven. De automatische configuratie (⚙️-knop) regelt dit
-vanzelf; stel je een Shelly handmatig in voor zo'n kast, voeg dan zelf `/ruw` toe aan de
-"Custom MQTT prefix".
+**Uitzonderingen — meetcorrectie** (zie event_dashboard.md, Topologiebeheer): in twee gevallen
+publiceert een Shelly niet rechtstreeks naar de topics hierboven, maar naar dezelfde prefix met
+`/ruw` erachter (`.../ruw/status/em:0`/`emdata:0`) — een server-side relay
+(`meetcorrectie-relay.js`) leest die ruwe meting, corrigeert 'm, en publiceert het resultaat pas op
+de "echte" topic hierboven:
+- **Kast met een "dubbel veld"**: heeft de kast een **Correctiefactor** ingevuld, dan wordt de
+  eigen meting van die kast vermenigvuldigd.
+- **Generator/aggregaat/lid met een rechtstreeks aangetapte kast erop** (zie hierboven): heeft
+  minstens één daaraan gekoppelde kast **"Optellen bij generator/aggregaat"** aangevinkt, dan wordt
+  de eigen meting van dát aggregaat/die generator/dat lid verhoogd met de eigen meting van die
+  kast(en).
+
+De automatische configuratie (⚙️-knop) regelt dit vanzelf voor het betreffende apparaat; stel je
+zo'n Shelly handmatig in, voeg dan zelf `/ruw` toe aan de "Custom MQTT prefix".
 
 ### Optioneel: sneller dan 15s met een Shelly Script
 
@@ -201,7 +212,7 @@ docker compose pull
 docker compose up -d
 ```
 
-`docker compose pull` haalt de door `STROOM_DASHBOARD_VERSION` in `.env` gekozen versie op (leeg/ontbrekend = `latest`). Voor een lopende locatie-installatie is het verstandig `STROOM_DASHBOARD_VERSION` expliciet op de laatst geteste versie te zetten (bijv. `v3.8.0`) — dan haalt een toekomstige `docker compose pull` nooit ongemerkt een nieuwere, nog niet geteste versie op vlak voor/tijdens een evenement; je werkt pas bij wanneer je dat zelf beslist (en dan gewoon het versienummer in `.env` aanpassen vóór de volgende `pull`).
+`docker compose pull` haalt de door `STROOM_DASHBOARD_VERSION` in `.env` gekozen versie op (leeg/ontbrekend = `latest`). Voor een lopende locatie-installatie is het verstandig `STROOM_DASHBOARD_VERSION` expliciet op de laatst geteste versie te zetten (bijv. `v3.9.0`) — dan haalt een toekomstige `docker compose pull` nooit ongemerkt een nieuwere, nog niet geteste versie op vlak voor/tijdens een evenement; je werkt pas bij wanneer je dat zelf beslist (en dan gewoon het versienummer in `.env` aanpassen vóór de volgende `pull`).
 
 `docker compose up -d --build` (dus mét `--build`) blijft gewoon werken zoals altijd — bijvoorbeeld voor lokaal ontwikkelen, of als je zelf iets aan de broncode hebt aangepast.
 

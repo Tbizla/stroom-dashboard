@@ -9,9 +9,9 @@ Voor de rest van de projectcontext:
 - [event_dashboard.md](event_dashboard.md) — omschrijving en featurelijst (bijhouden bij elke
   feature-wijziging, door wie die ook doorvoert)
 - [roadmap.md](roadmap.md) — index naar de roadmap-bestanden per versie:
-  [roadmap_v2.md](roadmap_v2.md) (afgerond), [roadmap_v3.md](roadmap_v3.md) (actief, incl.
-  ongefilterde ideeën) en [roadmap_v4.md](roadmap_v4.md) (nog niet gestart) — bijhouden bij elke
-  roadmap-wijziging, door wie die ook doorvoert
+  [roadmap_v2.md](roadmap_v2.md) (afgerond), [roadmap_v3.md](roadmap_v3.md) (afgerond) en
+  [roadmap_v4.md](roadmap_v4.md) (actief) — bijhouden bij elke roadmap-wijziging, door wie die ook
+  doorvoert
 
 ## Rolverdeling
 
@@ -86,7 +86,7 @@ afspraak).
 
 **Branch**: één doorlopende `dev`-branch (geen versienummer in de naam — welk MAJOR/MINOR/PATCH-
 cijfer een release straks krijgt hangt af van wat er daadwerkelijk gebouwd wordt, niet vooraf vast
-te leggen in de branchnaam). `main` = laatst uitgebrachte versie, momenteel `v3.8.0`.
+te leggen in de branchnaam). `main` = laatst uitgebrachte versie, momenteel `v3.9.0`.
 
 **Tags/releases**:
 - Bij elke afgeronde feature/roadmap-item op `dev`: direct een pre-release tag zetten op het

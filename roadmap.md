@@ -11,6 +11,7 @@
   v2 — de punten zijn incrementeel uitgebracht, van
   [v2.1.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v2.1.0) (knikpunten, het eerste
   afgeronde punt) t/m [v3.7.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v3.7.0)
-- [roadmap_v4.md](roadmap_v4.md) — volgende roadmap, nog niet gestart. Acht punten die op
-  3 augustus 2026 met Mike geprioriteerd zijn (deels vanuit v3, deels vanuit diens toenmalige
-  "Ideeën van Claude"-sectie).
+- [roadmap_v4.md](roadmap_v4.md) — actief sinds 18 augustus 2026 (vooralsnog alleen losse tweaks/
+  bugfixes tussendoor, `[x]`) — de acht oorspronkelijk geplande punten (met Mike geprioriteerd op
+  3 augustus 2026, deels vanuit v3, deels vanuit diens toenmalige "Ideeën van Claude"-sectie) staan
+  nog `[ ]`, nog niet gestart.
