@@ -355,8 +355,6 @@ aside{width:20rem;flex-shrink:0;background:var(--panel);border-left:1px solid va
 .shelly-cfg{display:flex;align-items:center;gap:0.1875rem}
 .shelly-cfg input[type=checkbox]{width:auto!important;flex-shrink:0}
 .shelly-cfg-btn{padding:0.25rem 0.375rem!important;font-size:0.75rem!important;line-height:1}
-#shellyBulkTabel td{font-size:0.75rem}
-#shellyBulkTabel .status-icoon{font-size:0.875rem}
 /* specs/shelly-vervanging-plan.md: inline toggle-formuliertje in de actiekolom (kast-/generator-/
    lid-rij), zelfde compacte stijl als .shelly-cfg hiernaast */
 .vervang-form{display:flex;align-items:center;gap:0.1875rem}

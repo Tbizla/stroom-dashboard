@@ -305,12 +305,13 @@ zetten zonder code aan te passen.
   het snelheidsscript (`shelly/em-fast-publish.js`) installeert+start — rechtstreeks via de
   Shelly Gen2+ lokale RPC-API (`http://<shelly-ip>/rpc`), server-side vanuit de webapp-container.
   Een toastje toont live voortgang en het eindresultaat (MQTT- en scriptstatus apart gerapporteerd
-  — een mislukt script blokkeert niet een geslaagde MQTT-configuratie). "Alle Shelly's
-  configureren" (boven de generatorentabel) doet dit voor alle apparaten met een ingevuld IP-adres
-  tegelijk (max. 2 tegelijk, met een resultaatoverzicht per apparaat, één trage/onbereikbare Shelly
-  blokkeert de rest niet). Idempotent: nogmaals toepassen op een al-geconfigureerd apparaat is altijd
-  veilig. Blijft een aanvulling op, geen vervanging van, de handmatige route in README §3 (fallback
-  als automatisch een keer niet lukt — bijv. een offline apparaat of een eigen apparaatwachtwoord)
+  — een mislukt script blokkeert niet een geslaagde MQTT-configuratie). Idempotent: nogmaals
+  toepassen op een al-geconfigureerd apparaat is altijd veilig. Blijft een aanvulling op, geen
+  vervanging van, de handmatige route in README §3 (fallback als automatisch een keer niet lukt —
+  bijv. een offline apparaat of een eigen apparaatwachtwoord). Bewust **geen** bulk-"alle Shelly's
+  in één keer configureren"-knop (meer gedaan is bewust: MQTT-instellingen op een fysieke Shelly
+  wijzigen gebeurt alleen na een expliciete actie per apparaat, nooit automatisch voor meerdere
+  tegelijk — die combinatie gaf in de praktijk meer problemen dan 'm opluste)
 - **Back-up** (eigen sectie onderaan de Beheer-kolom, ná Kasten — verhuisd vanuit de
   Rapportages-tab, puur een locatiewijziging): één zip-bestand voor een volledige restore op een
   andere instance. Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te

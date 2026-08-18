@@ -243,52 +243,6 @@ function vervangIndicatorHtml(vervangingen){
   return '<span class="shelly-vervang-indicator" title="'+titel+'">🔁</span>';
 }
 
-function alleShellyDoelen(){
-  const doelen = [];
-  state.TOPO.kasten.forEach(k=>{ if(k.shelly_ip) doelen.push({doelType:'kast', id:k.id, naam:k.naam, shelly_ip:k.shelly_ip}); });
-  state.TOPO.generators.forEach(g=>{
-    if(g.shelly_ip) doelen.push({doelType:'generator', id:g.id, naam:g.naam, shelly_ip:g.shelly_ip});
-    (g.leden||[]).forEach(l=>{ if(l.shelly_ip && l.id) doelen.push({doelType:'lid', id:l.id, generatorId:g.id, naam:g.naam+' — '+l.naam, shelly_ip:l.shelly_ip}); });
-  });
-  return doelen;
-}
-
-// bulk-run-nummer: voorkomt dat een oude, nog-lopende reeks (overlay dicht, meteen een nieuwe
-// bulk-run gestart) DOM-elementen van een inmiddels heropgebouwde tabel met dezelfde
-// index-gebaseerde id's zou bijwerken — elke werker checkt vóór elke schrijfactie of hij nog bij de
-// actuele run hoort.
-let shellyBulkGeneratie = 0;
-document.getElementById('shellyBulkClose').addEventListener('click', ()=>{ document.getElementById('shellyBulkOverlay').style.display = 'none'; });
-document.getElementById('shellyBulkBtn').addEventListener('click', async ()=>{
-  const doelen = alleShellyDoelen();
-  if(!doelen.length){ alert(t('beheer.shellyBulkGeenApparaten')); return; }
-  const generatie = ++shellyBulkGeneratie;
-
-  document.getElementById('shellyBulkSubtitel').textContent = t('beheer.shellyBulkSubtitel', {n: doelen.length});
-  document.getElementById('shellyBulkTabel').innerHTML = '<tr><th>'+t('beheer.thNaam')+'</th><th>IP</th><th style="width:30px"></th></tr>' +
-    doelen.map((d,i)=>'<tr><td>'+String(d.naam).replace(/</g,'&lt;')+'</td><td>'+d.shelly_ip+'</td>'+
-      '<td class="status-icoon" id="shellyBulkStatus'+i+'" title="'+t('beheer.shellyBulkWachtend')+'">⏳</td></tr>').join('');
-  document.getElementById('shellyBulkOverlay').style.display = 'flex';
-
-  let volgende = 0;
-  const MAX_TEGELIJK = 2;
-  async function werker(){
-    while(volgende < doelen.length){
-      if(generatie !== shellyBulkGeneratie) return;
-      const idx = volgende++;
-      const statusEl = document.getElementById('shellyBulkStatus'+idx);
-      if(statusEl){ statusEl.textContent = '🔄'; statusEl.title = t('beheer.shellyBulkBezig'); }
-      const resultaat = await voerShellyConfiguratieUit(doelen[idx], true);
-      if(generatie !== shellyBulkGeneratie) return;
-      if(statusEl){
-        statusEl.textContent = resultaat.ok ? '✅' : '❌';
-        statusEl.title = [resultaat.mqtt && resultaat.mqtt.melding, resultaat.script && resultaat.script.melding].filter(Boolean).join(' / ');
-      }
-    }
-  }
-  await Promise.all(Array.from({length: Math.min(MAX_TEGELIJK, doelen.length)}, werker));
-});
-
 // specs/kast-op-aggregaat-plan.md: een kast kan voortaan ook rechtstreeks aan één specifiek lid van
 // een groep gekoppeld worden (i.p.v. alleen aan de groep als geheel) — leden van een groep komen
 // daarom als extra, herkenbaar ingesprongen opties mee onder hun eigen groep

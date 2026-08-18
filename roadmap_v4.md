@@ -79,3 +79,11 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       geheugengrens onafhankelijk van de publicatiefrequentie — anders zou het optionele
       snelheidsscript (~1 bericht/seconde) over 12 uur al ruim 43.000 punten per kast opleveren. Zie
       event_dashboard.md, Grafieken-tabblad.
+- [x] **Bulk-"Alle Shelly's configureren"-knop verwijderd (tweak, geen spec nodig).** Mike: gaf in
+      de praktijk meer problemen dan 'm opluste — MQTT-instellingen op een fysieke Shelly wijzigen
+      moet alleen na een expliciete actie per apparaat gebeuren, nooit automatisch voor meerdere
+      tegelijk. Knop + overlay + de onderliggende bulk-loop (`alleShellyDoelen()`,
+      `shellyBulkBtn`-handler) verwijderd uit render-beheer.js/index.html, incl. de bijbehorende
+      ongebruikt geworden i18n-strings en CSS. De losse ⚙️-knop per kast/generator/lid (één
+      apparaat, één expliciete klik) blijft ongewijzigd staan — dat is en blijft de bedoelde manier
+      om een Shelly te (her)configureren.
