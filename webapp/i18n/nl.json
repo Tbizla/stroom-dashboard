@@ -389,6 +389,7 @@
   "beheer.groepeerNietSelecteerbaar": "Een groep kan niet in een andere groep opgenomen worden",
   "beheer.groepeerNaamVerplicht": "Naam is verplicht",
   "beheer.shellyConfigureren": "Shelly configureren",
+  "beheer.shellyConfigureerBevestiging": "Shelly van \"{naam}\" nu configureren? Dit verstuurt direct nieuwe instellingen naar het fysieke apparaat.",
   "beheer.vervangen": "Shelly/kast vervangen",
   "beheer.vervangNieuwIpPlaceholder": "Nieuw Shelly-IP",
   "beheer.vervangBevestigen": "Vervangen",

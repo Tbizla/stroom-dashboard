@@ -140,6 +140,14 @@ async function startShellyConfiguratie(doel, metScript){
 }
 document.getElementById('shellyToastSluit').addEventListener('click', ()=>{ document.getElementById('shellyToast').style.display = 'none'; });
 
+// specs/feedback_no_bulk_mqtt_shelly_config: elke ⚙️-configureer-actie pusht meteen echte
+// MQTT-instellingen naar een fysiek apparaat — een bevestiging voorkomt dat een misklik dat
+// ongemerkt doet. Bewust NIET voor de vervang-flow (maakVervangForm) hierboven: die vereist al een
+// nieuw IP intypen + expliciet op "Vervangen" klikken, dus een misklik kan daar al niet optreden.
+function bevestigShellyConfiguratie(naam){
+  return confirm(t('beheer.shellyConfigureerBevestiging', { naam }));
+}
+
 // helper voor de kast-rij (DOM-gebouwd, zie kastRij() hieronder) — generator-/lid-rijen zijn
 // string-gebouwd en gebruiken data-shelly-cfg-*-attributen + een gedelegeerde binding in
 // renderBeheer() i.p.v. deze functie, zelfde patroon-verschil als de rest van dit bestand.
@@ -154,7 +162,7 @@ function maakShellyConfigureerControl(doel){
   btn.className = 'shelly-cfg-btn';
   btn.textContent = '⚙️';
   btn.title = t('beheer.shellyConfigureren');
-  btn.onclick = ()=> startShellyConfiguratie(doel, scriptChk.checked);
+  btn.onclick = ()=>{ if(bevestigShellyConfiguratie(doel.naam)) startShellyConfiguratie(doel, scriptChk.checked); };
   wrap.appendChild(scriptChk);
   wrap.appendChild(btn);
   return wrap;
@@ -688,7 +696,7 @@ export function renderBeheer(){
         const l = g && (g.leden||[]).find(x=>x.id===id);
         naam = (g?g.naam:'') + (l?' — '+l.naam:'');
       }
-      startShellyConfiguratie({doelType:type, id, generatorId, naam}, scriptChk ? scriptChk.checked : true);
+      if(bevestigShellyConfiguratie(naam)) startShellyConfiguratie({doelType:type, id, generatorId, naam}, scriptChk ? scriptChk.checked : true);
     };
   });
 

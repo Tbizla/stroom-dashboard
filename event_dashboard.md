@@ -308,10 +308,12 @@ zetten zonder code aan te passen.
   — een mislukt script blokkeert niet een geslaagde MQTT-configuratie). Idempotent: nogmaals
   toepassen op een al-geconfigureerd apparaat is altijd veilig. Blijft een aanvulling op, geen
   vervanging van, de handmatige route in README §3 (fallback als automatisch een keer niet lukt —
-  bijv. een offline apparaat of een eigen apparaatwachtwoord). Bewust **geen** bulk-"alle Shelly's
-  in één keer configureren"-knop (meer gedaan is bewust: MQTT-instellingen op een fysieke Shelly
-  wijzigen gebeurt alleen na een expliciete actie per apparaat, nooit automatisch voor meerdere
-  tegelijk — die combinatie gaf in de praktijk meer problemen dan 'm opluste)
+  bijv. een offline apparaat of een eigen apparaatwachtwoord). Een bevestigingsvraag ("Shelly van
+  ... nu configureren?") staat tussen de ⚙️-klik en de daadwerkelijke actie, zodat een misklik geen
+  instellingen naar een fysiek apparaat stuurt. Bewust **geen** bulk-"alle Shelly's in één keer
+  configureren"-knop: MQTT-instellingen op een fysieke Shelly wijzigen gebeurt alleen na een
+  expliciete actie per apparaat, nooit automatisch voor meerdere tegelijk — die combinatie gaf in de
+  praktijk meer problemen dan 'm opluste
 - **Back-up** (eigen sectie onderaan de Beheer-kolom, ná Kasten — verhuisd vanuit de
   Rapportages-tab, puur een locatiewijziging): één zip-bestand voor een volledige restore op een
   andere instance. Topologie (JSON) en plattegrond/logo staan altijd aangevinkt (niet uit te

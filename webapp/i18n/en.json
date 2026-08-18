@@ -389,6 +389,7 @@
   "beheer.groepeerNietSelecteerbaar": "A group can't be nested inside another group",
   "beheer.groepeerNaamVerplicht": "Name is required",
   "beheer.shellyConfigureren": "Configure Shelly",
+  "beheer.shellyConfigureerBevestiging": "Configure the Shelly for \"{naam}\" now? This sends new settings to the physical device right away.",
   "beheer.vervangen": "Replace Shelly/box",
   "beheer.vervangNieuwIpPlaceholder": "New Shelly IP",
   "beheer.vervangBevestigen": "Replace",

@@ -87,3 +87,11 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       ongebruikt geworden i18n-strings en CSS. De losse ⚙️-knop per kast/generator/lid (één
       apparaat, één expliciete klik) blijft ongewijzigd staan — dat is en blijft de bedoelde manier
       om een Shelly te (her)configureren.
+- [x] **Bevestigingsvraag bij de ⚙️-configureerknop (tweak, geen spec nodig).** Vervolg op de
+      bulk-knop-verwijdering hierboven — Mike wilde ook op de overgebleven, losse ⚙️-knop een
+      confirm() ertussen, zodat een misklik niet direct instellingen naar een fysiek apparaat
+      stuurt. Nieuwe gedeelde helper `bevestigShellyConfiguratie()` (render-beheer.js), gebruikt op
+      beide bestaande aanroeppaden (kast-rijen via `maakShellyConfigureerControl()`, generator-/
+      lid-rijen via de gedelegeerde `data-shelly-cfg-type`-binding). Bewust NIET toegevoegd aan de
+      "Shelly vervangen"-flow (`maakVervangForm()`) — die vereist al een nieuw IP intypen +
+      expliciet op "Vervangen" klikken, dus een misklik kan daar al niet optreden.
