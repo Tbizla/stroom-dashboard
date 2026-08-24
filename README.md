@@ -444,7 +444,7 @@ die TLS-terminatie + reverse-proxy naar de webapp verzorgt.
 
 1. **DNS**: een domein/subdomein dat al naar het publieke IP van deze machine wijst (nodig vóórdat
    Caddy een Let's Encrypt-certificaat kan aanvragen).
-2. **`.env`**: vul `PUBLIC_DOMEIN` in (bijv. `nieuwehaven.stroomdash.nl`) en zorg dat
+2. **`.env`**: vul `PUBLIC_DOMAIN` in (bijv. `nieuwehaven.stroomdash.nl`) en zorg dat
    `INTERNAL_API_TOKEN` een eigen, echte random string heeft — niet de placeholder uit
    `.env.example` laten staan (die wordt genegeerd en telt als "niet ingesteld", waardoor de
    `simulator` en een aangezet ntfy-notificatiekanaal blijven 401'en; zie
@@ -472,7 +472,7 @@ die TLS-terminatie + reverse-proxy naar de webapp verzorgt.
      blootstelling (1883 heeft zelfs `allow_anonymous true`, bedoeld voor het vertrouwde lokale
      festivalnetwerk) en zijn niet nodig voor de HQ-Locaties-/Live-functionaliteit (die loopt via de
      webapp zelf). Alleen lokaal netwerk.
-5. Elke locatie-instance krijgt zijn eigen Caddy/`PUBLIC_DOMEIN` in dezelfde stack — er is geen
+5. Elke locatie-instance krijgt zijn eigen Caddy/`PUBLIC_DOMAIN` in dezelfde stack — er is geen
    gedeelde HQ-infrastructuur; "Beheer openen" vanaf de HQ-Locaties-pagina (Rapportages-tabblad)
    opent gewoon het eigen loginscherm van die andere instance.
 

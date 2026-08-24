@@ -69,15 +69,15 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       ronde-2-productiefixes die in diezelfde commits zaten (die hoefden niet te wijzigen, zie
       hieronder). `trust proxy` staat weer aan (terecht: Caddy is de enige, vertrouwde hop ervoor).
       Bij het herstellen bleek een **nieuwe bug** (nooit eerder end-to-end getest, want dat kon pas
-      nadat de service ooit echt draaide): `docker-compose.yml` zette `PUBLIC_DOMEIN` altijd als
-      env-var op de `caddy`-service, ook leeg — Caddy's eigen `{$PUBLIC_DOMEIN:localhost}`-fallback
+      nadat de service ooit echt draaide): `docker-compose.yml` zette `PUBLIC_DOMAIN` altijd als
+      env-var op de `caddy`-service, ook leeg — Caddy's eigen `{$PUBLIC_DOMAIN:localhost}`-fallback
       in `caddy/Caddyfile` valt alleen terug op de default als de variabele volledig ontbreekt, niet
-      als 'm leeg-maar-gezet is, dus zonder een ingevuld `PUBLIC_DOMEIN` in `.env` crashte Caddy in
+      als 'm leeg-maar-gezet is, dus zonder een ingevuld `PUBLIC_DOMAIN` in `.env` crashte Caddy in
       een restart-loop ("unrecognized global option: reverse_proxy" — een lege site-adres-regel werd
       als het globale-opties-blok geparsed). Gefixt door de default op compose-niveau te leggen
-      (`PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-localhost}`). Geverifieerd met een echte
+      (`PUBLIC_DOMAIN=${PUBLIC_DOMAIN:-localhost}`). Geverifieerd met een echte
       `docker compose --profile publiek up -d`: Caddy start en blijft stabiel draaien (self-signed
-      "localhost"-certificaat zonder een echt `PUBLIC_DOMEIN`), `https://localhost` proxied correct
+      "localhost"-certificaat zonder een echt `PUBLIC_DOMAIN`), `https://localhost` proxied correct
       naar de webapp, inloggen via Caddy geeft een `secure`-cookie terwijl rechtstreeks inloggen op
       `http://localhost:8080` tegelijkertijd een niet-secure cookie blijft geven (beide toegangswegen
       werken naast elkaar), een vervalste `X-Forwarded-For` via Caddy heeft geen effect op de
@@ -119,7 +119,7 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       per verbindingspoging teruggezet, geverifieerd met een echte mosquitto-herstart tijdens een
       actieve verbinding (stip viel binnen 4s terug naar "niet verbonden" en herstelde zichzelf 3s
       later, zonder page-reload); (3) de sessiecookie's `secure`-vlag hing af van een globale
-      `PUBLIC_DOMEIN`-schakelaar i.p.v. het daadwerkelijke protocol van de binnenkomende request —
+      `PUBLIC_DOMAIN`-schakelaar i.p.v. het daadwerkelijke protocol van de binnenkomende request —
       nu gebaseerd op `req.secure` (via `req.sessionOptions`, cookie-session's per-request
       cookie-optiehaak), geverifieerd dat zowel een gewone HTTP-request (geen `secure`-vlag, geen
       loginloop) als een gesimuleerde `X-Forwarded-Proto: https`-request (wél `secure`-vlag) correct
@@ -138,7 +138,7 @@ afspraken" in [CLAUDE.md](CLAUDE.md)).
       `docker compose --profile publiek up -d`, lokaal ontwikkelen blijft gewoon op
       `http://localhost:8080`) voor als deze locatie-instance ook over het publieke internet
       bereikbaar moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld
-      `PUBLIC_DOMEIN`, websocket-upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config.
+      `PUBLIC_DOMAIN`, websocket-upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config.
       `trust proxy` staat aan (`app.set('trust proxy', 1)`) — Caddy is de enige vertrouwde hop ervoor
       en zet `X-Forwarded-Proto`/`-For` zelf correct, waardoor zowel de secure-cookie-vlag
       (`req.secure`) als de IP-rate-limiters kloppen voor beide toegangswegen tegelijk (rechtstreeks

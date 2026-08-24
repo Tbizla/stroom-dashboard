@@ -4,7 +4,7 @@ const MQTT_URL = process.env.MQTT_URL || 'mqtt://mosquitto:1883';
 const TOPOLOGY_URL = process.env.TOPOLOGY_URL || 'http://webapp:8080/api/topology';
 const STATUS_URL = process.env.SIMULATOR_STATUS_URL || 'http://webapp:8080/api/simulator/status';
 const INTERVAL_MS = parseInt(process.env.INTERVAL_MS || '5000', 10);
-const PIEK_KANS = parseFloat(process.env.PIEK_KANS || '0.01'); // kans per tik dat een kast een belastingspiek krijgt
+const PEAK_CHANCE = parseFloat(process.env.PEAK_CHANCE || '0.01'); // kans per tik dat een kast een belastingspiek krijgt
 // specs/toegang-van-buitenaf-diagnose.md: de webapp's /api/*-laag zit sinds de login-laag achter
 // een sessie-gate — de simulator heeft geen browser-sessie, dus dit gedeelde service-secret
 // (zelfde soort patroon als INFLUX_TOKEN aan de webapp-kant) i.p.v. deze twee endpoints publiek te laten
@@ -165,7 +165,7 @@ async function main() {
       if (berekend[k.id]) return berekend[k.id];
 
       let fractie = state[k.id] + rand(-0.04, 0.04);
-      if (Math.random() < PIEK_KANS) fractie += rand(0.3, 0.6); // simuleer een piek richting overbelasting
+      if (Math.random() < PEAK_CHANCE) fractie += rand(0.3, 0.6); // simuleer een piek richting overbelasting
       fractie = Math.max(0.05, Math.min(1.15, fractie));
       state[k.id] = fractie;
 
@@ -204,7 +204,7 @@ async function main() {
       (gen.leden || []).forEach(lid => {
         if (lid.rating_a == null || !lid.mqtt_topic_prefix || !lid.id) return;
         let fractie = (state[lid.id] != null ? state[lid.id] : rand(0.2, 0.5)) + rand(-0.04, 0.04);
-        if (Math.random() < PIEK_KANS) fractie += rand(0.3, 0.6);
+        if (Math.random() < PEAK_CHANCE) fractie += rand(0.3, 0.6);
         fractie = Math.max(0.05, Math.min(1.15, fractie));
         state[lid.id] = fractie;
         const eigenBasis = fractie * lid.rating_a;

@@ -167,7 +167,7 @@ services:
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
       # gebruikt hier alleen als signaal "draait achter Caddy/TLS" (secure-cookie-vlag, server.js) —
       # niet voor routering, dat regelt caddy/Caddyfile zelf
-      - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-}
+      - PUBLIC_DOMAIN=${PUBLIC_DOMAIN:-}
     volumes:
       - webapp-data:/data
       - lan-ip-shared:/shared:ro
@@ -191,7 +191,7 @@ services:
       - MQTT_URL=mqtt://mosquitto:1883
       - TOPOLOGY_URL=http://webapp:8080/api/topology
       - INTERVAL_MS=1000
-      - PIEK_KANS=0.01
+      - PEAK_CHANCE=0.01
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN}
 
   # optioneel, alleen nodig zodra deze locatie-instance van buitenaf (publiek internet) bereikbaar
@@ -211,14 +211,14 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      # let op: NIET ${PUBLIC_DOMEIN:-} — dat zet de env-var altijd (al is 't leeg), en Caddy's eigen
-      # `{$PUBLIC_DOMEIN:localhost}`-placeholder valt alleen terug op de default als de variabele
+      # let op: NIET ${PUBLIC_DOMAIN:-} — dat zet de env-var altijd (al is 't leeg), en Caddy's eigen
+      # `{$PUBLIC_DOMAIN:localhost}`-placeholder valt alleen terug op de default als de variabele
       # volledig ontbreekt, niet als 'm leeg-maar-gezet is. Zonder deze `:-localhost` hier crasht
       # Caddy in een restart-loop ("unrecognized global option: reverse_proxy", want een lege
-      # site-adres-regel wordt als het globale-opties-blok geparsed) zodra PUBLIC_DOMEIN niet in
+      # site-adres-regel wordt als het globale-opties-blok geparsed) zodra PUBLIC_DOMAIN niet in
       # .env staat — ontdekt bij het herstellen van deze service (caddy-herstel-plan.md), was
       # kennelijk nooit end-to-end getest zonder een echt ingevuld domein.
-      - PUBLIC_DOMEIN=${PUBLIC_DOMEIN:-localhost}
+      - PUBLIC_DOMAIN=${PUBLIC_DOMAIN:-localhost}
     volumes:
       - caddy-data:/data
       - caddy-config:/config

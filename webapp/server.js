@@ -159,7 +159,7 @@ app.use(cookieSession({
   // vanaf de camera-app, geen cross-site POST) de cookie gewoon meesturen
   maxAge: 30 * 24 * 3600 * 1000,
   sameSite: 'lax',
-  // vervolgticket-toegang-van-buitenaf-ronde2.md §3: NIET statisch aan PUBLIC_DOMEIN koppelen —
+  // vervolgticket-toegang-van-buitenaf-ronde2.md §3: NIET statisch aan PUBLIC_DOMAIN koppelen —
   // zodra die env-var gezet is (publieke Caddy-uitrol), kreeg een crew-telefoon die gewoon
   // rechtstreeks via http://<lan-ip>:8080 verbindt (nog steeds de bedoeling op het festivalnetwerk,
   // zie ports-comment bij de webapp-service in docker-compose.yml) nooit een Set-Cookie: inloggen
@@ -176,7 +176,7 @@ app.use(cookieSession({
 // bepalen i.p.v. één keer statisch bij het opzetten van de middleware: `req.secure` volgt met
 // `trust proxy` (hierboven) correct Caddy's `X-Forwarded-Proto`-header als die er is, en is anders
 // gewoon `false` voor een rechtstreekse HTTP-request op 8080 — dus altijd correct, voor beide
-// toegangswegen tegelijk, zonder een globale PUBLIC_DOMEIN-aan/uit-schakelaar.
+// toegangswegen tegelijk, zonder een globale PUBLIC_DOMAIN-aan/uit-schakelaar.
 app.use((req, res, next) => { req.sessionOptions.secure = req.secure; next(); });
 
 function readAccounts() {

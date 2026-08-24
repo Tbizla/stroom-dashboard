@@ -134,7 +134,7 @@ zetten zonder code aan te passen.
 - **TLS/reverse-proxy**: optionele `caddy`-service (alleen gestart met
   `docker compose --profile publiek up -d`, lokaal ontwikkelen blijft gewoon op
   `http://localhost:8080`) voor als deze locatie-instance ook over het publieke internet bereikbaar
-  moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld `PUBLIC_DOMEIN`, websocket-
+  moet zijn — automatisch Let's Encrypt-certificaat via een ingesteld `PUBLIC_DOMAIN`, websocket-
   upgrades (inclusief `/mqtt`) werken vanzelf zonder aparte config. De sessiecookie wordt
   automatisch `secure`-only zodra verkeer via Caddy binnenkomt (volgt `req.secure`)
 - **Rolverdeling (Editor/Viewer)**: elk account heeft een rol, in te stellen via een dropdown in de
