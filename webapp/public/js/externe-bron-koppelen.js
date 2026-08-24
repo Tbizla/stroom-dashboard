@@ -45,6 +45,10 @@ function openPopover(kast, ankerEl, opKoppel){
   const pop = document.createElement('div');
   pop.className = 'koppelpop';
   pop.style.position = 'fixed';
+  // vervolgticket-koppelpop-positionering.md: pas zichtbaar maken ná de eerste positionering
+  // hieronder — anders flitst 'm eerst op zijn (nog lege) skelet-hoogte op, vóórdat herteken() de
+  // lijst gevuld heeft
+  pop.style.visibility = 'hidden';
   pop.innerHTML =
     '<div class="koppelpop-head">'+
       '<input placeholder="'+t('beheer.externBronZoekPlaceholder')+'" id="koppelpopZoek">'+
@@ -58,9 +62,28 @@ function openPopover(kast, ankerEl, opKoppel){
     '<div class="koppelpop-list" id="koppelpopList"></div>';
   document.body.appendChild(pop);
 
-  const ankerRect = ankerEl.getBoundingClientRect();
-  pop.style.left = Math.min(ankerRect.left, window.innerWidth - pop.offsetWidth - 12) + 'px';
-  pop.style.top = Math.min(ankerRect.bottom + 4, window.innerHeight - pop.offsetHeight - 12) + 'px';
+  // vervolgticket-koppelpop-positionering.md: de eerdere versie positioneerde vóórdat herteken()
+  // (async, wacht op GET /api/externe-bronnen) de lijst gevuld had — pop.offsetHeight was op dat
+  // moment alleen de kop, dus de "blijf binnen het scherm"-clamp rekende met een veel te lage
+  // hoogte en de popover liep alsnog voorbij de onderrand van het scherm zodra de lijst erbij kwam
+  // (onbereikbaar/onbedienbaar, want ook de klik-buiten-sluit-listener zag 'm dan als "erbuiten").
+  // Nu herroepen vanuit herteken() zelf, ná elke inhoudswijziging (ook bij zoeken/filteren, want de
+  // hoogte verandert dan mee) — en als het onder de knop niet past, probeert 'm eerst erboven i.p.v.
+  // gewoon van het scherm af te laten hangen.
+  function positioneer(){
+    const ankerRect = ankerEl.getBoundingClientRect();
+    const marge = 12;
+    let left = Math.min(ankerRect.left, window.innerWidth - pop.offsetWidth - marge);
+    left = Math.max(marge, left);
+    let top = ankerRect.bottom + 4;
+    if(top + pop.offsetHeight + marge > window.innerHeight){
+      const bovenoptie = ankerRect.top - 4 - pop.offsetHeight;
+      top = bovenoptie >= marge ? bovenoptie : Math.max(marge, window.innerHeight - pop.offsetHeight - marge);
+    }
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.visibility = 'visible';
+  }
 
   let schemaFilter = 'alles';
   let zoekQuery = '';
@@ -110,9 +133,11 @@ function openPopover(kast, ankerEl, opKoppel){
       leeg.style.padding = '.75rem';
       leeg.textContent = t('beheer.externBronGeenResultaten');
       lijst.appendChild(leeg);
+      positioneer();
       return;
     }
     gefilterd.forEach(b => lijst.appendChild(bouwRij(b)));
+    positioneer();
   }
 
   pop.querySelectorAll('.koppelpop-filters .chip').forEach(chip=>{
