@@ -11,7 +11,9 @@
   v2 — de punten zijn incrementeel uitgebracht, van
   [v2.1.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v2.1.0) (knikpunten, het eerste
   afgeronde punt) t/m [v3.7.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v3.7.0)
-- [roadmap_v4.md](roadmap_v4.md) — actief sinds 18 augustus 2026 (vooralsnog alleen losse tweaks/
-  bugfixes tussendoor, `[x]`) — de acht oorspronkelijk geplande punten (met Mike geprioriteerd op
-  3 augustus 2026, deels vanuit v3, deels vanuit diens toenmalige "Ideeën van Claude"-sectie) staan
-  nog `[ ]`, nog niet gestart.
+- [roadmap_v4.md](roadmap_v4.md) — actief sinds 18 augustus 2026. Los van de acht oorspronkelijk
+  geplande punten (met Mike geprioriteerd op 3 augustus 2026, deels vanuit v3, deels vanuit diens
+  toenmalige "Ideeën van Claude"-sectie, nog `[ ]`, nog niet gestart) kwam er tussendoor een
+  volledige feature-golf bij: externe MQTT-broker (databron, live-weergave, handmatig koppelen) +
+  optellen onderliggende kasten, uitgebracht als
+  [v3.10.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v3.10.0)

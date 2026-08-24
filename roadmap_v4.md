@@ -1,13 +1,16 @@
-# Event Stroom-Dashboard — roadmap v4 (nog niet gestart)
+# Event Stroom-Dashboard — roadmap v4 (actief)
 
 > Voor omschrijving en featurelijst: zie [event_dashboard.md](event_dashboard.md). Overzicht van
 > alle roadmap-bestanden: [roadmap.md](roadmap.md).
 
-## Roadmap v4 (nog niet gestart)
+## Roadmap v4 (actief sinds 18 augustus 2026)
 
-Bewust nog niet oppakken — komt aan de beurt ná de huidige [roadmap_v3.md](roadmap_v3.md). Volgt
-dezelfde werkafspraak (spec/plan eerst, dan pas bouwen — zie "Overige afspraken" in
-[CLAUDE.md](CLAUDE.md)) zodra dat zover is.
+Actief sinds [roadmap_v3.md](roadmap_v3.md) afgerond werd. Volgt dezelfde werkafspraak (spec/plan
+eerst, dan pas bouwen — zie "Overige afspraken" in [CLAUDE.md](CLAUDE.md)). De oorspronkelijk
+geplande acht punten hieronder (met Mike geprioriteerd op 3 augustus 2026) staan nog open; het
+werk dat inmiddels wél is opgeleverd (externe MQTT-broker, koppelen, optellen onderliggende
+kasten — uitgebracht als [v3.10.0](https://github.com/Tbizla/stroom-dashboard/releases/tag/v3.10.0))
+kwam er los van tussendoor bij, niet uit deze oorspronkelijke acht.
 
 > "v4" is hier, net als bij v3, een roadmap-generatienaam, geen belofte dat deze items als
 > `v4.0.0` uitkomen — sinds de overstap naar echte [semantic versioning](CLAUDE.md)
