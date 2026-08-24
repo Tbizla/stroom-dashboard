@@ -92,11 +92,14 @@ export async function verbindMqtt(){
       dot.className='dot ok'; label.textContent=t('header.connVerbonden');
       client.subscribe('site/+/+/status/em:0');
       client.subscribe('site/+/+/status/emdata:0');
-      // specs/externe-mqtt-broker-plan.md: optionele mosquitto-bridge herpubliceert een externe
-      // "kopie broker" lokaal onder dit prefix — altijd geabonneerd, levert alleen data zodra die
-      // bridge ook daadwerkelijk actief is (Beheer > Instellingen)
-      client.subscribe('extern/site/+/+/status/em:0');
-      client.subscribe('extern/site/+/+/status/emdata:0');
+      // specs/externe-shelly-koppelen-plan.md: de externe (shellybeheerder/Rentman-)broker dekt de
+      // hele klantsite met zijn eigen naamgeving (<ruwe-id>@<naam>), niet Mikes site/<generator>/
+      // <kast>-vorm — dus hier breed op "extern/#" abonneren, precies zoals de bridge zelf (server.js
+      // se bouwBridgeConf(), inmiddels "topic # in 0 extern/") en extern-bron-registry.js (server-
+      // side) dat ook doen. Was eerder abusievelijk nog het smallere "extern/site/+/+/status/em:0" —
+      // dat matcht de echte apparaat-topics domweg nooit (bugfix, gevonden na een meldering van Mike
+      // dat er geen externe data binnenkwam ondanks een actieve, verbonden bridge).
+      client.subscribe('extern/#');
       client.subscribe(BRIDGE_STATE_TOPIC);
     });
     client.on('error', (e)=>{ dot.className='dot err'; label.textContent=t('header.connFout')+e.message; opnieuw(); });
@@ -131,6 +134,11 @@ export async function verbindMqtt(){
       // "vervangt lokaal", zie externIsPrimair()) — in de andere modi is dit puur een extra,
       // niet-primaire databron (specs/externe-mqtt-ui-plan.md)
       if(parts[0]==='extern'){
+        // "extern/#" levert ook alle andere subtopics die zo'n apparaat publiceert (bijv. Shelly's
+        // eigen .../status/switch:0, .../online, .../events/rpc) — alleen de twee bekende EM-
+        // subtopics zijn relevant hier, de rest genegeerd (voorkomt zowel onnodige her-renders als
+        // dat vreemde velden per ongeluk in liveDataExtern terechtkomen)
+        if(!topic.endsWith('/status/em:0') && !topic.endsWith('/status/emdata:0')) return;
         const gevonden = vindRuweBronInTopic(topic);
         const gekoppeldeKast = gevonden ? kastVoorRuweBron(gevonden.ruwe_id) : null;
         if(!gekoppeldeKast) return;
