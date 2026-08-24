@@ -206,6 +206,24 @@ export function statusClass(node){
   return s ? 'status-'+s : '';
 }
 
+// ---------- specs/externe-shelly-koppelen-plan.md: een ruwe externe bron ("<ruwe-id>@<naam>",
+// site-breed, niet Mikes eigen site/<generator>/<kast>-vorm) wordt aan een kast gekoppeld via
+// kast.externe_bron_id — mqtt.js gebruikt dit i.p.v. de oude (onjuiste) aanname dat een extern/#-
+// topic 1-op-1 Mikes eigen topic-structuur volgt ----------
+// zelfde extractie als extern-bron-registry.js (server-side): een "<ruwe-id>@<naam>"-segment ergens
+// in het topic-pad, geen vaste positie aangenomen
+export function vindRuweBronInTopic(topic){
+  const segmenten = topic.split('/');
+  for(const seg of segmenten){
+    const m = seg.match(/^([^@/]+)@(.+)$/);
+    if(m) return { ruwe_id: m[1], naam: m[2] };
+  }
+  return null;
+}
+export function kastVoorRuweBron(ruweId){
+  return state.TOPO.kasten.find(k => k.externe_bron_id === ruweId) || null;
+}
+
 // kinderen van een generator (top-level, zonder parent-kast) of van een kast (via 'parent') —
 // zelfde boomdefinitie als het schema-tabblad, zie schemaChildrenOf in render-schema.js
 export function listChildrenOf(node){

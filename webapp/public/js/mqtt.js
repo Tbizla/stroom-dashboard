@@ -19,7 +19,7 @@ import { ververOverzichtLiveWeergave } from './overzicht.js';
 import { ververKastStatusPagina } from './kaststatus.js';
 import { verwerkAnomalyDetectie } from './anomaly.js';
 import { verwerkGrafiekenLiveMessage } from './grafieken.js';
-import { maxFaseStroom, nodeById, externIsPrimair } from './topology.js';
+import { maxFaseStroom, externIsPrimair, vindRuweBronInTopic, kastVoorRuweBron } from './topology.js';
 import { ververLiveKpi } from './live-kpi.js';
 import { verwerkLiveSparkPunt } from './live-spark.js';
 
@@ -120,19 +120,26 @@ export async function verbindMqtt(){
       const parts = topic.split('/');
       let data;
       try{ data = JSON.parse(payload.toString()); }catch(e){ return; }
-      // extern/site/<generator>/<kast>/status/em:0|emdata:0 — apart bijgehouden (liveDataExtern/
-      // liveEnergyDataExtern, state.js), zodat een externe meting nooit de lokale overschrijft.
-      // anomaly-detectie/sparklijn draaien hier alleen op mee als deze node's PRIMAIRE weergave
-      // ook daadwerkelijk extern is (modus "vervangt lokaal", zie externIsPrimair()) — in de
-      // andere modi is dit puur een extra, niet-primaire databron (specs/externe-mqtt-ui-plan.md)
+      // extern/...-berichten dekken de HELE klantsite (shellybeheerder/Rentman-naamgeving), niet
+      // Mikes eigen site/<generator>/<kast>-structuur — specs/externe-shelly-koppelen-plan.md.
+      // vindRuweBronInTopic() haalt het "<ruwe-id>@<naam>"-segment eruit, kastVoorRuweBron() zoekt
+      // via het handmatig gekoppelde kast.externe_bron_id-veld welke kast (indien enige) dat is.
+      // Nog niet gekoppeld = niets om liveDataExtern mee te vullen (wél al zichtbaar in de
+      // koppel-popover, die leest zijn eigen lijst via extern-bron-registry.js/GET
+      // /api/externe-bronnen, niet via deze live MQTT-stream). anomaly-detectie/sparklijn draaien
+      // hier alleen op mee als deze kast se PRIMAIRE weergave ook daadwerkelijk extern is (modus
+      // "vervangt lokaal", zie externIsPrimair()) — in de andere modi is dit puur een extra,
+      // niet-primaire databron (specs/externe-mqtt-ui-plan.md)
       if(parts[0]==='extern'){
-        const kastId = parts[3];
+        const gevonden = vindRuweBronInTopic(topic);
+        const gekoppeldeKast = gevonden ? kastVoorRuweBron(gevonden.ruwe_id) : null;
+        if(!gekoppeldeKast) return;
+        const kastId = gekoppeldeKast.id;
         if(topic.endsWith('/status/emdata:0')){
           liveEnergyDataExtern[kastId] = { total_act: data.total_act, ts: Date.now() };
         } else {
           liveDataExtern[kastId] = { ...data, ts: Date.now() };
-          const node = nodeById(kastId);
-          if(node && externIsPrimair(node)){
+          if(externIsPrimair(gekoppeldeKast)){
             verwerkAnomalyDetectie(kastId, maxFaseStroom(liveDataExtern[kastId]));
             verwerkLiveSparkPunt(kastId, maxFaseStroom(liveDataExtern[kastId]));
           }

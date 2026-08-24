@@ -14,6 +14,7 @@ const sharp = require('sharp');
 const { configureerShelly } = require('./shelly-rpc');
 const meetcorrectieRelay = require('./meetcorrectie-relay');
 const externBridgeWatchdog = require('./extern-bridge-watchdog');
+const externBronRegistry = require('./extern-bron-registry');
 
 // letterlijke placeholder-waarde uit .env.example voor elke "vul zelf een random string in"-
 // env-var (SESSION_SECRET/INTERNAL_API_TOKEN) — een installatie die 'm per ongeluk laat staan mag
@@ -799,15 +800,18 @@ function saniteerExterneMqtt(cfg, bestaand) {
     alert_bij_wegvallen: bron.alert_bij_wegvallen !== undefined ? !!bron.alert_bij_wegvallen : (basis.alert_bij_wegvallen !== false),
   };
 }
-// genereert mosquitto's bridge-config-syntax — "topic site/# in 0 extern/" abonneert op site/# op de
-// EXTERNE broker en herpubliceert dat lokaal onder het extern/-prefix (dus extern/site/<generator>/
-// <kast>/status/em:0), zodat alles wat al op de lokale mosquitto leest (Telegraf, de webapp se eigen
-// /mqtt-proxy) dit vanzelf oppikt zonder zelf een tweede verbinding te hoeven opzetten
+// genereert mosquitto's bridge-config-syntax. specs/externe-shelly-koppelen-plan.md: "topic # in 0
+// extern/" i.p.v. het eerdere "topic site/# in 0 extern/" — de aanname dat de externe (shellybeheerder/
+// Rentman-)broker Mikes eigen site/<generator>/<kast>-topicstructuur zou volgen bleek niet te kloppen,
+// die partij dekt de HELE klantsite met zijn eigen naamgeving (<mac-of-rentman-id>@<naam>). Abonneert
+// daarom op alles en herpubliceert dat lokaal onder het extern/-prefix — extern-bron-registry.js pikt
+// daaruit de <ruwe-id>@<naam>-segmenten op, mqtt.js matcht ze aan een kast via het nieuwe
+// kast.externe_bron_id-veld (niet meer aan de topic-positie zelf).
 function bouwBridgeConf(cfg) {
   const regels = [
     'connection extern-bron',
     'address ' + cfg.host + ':' + cfg.poort,
-    'topic site/# in 0 extern/',
+    'topic # in 0 extern/',
     'cleansession true',
     // specs/externe-mqtt-ui-plan.md ("nu meteen meebouwen"): notifications true + een vaste
     // remote_clientid laat mosquitto de bridge-verbindingsstatus lokaal (retained) publiceren op
@@ -1404,6 +1408,9 @@ app.post('/api/kasten', (req, res) => {
     type: type || 'kast', heeft_bypass: (type === 'batterij') && !!heeft_bypass,
     mqtt_topic_prefix: mqttPrefix(generator, id),
     positie: { x_pct: null, y_pct: null },
+    // specs/externe-shelly-koppelen-plan.md: pas te koppelen ná aanmaken (zelfde patroon als
+    // shelly_ip hierboven — geen apart veld in het aanmaak-formulier, alleen via de tabelrij/PUT)
+    externe_bron_id: null,
   };
   data.kasten.push(kast);
   writeTopo(data);
@@ -1414,7 +1421,7 @@ app.put('/api/kasten/:id', (req, res) => {
   const data = readTopo();
   const kast = data.kasten.find(k => k.id === req.params.id);
   if (!kast) return res.status(404).json({ error: 'kast niet gevonden' });
-  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor, optellen_bij_generator } = req.body || {};
+  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor, optellen_bij_generator, externe_bron_id } = req.body || {};
 
   const nieuweGenerator = generator || kast.generator;
   if (generator && !vindGeneratorOfLid(data, generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
@@ -1462,6 +1469,12 @@ app.put('/api/kasten/:id', (req, res) => {
   // klemplaatsing, dus GEEN automatische aanname op basis van "kast.generator is een lid". Default
   // false/afwezig = geen correctie (zelfde niet-destructieve default-patroon als meetfactor).
   if (optellen_bij_generator !== undefined) kast.optellen_bij_generator = !!optellen_bij_generator;
+  // specs/externe-shelly-koppelen-plan.md: verwijst naar een ruwe_id uit extern-bron-registry.js —
+  // bewust geen server-side existence-check tegen die (in-memory, kan na herstart leeg zijn)
+  // registry: net zo min hard gevalideerd als shelly_ip tegen een echt bereikbaar IP-adres. Eén bron
+  // kan aan meerdere kasten "toegewezen" staan zonder harde blokkade (zie het plan) — de UI
+  // waarschuwt zichtbaar + vraagt een korte bevestiging bij het overnemen, geen server-side afdwinging.
+  if (externe_bron_id !== undefined) kast.externe_bron_id = externe_bron_id || null;
   kast.generator = nieuweGenerator;
   kast.parent = nieuweParent;
   kast.mqtt_topic_prefix = mqttPrefix(kast.generator, kast.id);
@@ -1480,6 +1493,22 @@ app.delete('/api/kasten/:id', (req, res) => {
   data.kasten = data.kasten.filter(k => k.id !== req.params.id);
   writeTopo(data);
   res.json({ ok: true });
+});
+
+// specs/externe-shelly-koppelen-plan.md: alle ooit-geziene ruwe externe bronnen (extern-bron-
+// registry.js), aangevuld met aan welke kast (indien enige) elke bron al gekoppeld staat — die
+// annotatie hoort hier (readTopo() is al beschikbaar) i.p.v. de registry zelf topologiekennis te
+// geven, zie de module zelf. Honderden bronnen is behapbaar genoeg om gewoon de volledige lijst terug
+// te geven en zoeken/filteren aan de browser over te laten (zelfde aanpak als de kasten-lijst zelf).
+app.get('/api/externe-bronnen', (req, res) => {
+  const data = readTopo();
+  const kastPerBron = new Map();
+  data.kasten.forEach((k) => { if (k.externe_bron_id) kastPerBron.set(k.externe_bron_id, k); });
+  const bronnen = externBronRegistry.alleBronnen().map((b) => {
+    const gekoppeldeKast = kastPerBron.get(b.ruwe_id);
+    return { ...b, gekoppeldAanKastId: gekoppeldeKast ? gekoppeldeKast.id : null, gekoppeldAanKastNaam: gekoppeldeKast ? gekoppeldeKast.naam : null };
+  });
+  res.json(bronnen);
 });
 
 // specs/shelly-auto-configuratie-plan.md: MQTT-instellingen (+ optioneel het snelheidsscript) in
@@ -3441,6 +3470,9 @@ meetcorrectieRelay.meldTopologieWijziging(readTopo());
 // functies bij het wegvallen/herstellen van de externe bron — zie extern-bridge-watchdog.js
 externBridgeWatchdog.init(readInstellingen, stuurNotificatie);
 externBridgeWatchdog.start();
+// specs/externe-shelly-koppelen-plan.md: houdt bij welke ruwe externe bronnen ooit zijn gezien,
+// site-breed, onafhankelijk van of er al een browsertabblad open staat — zie de module zelf
+externBronRegistry.start();
 const server = app.listen(PORT, () => {
   console.log('Stroom-Dashboard luistert op poort ' + PORT);
   console.log('Open in de browser:');

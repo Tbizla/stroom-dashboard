@@ -190,3 +190,34 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       Grafana aangemaakt); de server-side watchdog hierboven levert dezelfde belofte aan Mike ("je
       krijgt een melding als de bron wegvalt") zonder een nieuwe, ongeteste Grafana-alerting-integratie
       te bouwen.
+- [x] **Externe Shelly koppelen aan een kast.** Afgerond — gebouwd conform
+      [specs/externe-shelly-koppelen-plan.md](specs/externe-shelly-koppelen-plan.md), na twee
+      afstemvragen die Mike beantwoordde: een korte bevestigingsstap bij het her-koppelen van een
+      al-gekoppelde bron, en de MAC-eerst-detectie-aanname voor het schema (mac/rentman) bevestigd.
+      Aanleiding: de vorige twee items namen aan dat de externe (shellybeheerder/Rentman-)broker
+      Mikes eigen `site/<generator>/<kast>`-topicstructuur zou volgen — bleek niet te kloppen, die
+      partij dekt de **hele klantsite** met zijn eigen naamgeving
+      (`<macadres-of-rentman-id>@<naam>`), niet alleen Mikes eigen kasten.
+      **Bugfix in de bridge-config zelf** (vorig item, `bouwBridgeConf()`): `topic site/# in 0
+      extern/` werd `topic # in 0 extern/` — zonder deze wijziging zou de bridge de externe partij se
+      eigen topics (die niet met `site/` beginnen) domweg nooit doorgegeven hebben. Geverifieerd met
+      dezelfde live-test-opzet (tijdelijke tweede mosquitto-container, nu met een niet-`site/`-topic
+      als `3c61054a2f10@Foodtruck-Noord-3/status/em:0`) — komt na de fix correct lokaal aan.
+      **Nieuw, klein server-proces** `extern-bron-registry.js` (zelfde opzet als
+      `meetcorrectie-relay.js`/`extern-bridge-watchdog.js`) onthoudt site-breed elke ooit-geziene
+      ruwe bron (ruwe-id, naam, schema, laatste bericht, laatste stroomwaarde) — schema-detectie
+      eerst strikt tegen een MAC-patroon (12 hex-tekens, met/zonder scheidingstekens), de rest is
+      `rentman`. Nieuw `GET /api/externe-bronnen` (kruist de registry met de topologie voor "al
+      gekoppeld aan"). Kast kreeg een nieuw, optioneel `externe_bron_id`-veld (alleen instelbaar via
+      de tabelrij/PUT, net als `shelly_ip` — niet in het aanmaak-formulier).
+      **UI**: nieuwe "Externe bron"-kolom in de kasten-tabel (Beheer > Topologie), naast (niet i.p.v.)
+      de bestaande Shelly-IP-kolom — een gestippelde "+ Koppelen"-knop of een chip met naam +
+      schema-badge + ontkoppelknop. Klikken opent een zoek-/filterbare popover (Alles/MAC/Rentman,
+      gesorteerd op laatst gezien, met de laatste stroomwaarde als extra houvast om fysiek te
+      verifiëren) — een al-gekoppelde bron blijft zichtbaar (uitgegrijsd, met een "al gekoppeld
+      aan..."-label) i.p.v. verborgen, en her-koppelen vraagt eerst een korte `confirm()`-bevestiging.
+      **mqtt.js aangepast**: het live-databericht-naar-kast-matchen voor `extern/#`-berichten ging van
+      "topic-positie 3 = kastId" (de oude, onjuiste aanname) naar "zoek het `<ruwe-id>@<naam>`-segment
+      in het topic, kijk via `kast.externe_bron_id` welke kast dat is" (nieuwe `vindRuweBronInTopic()`/
+      `kastVoorRuweBron()` in `topology.js`) — raakt niet hoe de rest van de externe-mqtt-ui-plan.md-UI
+      (Extern-blok, weergavemodus, geen-data-met-reden) werkt, alleen hoe die aan de juiste kast komt.

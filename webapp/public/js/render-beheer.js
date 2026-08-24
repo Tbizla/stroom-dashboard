@@ -5,6 +5,7 @@ import { apiCall } from './api.js';
 import { loadTopology } from './topology.js';
 import { t } from './i18n.js';
 import { openQrOverlay } from './qrcodes.js';
+import { bouwExternBronCel } from './externe-bron-koppelen.js';
 
 // specs/generator-groep-powerplant-plan.md: selectiemodus-state voor "generators groeperen" — puur
 // een transiente UI-toestand van deze pagina (net als de andere module-level `let`s in dit bestand),
@@ -405,6 +406,11 @@ export function renderKastSecties(){
     if(vervangIndicator) shellyWrap.appendChild(vervangIndicator);
     kastVeld(tr, shellyWrap, {style:'min-width:150px'});
 
+    // specs/externe-shelly-koppelen-plan.md: los concept van shelly_ip hierboven (dat blijft Mikes
+    // eigen, lokaal beheerde Shelly) — dit koppelt aan een ruwe bron uit de site-brede extern-bron-
+    // registry (shellybeheerder/Rentman-repeater), zie externe-bron-koppelen.js
+    kastVeld(tr, bouwExternBronCel(k), {style:'min-width:175px'});
+
     const genSel = document.createElement('select');
     vulGenSelect(genSel, k.generator);
     const parentSel = document.createElement('select');
@@ -507,7 +513,7 @@ export function renderKastSecties(){
       const tabel = document.createElement('table');
       tabel.className = 'btable';
       tabel.innerHTML = '<tr><th>'+t('beheer.thNaam')+'</th><th style="min-width:80px">'+t('beheer.thAfk')+'</th><th style="min-width:70px">'+t('beheer.thA')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th>'+
-        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:150px">'+t('beheer.thShellyIp')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
+        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:150px">'+t('beheer.thShellyIp')+'</th><th style="min-width:175px">'+t('beheer.thExternBron')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
       listChildrenOf(gen).forEach(k=>{
         if(searching && !subtreeMatches(k)) return;
         kastRij(tabel, k, 0);

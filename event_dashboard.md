@@ -266,6 +266,20 @@ zetten zonder code aan te passen.
   alert-notificatie via het bestaande kanaal — verstuurd door een klein, los server-proces
   (`extern-bridge-watchdog.js`, zelfde opzet als `meetcorrectie-relay.js`) zodat een storing ook
   gemeld wordt als er niemand een tabblad open heeft staan
+- **Externe Shelly koppelen aan een kast** (zie specs/externe-shelly-koppelen-plan.md): de externe
+  broker hierboven dekt de hele klantsite (niet alleen Mikes eigen kasten), geïdentificeerd met de
+  shellybeheerder/Rentman se eigen naamgeving (`<macadres-of-rentman-id>@<naam>`) — dus handmatig aan
+  een kast koppelen i.p.v. dat de topic-structuur al vanzelf overeenkomt. Nieuwe "Externe bron"-kolom
+  in de kasten-tabel (Beheer → Topologie), naast (niet i.p.v.) de bestaande Shelly-IP-kolom: een
+  gestippelde "+ Koppelen"-knop, of eenmaal gekoppeld een chip (naam + mac/rentman-badge +
+  ontkoppelknop). Klikken opent een zoek-/filterbare popover — honderden bronnen site-breed is te veel
+  voor een simpele dropdown — gesorteerd op laatst gezien, met de laatste stroomwaarde als extra
+  houvast om fysiek te verifiëren welk apparaat bij welke kast hoort. Een al-gekoppelde bron blijft
+  zichtbaar (uitgegrijsd, met een label wélke kast 'm al heeft) i.p.v. verborgen; 'm toch aan een
+  andere kast koppelen kan, na een korte bevestiging. Onder de motorkap: een nieuw, klein server-
+  proces (`extern-bron-registry.js`) onthoudt elke ooit-geziene ruwe bron site-breed, en de
+  live-koppeling (welk `extern/...`-bericht bij welke kast hoort) loopt voortaan via dit handmatig
+  ingestelde `externe_bron_id`-veld op de kast, niet meer via een aanname over de topic-vorm
 - **Geheimen afgeschermd**: `GET /api/instellingen` geeft echte geheimen (Telegram-bot-token,
   Pushover-API-token, SMTP-wachtwoord, en bij Automatische back-up het SFTP-wachtwoord/S3-
   secret-key) nooit in platte tekst terug — alleen een `<veld>_ingesteld`-boolean. Een leeg gelaten
