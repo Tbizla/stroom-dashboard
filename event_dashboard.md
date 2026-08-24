@@ -302,6 +302,16 @@ zetten zonder code aan te passen.
   se officiële topic terechtkomt, i.p.v. alleen in de browser — zie de roadmap voor de technische
   achtergrond). Bij het (opnieuw) automatisch configureren van de Shelly (⚙️-knop) wordt de
   publicatie-topic vanzelf op de bijbehorende "ruwe" subtopic gezet, geen handmatige actie nodig
+- **Optellen onderliggende kasten** (zie specs/optellen-onderliggende-kasten-plan.md): een
+  verdeelkast zonder eigen sensor (bijv. "van stratum" — geen Shelly-IP, geen gekoppelde externe
+  bron) kan met een nieuwe checkbox "Optellen onderliggend" in de kasten-tabel de som tonen van wat
+  eronder hangt, i.p.v. "geen sensor" — per fase opgeteld (kasten aan dezelfde busbar delen
+  dezelfde fase-identiteit, dus fase A van de een + fase A van de ander is de daadwerkelijke fase-A
+  van déze kast), plus totale stroom, vermogen, cumulatieve energie en de belastingsbalk/pin-kleur
+  t.o.v. de eigen rating. Werkt recursief (een onderliggende kast die zelf ook optelt, of extern
+  gekoppeld is, telt gewoon mee) en overal waar een meting getoond wordt (kastpopup, aside-detail,
+  pin-kleur, KPI's) zonder aparte aanpassingen — badge "som onderliggend" naast de naam, bewust niet
+  "cumulatief" genoemd om niet te verwarren met de bestaande "Cumulatieve energie"-rij (kWh)
 - **Kast rechtstreeks op een specifiek aggregaat binnen een groep** (zie
   specs/kast-op-aggregaat-plan.md): een kast kan nu ook aan één los lid van een groep gekoppeld
   worden i.p.v. alleen aan de groep als geheel — voor het geval een kast fysiek rechtstreeks op één

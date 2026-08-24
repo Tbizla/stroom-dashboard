@@ -221,3 +221,31 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       in het topic, kijk via `kast.externe_bron_id` welke kast dat is" (nieuwe `vindRuweBronInTopic()`/
       `kastVoorRuweBron()` in `topology.js`) — raakt niet hoe de rest van de externe-mqtt-ui-plan.md-UI
       (Extern-blok, weergavemodus, geen-data-met-reden) werkt, alleen hoe die aan de juiste kast komt.
+      Ná oplevering nog twee bugs gevonden en gefixt via een live meldering van Mike: de koppel-
+      popover positioneerde zichzelf vóórdat de bronnenlijst geladen was (liep bij een knop laag op de
+      pagina van het scherm af) en `mqtt.js` (browser) was blijven steken op de oude, te smalle
+      `extern/site/+/+/status/em:0`-subscriptie i.p.v. breed op `extern/#` — waardoor gekoppelde
+      kasten in de Live-weergave permanent "geen data" bleven tonen ondanks een verbonden bridge.
+      Beide geverifieerd met een echte headless-Chromium-test tegen de productie-instance (zie
+      [[project_no_browser_testing_env]] in de sessienotities — deze aanpak bleek dit keer wél
+      beschikbaar en essentieel om de daadwerkelijke oorzaak te vinden).
+- [x] **Optellen onderliggende kasten.** Afgerond — gebouwd conform
+      [specs/optellen-onderliggende-kasten-plan.md](specs/optellen-onderliggende-kasten-plan.md), na
+      twee afstemvragen die Mike beantwoordde: stroom+vermogen+energie (incl. belastingsbalk) als
+      getoonde waardes, en een instelbare per-kast checkbox i.p.v. automatisch gedrag. Aanleiding:
+      een verdeelkast zonder eigen sensor (bijv. "van stratum", 4000A, voedt PDC-1/2/3 die wél
+      gemeten worden) toonde altijd "geen sensor" — nu instelbaar om in plaats daarvan de som van de
+      onderliggende kasten te tonen.
+      Nieuw kast-veld `optellen_onderliggend` (checkbox-kolom in de kasten-tabel, geen server-side
+      afdwinging tegen een al ingevuld shelly_ip/externe bron, zelfde houding als de bestaande
+      `optellen_bij_generator`/`meetfactor`). Som **per fase** (niet alleen total_current) — kasten
+      aan dezelfde busbar delen dezelfde fase-identiteit, dus preciezer en hergebruikt zo de
+      bestaande belasting-t.o.v.-rating-logica (statusOf, belastingsbalk, pin-kleur) zonder enige
+      aanpassing daar. Gefold in `primaireMeting()`/`primaireEnergie()` (topology.js) zelf, vóór de
+      bestaande extern-logica, zodat alle bestaande consumenten (kastpopup, aside-detail, pin-kleur,
+      live-KPI's) dit automatisch oppikken — werkt ook recursief (een onderliggende kast die zelf
+      ook optelt, of extern gekoppeld is, telt gewoon mee). Badge "som onderliggend" i.p.v.
+      "cumulatief" (dat woord betekent al iets anders — de bestaande "Cumulatieve energie"-rij, een
+      lopend kWh-totaal). Geverifieerd met een live headless-browsertest tegen de productie-instance:
+      "van stratum" toont na het aanvinken een correcte fase-tabel (som van PDC-1/2/3), 7-8%
+      belasting t.o.v. de 4000A-rating, en een groene pin — in zowel kastpopup als aside-detail.

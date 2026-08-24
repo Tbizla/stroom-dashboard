@@ -83,7 +83,10 @@ export function renderDetail(){
   const externPrimair = externIsPrimair(n);
   const externStatus = externPrimair ? externStatusVoor(n.id) : null;
   const d = primaireMeting(n);
-  let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+(externPrimair?bronVervangenBadgeHtml():'')+'</h2>';
+  // specs/optellen-onderliggende-kasten-plan.md: "som onderliggend" i.p.v. "cumulatief" — dat woord
+  // betekent hier al iets anders (de "Cumulatieve energie"-rij verderop in metingenHtml())
+  const somBadge = n.optellen_onderliggend ? '<span class="som-onderliggend-badge">'+t('common.somOnderliggendBadge')+'</span>' : '';
+  let html = '<h2>'+(n.type==='batterij'?'🔋 ':'')+n.naam+(externPrimair?bronVervangenBadgeHtml():somBadge)+'</h2>';
   if(heeftActieveAnomaly(n.id)){
     html += '<div class="metric anomaly-row" id="detailAnomalyRow"><span class="k">⚡ '+t('anomaly.badgeTitel')+'</span></div>'+
       '<div class="anomaly-detail">'+anomalyTekst(n.id)+'</div>';
@@ -108,8 +111,9 @@ export function renderDetail(){
     html += ledenblokHtml(n);
   }
   // specs/externe-mqtt-ui-plan.md §1: alleen in modus "naast lokaal", standaard open zolang de
-  // externe bron site-breed actief staat, ná metingenHtml()/ledenblokHtml(), vóór de sparklijn
-  if(!externPrimair && n.type!=='groep' && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='naast_lokaal'){
+  // externe bron site-breed actief staat, ná metingenHtml()/ledenblokHtml(), vóór de sparklijn —
+  // nooit voor een optellen_onderliggend-node (geen eigen externe koppeling om te tonen)
+  if(!externPrimair && !n.optellen_onderliggend && n.type!=='groep' && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='naast_lokaal'){
     html += externBlokHtml(n.id);
   }
   // specs/live-viewport-grote-monitor-plan.md: trendlijn van de laatste minuten, alleen op Live —

@@ -1411,6 +1411,10 @@ app.post('/api/kasten', (req, res) => {
     // specs/externe-shelly-koppelen-plan.md: pas te koppelen ná aanmaken (zelfde patroon als
     // shelly_ip hierboven — geen apart veld in het aanmaak-formulier, alleen via de tabelrij/PUT)
     externe_bron_id: null,
+    // specs/optellen-onderliggende-kasten-plan.md: expliciete opt-in, net als optellen_bij_generator
+    // hieronder — een kast zonder eigen sensor toont dan de som van zijn onderliggende kasten i.p.v.
+    // "geen sensor". Default false/afwezig = ongewijzigd gedrag.
+    optellen_onderliggend: false,
   };
   data.kasten.push(kast);
   writeTopo(data);
@@ -1421,7 +1425,7 @@ app.put('/api/kasten/:id', (req, res) => {
   const data = readTopo();
   const kast = data.kasten.find(k => k.id === req.params.id);
   if (!kast) return res.status(404).json({ error: 'kast niet gevonden' });
-  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor, optellen_bij_generator, externe_bron_id } = req.body || {};
+  const { naam, rating_a, generator, parent, afkorting, type, heeft_bypass, shelly_ip, meetfactor, optellen_bij_generator, externe_bron_id, optellen_onderliggend } = req.body || {};
 
   const nieuweGenerator = generator || kast.generator;
   if (generator && !vindGeneratorOfLid(data, generator)) return res.status(400).json({ error: 'onbekende generator: ' + generator });
@@ -1475,6 +1479,11 @@ app.put('/api/kasten/:id', (req, res) => {
   // kan aan meerdere kasten "toegewezen" staan zonder harde blokkade (zie het plan) — de UI
   // waarschuwt zichtbaar + vraagt een korte bevestiging bij het overnemen, geen server-side afdwinging.
   if (externe_bron_id !== undefined) kast.externe_bron_id = externe_bron_id || null;
+  // specs/optellen-onderliggende-kasten-plan.md: expliciete per-kast opt-in (zelfde "geen server-
+  // side afdwinging tegen shelly_ip/externe_bron_id"-houding als de andere optellen-/koppel-vlaggen
+  // hierboven — een beheerder kan 'm ook aanzetten op een kast die toevallig wél een sensor heeft,
+  // eigen verantwoordelijkheid, geen harde blokkade)
+  if (optellen_onderliggend !== undefined) kast.optellen_onderliggend = !!optellen_onderliggend;
   kast.generator = nieuweGenerator;
   kast.parent = nieuweParent;
   kast.mqtt_topic_prefix = mqttPrefix(kast.generator, kast.id);

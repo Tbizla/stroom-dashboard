@@ -93,6 +93,10 @@ export function renderKastPopup(){
   naam.textContent = (isGen(k) ? typeIcon(k)+' ' : (k.type==='batterij'?'🔋 ':'')) + k.naam;
   head.appendChild(dot); head.appendChild(naam);
   if(externPrimair) head.insertAdjacentHTML('beforeend', bronVervangenBadgeHtml());
+  // specs/optellen-onderliggende-kasten-plan.md: badge bewust "som onderliggend" i.p.v. "cumulatief"
+  // — dat laatste woord betekent in deze app al iets anders (de "Cumulatieve energie"-rij, een
+  // lopend kWh-totaal), zou op dezelfde popup verwarrend naast elkaar staan
+  if(k.optellen_onderliggend) head.insertAdjacentHTML('beforeend', '<span class="som-onderliggend-badge">'+t('common.somOnderliggendBadge')+'</span>');
   el.appendChild(head);
 
   const sub = document.createElement('div');
@@ -177,8 +181,10 @@ export function renderKastPopup(){
 
     // specs/externe-mqtt-ui-plan.md §1: alleen in modus "naast lokaal" — standaard open zolang de
     // externe bron site-breed actief staat (dit is hier een primaire databron, niet iets om weg te
-    // stoppen), nooit voor groepen (die zijn al hierboven afgehandeld)
-    if(!externPrimair && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='naast_lokaal'){
+    // stoppen), nooit voor groepen (die zijn al hierboven afgehandeld) en nooit voor een
+    // optellen_onderliggend-kast (die heeft zelf geen externe koppeling om te tonen — het Extern-blok
+    // zou daar eeuwig "wacht op data" blijven tonen)
+    if(!externPrimair && !k.optellen_onderliggend && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='naast_lokaal'){
       el.appendChild(bouwExternBlok(k));
     }
   }

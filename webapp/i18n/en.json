@@ -200,6 +200,7 @@
   "common.externRedenWacht": "Connected, no message received yet for this box",
   "common.externRedenVerouderd": "Last message {n} min ago — source appears to have stopped sending",
   "common.externSinds": "since {tijd}",
+  "common.somOnderliggendBadge": "downstream total",
   "kaststatus.nietGevonden": "This box no longer exists in this system",
   "kaststatus.bekijkOpPlattegrond": "View on map →",
 
@@ -462,6 +463,8 @@
   "beheer.meetfactorPlaceholder": "1×",
   "beheer.meetfactorTitle": "Correction factor for a \"double field\" (2 parallel Powerlock sets to the same consumer, but room for only 1 CT clamp/Shelly) — e.g. 2 to double the measured value. A modeled approximation (assumes an even current split across both paths), not an actual second measurement. Leave empty for a normal cabinet.",
   "beheer.optellenTitle": "Is this cabinet's own draw NOT already included in the chosen generator/genset's CT-clamp reading (e.g. tapped directly upstream of the measuring point)? Check to add it back in in software. Only meaningful without a \"Fed from\" parent (directly on the generator/genset).",
+  "beheer.thOptellenOnderliggend": "Sum downstream",
+  "beheer.optellenOnderliggendTitle": "For a distribution cabinet without its own sensor: shows the sum (per phase, plus power and cumulative energy) of the downstream cabinets in the Live view instead of \"no sensor\" — including the load bar against its own rating.",
   "beheer.thExternBron": "External source",
   "beheer.externBronKoppelen": "Link",
   "beheer.externBronOntkoppelen": "Unlink",

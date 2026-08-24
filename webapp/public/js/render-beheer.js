@@ -411,6 +411,18 @@ export function renderKastSecties(){
     // registry (shellybeheerder/Rentman-repeater), zie externe-bron-koppelen.js
     kastVeld(tr, bouwExternBronCel(k), {style:'min-width:175px'});
 
+    // specs/optellen-onderliggende-kasten-plan.md: expliciete opt-in — toont in de Live-weergave de
+    // som van de onderliggende kasten i.p.v. "geen sensor", voor een verdeelkast zonder eigen meter
+    // (bijv. "van stratum"). Geen server-side afdwinging tegen een al ingevuld shelly_ip/externe
+    // bron — eigen verantwoordelijkheid van de beheerder, zelfde houding als optellen_bij_generator.
+    const onderliggendInput = document.createElement('input');
+    onderliggendInput.type = 'checkbox';
+    onderliggendInput.className = 'optellen-onderliggend-input';
+    onderliggendInput.checked = !!k.optellen_onderliggend;
+    onderliggendInput.title = t('beheer.optellenOnderliggendTitle');
+    onderliggendInput.onchange = async ()=>{ try{ await apiCall('/api/kasten/'+k.id, 'PUT', {optellen_onderliggend: onderliggendInput.checked}); await loadTopology(); } catch(e){ alert(e.message); await loadTopology(); } };
+    kastVeld(tr, onderliggendInput, {style:'min-width:80px;text-align:center'});
+
     const genSel = document.createElement('select');
     vulGenSelect(genSel, k.generator);
     const parentSel = document.createElement('select');
@@ -513,7 +525,7 @@ export function renderKastSecties(){
       const tabel = document.createElement('table');
       tabel.className = 'btable';
       tabel.innerHTML = '<tr><th>'+t('beheer.thNaam')+'</th><th style="min-width:80px">'+t('beheer.thAfk')+'</th><th style="min-width:70px">'+t('beheer.thA')+'</th><th style="min-width:110px">'+t('beheer.thType')+'</th>'+
-        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:150px">'+t('beheer.thShellyIp')+'</th><th style="min-width:175px">'+t('beheer.thExternBron')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
+        '<th style="min-width:90px">'+t('beheer.thBypass')+'</th><th style="min-width:150px">'+t('beheer.thShellyIp')+'</th><th style="min-width:175px">'+t('beheer.thExternBron')+'</th><th style="min-width:80px">'+t('beheer.thOptellenOnderliggend')+'</th><th style="min-width:150px">'+t('beheer.thGenerator')+'</th><th style="min-width:190px">'+t('beheer.thGevoedVanaf')+'</th><th style="min-width:170px"></th></tr>';
       listChildrenOf(gen).forEach(k=>{
         if(searching && !subtreeMatches(k)) return;
         kastRij(tabel, k, 0);

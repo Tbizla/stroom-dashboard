@@ -172,20 +172,55 @@ export function externStatusVoor(kastId){
 
 // of de externe meting voor déze node de PRIMAIRE weergave is (modus "extern vervangt lokaal") —
 // groepen slaan dit altijd over (geen eigen enkele externe meting, elk lid heeft zijn eigen lokale
-// Shelly, zie kastpopup.js se lidtabel-tak), ongeacht de site-brede modus
+// Shelly, zie kastpopup.js se lidtabel-tak), ongeacht de site-brede modus. Een kast met
+// optellen_onderliggend (zie hieronder) heeft per definitie geen eigen sensor — die toont altijd de
+// som van zijn onderliggende kasten, nooit een eigen externe koppeling.
 export function externIsPrimair(node){
-  return !!(node && node.type!=='groep' && state.externeMqtt && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='vervangt_lokaal');
+  return !!(node && !node.optellen_onderliggend && node.type!=='groep' && state.externeMqtt && state.externeMqtt.actief && state.externeMqtt.weergave_modus==='vervangt_lokaal');
 }
 
-// welke live-meting voor tabellen/statuskleuren/pin-kleur gebruikt moet worden — lokaal, tenzij de
-// externe bron voor déze node de primaire weergave is (externIsPrimair) én daadwerkelijk 'ok' is;
-// anders null (geen stille terugval op een verouderde lokale waarde, zie het geen-data-met-reden-
-// ontwerp — de "vervangt lokaal"-modus toont dan expliciet geen data i.p.v. impliciet lokaal)
+// ---------- specs/optellen-onderliggende-kasten-plan.md: een verdeelkast zonder eigen sensor
+// (bijv. "van stratum" — geen Shelly-IP, geen gekoppelde externe bron) kan een expliciete
+// per-kast-instelling (kast.optellen_onderliggend) krijgen die 'm laat tonen wat er onder 'm
+// gemeten wordt, opgeteld — precies zoals optellen_bij_generator (server.js) dat al doet in de
+// ANDERE richting (een kast se eigen verbruik optellen bij zijn generator). Som PER FASE (niet
+// alleen total_current): kasten die aan dezelfde busbar hangen delen dezelfde fase-identiteit, dus
+// "fase A opgeteld over de kinderen" is de daadwerkelijke fase-A-stroom door déze kast — dat is
+// preciezer dan alleen total_current, en hergebruikt zo de bestaande maxFaseStroom()/
+// belasting-t.o.v.-rating-logica (statusOf, de belastingsbalk) zonder enige aanpassing daar. ----------
+const EM_SOM_VELDEN = ['a_current','b_current','c_current','total_current','a_act_power','b_act_power','c_act_power','total_act_power','a_aprt_power','b_aprt_power','c_aprt_power','total_aprt_power'];
+export function somOnderliggendeMeting(node){
+  if(!node || !node.optellen_onderliggend) return null;
+  const bijdragen = collectDescendantKasten(node).map(k=>primaireMeting(k)).filter(Boolean);
+  if(!bijdragen.length) return null;
+  const som = {};
+  EM_SOM_VELDEN.forEach(veld=>{
+    const waarden = bijdragen.map(d=>d[veld]).filter(v=>typeof v==='number');
+    som[veld] = waarden.length ? waarden.reduce((a,b)=>a+b,0) : null;
+  });
+  som.ts = Math.min(...bijdragen.map(d=>d.ts));
+  return som;
+}
+export function somOnderliggendeEnergie(node){
+  if(!node || !node.optellen_onderliggend) return null;
+  const waarden = collectDescendantKasten(node).map(k=>primaireEnergie(k)).filter(Boolean).map(e=>e.total_act).filter(v=>typeof v==='number');
+  return waarden.length ? { total_act: waarden.reduce((a,b)=>a+b,0) } : null;
+}
+
+// welke live-meting voor tabellen/statuskleuren/pin-kleur gebruikt moet worden — als deze kast
+// optellen_onderliggend heeft staan de som van zijn onderliggende kasten (die zelf ook weer
+// optellen_onderliggend of extern kunnen zijn — werkt vanzelf recursief door dezelfde
+// primaireMeting()-aanroep in somOnderliggendeMeting() hierboven); anders lokaal, tenzij de externe
+// bron voor déze node de primaire weergave is (externIsPrimair) én daadwerkelijk 'ok' is; anders
+// null (geen stille terugval op een verouderde lokale waarde, zie het geen-data-met-reden-ontwerp —
+// de "vervangt lokaal"-modus toont dan expliciet geen data i.p.v. impliciet lokaal)
 export function primaireMeting(node){
+  if(node && node.optellen_onderliggend) return somOnderliggendeMeting(node);
   if(externIsPrimair(node)) return externStatusVoor(node.id)==='ok' ? liveDataExtern[node.id] : null;
   return liveData[node.id];
 }
 export function primaireEnergie(node){
+  if(node && node.optellen_onderliggend) return somOnderliggendeEnergie(node);
   if(externIsPrimair(node)) return externStatusVoor(node.id)==='ok' ? liveEnergyDataExtern[node.id] : null;
   return liveEnergyData[node.id];
 }

@@ -200,6 +200,7 @@
   "common.externRedenWacht": "Verbonden, nog geen bericht ontvangen voor deze kast",
   "common.externRedenVerouderd": "Laatste bericht {n} min geleden — bron lijkt gestopt met sturen",
   "common.externSinds": "sinds {tijd}",
+  "common.somOnderliggendBadge": "som onderliggend",
   "kaststatus.nietGevonden": "Deze kast bestaat niet meer in dit systeem",
   "kaststatus.bekijkOpPlattegrond": "Bekijk op plattegrond →",
 
@@ -462,6 +463,8 @@
   "beheer.meetfactorPlaceholder": "1×",
   "beheer.meetfactorTitle": "Correctiefactor voor een \"dubbel veld\" (2 parallelle Powerlock-sets naar dezelfde afnemer, maar ruimte voor maar 1 CT-klem/Shelly) — bijv. 2 om de gemeten waarde te verdubbelen. Modelmatige benadering (gaat uit van gelijke stroomverdeling over beide paden), geen echte tweede meting. Leeg laten voor een normale kast.",
   "beheer.optellenTitle": "Telt deze kast se eigen verbruik NIET al mee in de CT-klem-meting van de gekozen generator/aggregaat (bijv. rechtstreeks aangetapt vóór het meetpunt)? Vink aan om 'm softwarematig bij die meting op te tellen. Alleen zinvol zonder \"Gevoed vanaf\"-parent (rechtstreeks op de generator/aggregaat).",
+  "beheer.thOptellenOnderliggend": "Optellen onderliggend",
+  "beheer.optellenOnderliggendTitle": "Voor een verdeelkast zonder eigen sensor: toont in de Live-weergave de som (per fase, plus vermogen en cumulatieve energie) van de onderliggende kasten i.p.v. \"geen sensor\" — inclusief de belastingsbalk t.o.v. de eigen rating.",
   "beheer.thExternBron": "Externe bron",
   "beheer.externBronKoppelen": "Koppelen",
   "beheer.externBronOntkoppelen": "Ontkoppelen",

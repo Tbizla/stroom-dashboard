@@ -228,6 +228,11 @@ header h1 span{color:var(--accent)}
 .bron-vervangen-badge{display:inline-flex;align-items:center;gap:.25rem;font-family:var(--mono);font-size:0.5625rem;
   letter-spacing:.04em;text-transform:uppercase;color:var(--extern);background:var(--extern-dim);
   border:1px solid rgba(139,157,252,.4);border-radius:0.5rem;padding:0.0625rem 0.375rem;font-weight:700;margin-left:.375rem}
+/* specs/optellen-onderliggende-kasten-plan.md: neutrale (niet --extern-gekleurde) badge — dit gaat
+   niet over een databron maar over "dit is een opgetelde waarde van onderliggende kasten" */
+.som-onderliggend-badge{display:inline-flex;align-items:center;gap:.25rem;font-family:var(--mono);font-size:0.5625rem;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--text2);background:var(--panel2);
+  border:1px solid var(--border);border-radius:0.5rem;padding:0.0625rem 0.375rem;font-weight:700;margin-left:.375rem}
 
 /* "geen data" met reden — compact (in het Extern-blok, modus "naast lokaal") en groot/centraal
    (enige inhoud in modus "extern vervangt lokaal"), zie specs/mockups/externe-mqtt-geen-data-mockup.html */
