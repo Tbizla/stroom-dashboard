@@ -325,7 +325,13 @@ function isEditorOnlyRoute(req, pad) {
   // /api/map/meta en /api/map/tiles/... (specs/plattegrond-tile-based-plan.md) horen bij dezelfde
   // "lezen mag altijd"-uitzondering als /api/map zelf — een viewer-sessie moet een getilede
   // plattegrond op Live/Schema net zo kunnen zien als een platte
-  if ((pad === '/api/map' || pad.startsWith('/api/map/') || pad === '/api/logo' || pad === '/api/locaties') && req.method === 'GET') return false;
+  // /api/instellingen (GET): topology.js se loadExterneMqttInstelling() roept dit voor ELKE
+  // ingelogde gebruiker aan (bootstrap + 5s-poll) om te weten of externe MQTT-data primair getoond
+  // moet worden — dat is puur leesgedrag nodig voor de Live-tab, geen Beheer-actie. Zonder deze
+  // uitzondering kreeg een viewer hier permanent een 403, waardoor externIsPrimair() altijd false
+  // bleef en extern gekoppelde kasten nooit een waarde toonden (ondanks een prima werkende MQTT-
+  // verbinding). Secrets zitten hier sowieso al nooit in de GET-response (secrets-afscherming-plan.md).
+  if ((pad === '/api/map' || pad.startsWith('/api/map/') || pad === '/api/logo' || pad === '/api/locaties' || pad === '/api/instellingen') && req.method === 'GET') return false;
   return EDITOR_ONLY_PREFIXEN.some((prefix) => pad === prefix || pad.startsWith(prefix + '/'));
 }
 app.use((req, res, next) => {

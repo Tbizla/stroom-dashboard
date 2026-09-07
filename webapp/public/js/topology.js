@@ -68,6 +68,7 @@ export async function loadTopology(){
 export async function loadExterneMqttInstelling(){
   try{
     const res = await fetch('/api/instellingen');
+    if(!res.ok) return; // laatst bekende waarde laten staan (bijv. een 403 door onvoldoende rechten)
     const data = await res.json();
     const cfg = data.externeMqtt || {};
     state.externeMqtt = {

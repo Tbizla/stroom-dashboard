@@ -252,3 +252,32 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       lopend kWh-totaal). Geverifieerd met een live headless-browsertest tegen de productie-instance:
       "van stratum" toont na het aanvinken een correcte fase-tabel (som van PDC-1/2/3), 7-8%
       belasting t.o.v. de 4000A-rating, en een groene pin — in zowel kastpopup als aside-detail.
+- [x] **Fix: viewer-rol kreeg 403 op `GET /api/instellingen`, waardoor extern gekoppelde kasten
+      nooit een live meetwaarde toonden.** Gevonden op de SAM3A-locatie (2026-09-07): op een laptop
+      (ingelogd als editor) waren meetwaarden zichtbaar, op een mini-pc (Dell OptiPlex, Ubuntu/
+      Firefox, ingelogd als viewer) niet — zelfde URL, zelfde kasten, MQTT-verbindingsbolletje
+      gewoon groen. Oorzaak: `topology.js`'s `loadExterneMqttInstelling()` roept voor élke ingelogde
+      gebruiker (bootstrap + 5s-poll) `GET /api/instellingen` aan om `externeMqtt.weergave_modus`
+      te lezen, maar die route stond in `EDITOR_ONLY_PREFIXEN` zonder de GET-uitzondering die
+      `/api/map`/`/api/logo`/`/api/locaties` al wel hadden — een viewer kreeg dus permanent 403.
+      Erger: de fetch checkte `res.ok` niet, dus het 403-foutobject werd stilzwijgend als settings
+      geparsed, `state.externeMqtt` viel terug op de default (`actief:false`), en `externIsPrimair()`
+      gaf daardoor altijd `false` — geen enkele extern gekoppelde kast toonde ooit een waarde voor
+      een viewer-sessie, ook al kwam de MQTT-data zelf gewoon binnen.
+      Fix: `/api/instellingen` (GET) toegevoegd aan dezelfde "lezen mag altijd"-uitzondering als
+      `/api/map` (veilig, want `redigeerGeheimen()` filtert secrets al server-side uit de
+      GET-response) + `loadExterneMqttInstelling()` laat nu de laatst bekende waarde staan bij een
+      niet-2xx-response i.p.v.'m te overschrijven. Als hotfix direct doorgevoerd op de draaiende
+      SAM3A-instance (buiten de normale release-cyclus om, i.v.m. een lopend evenement) — komt met
+      de eerstvolgende reguliere `STROOM_DASHBOARD_VERSION`-bump ook in de officiële release.
+- [ ] **Extern gekoppelde bron ook naar InfluxDB doorzetten.** Spec klaar, nog niet gebouwd/
+      afgestemd: [specs/extern-bron-influx-relay-plan.md](specs/extern-bron-influx-relay-plan.md).
+      Gevonden tijdens troubleshooten van "geen meetwaarden zichtbaar" op de SAM3A-locatie
+      (2026-09-07): `telegraf.conf` abonneert nog op de oorspronkelijke, inmiddels achterhaalde
+      aanname `extern/site/+/+/status/em:0` (externe-mqtt-broker-plan.md) — de koppel-feature
+      hierboven paste destijds alleen de browser-kant (`mqtt.js`) aan om via `externe_bron_id` te
+      matchen, niet de weg naar InfluxDB. Gevolg: voor élke locatie met een extern gekoppelde kast
+      komt er niets in InfluxDB terecht (geverifieerd op SAM3A: 0 `shelly_em`-datapunten in 30
+      dagen, terwijl de bridge zelf wél live meetdata doorgeeft) — dus geen Grafana-geschiedenis,
+      geen PDF-rapportages, en geen 90%-overbelastingsalerts voor die kasten, ook al toont de
+      Live-tab (rechtstreeks via de browser-websocket) mogelijk wél al een waarde.
