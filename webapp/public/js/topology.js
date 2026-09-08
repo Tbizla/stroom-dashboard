@@ -86,6 +86,16 @@ export async function savePositie(node){
   });
 }
 
+// specs/schema-raster-layout-plan.md: powerplant vastpinnen op een rasterplek in de Schema-tab —
+// alleen top-level generators (nooit een lid van een groep), gedeelde topologie-instelling (voor
+// elke kijker hetzelfde). gepinde_positie is { rij, kolom } of null om los te maken.
+export async function saveSchemaPin(id, gepinde_positie){
+  await fetch('/api/topology/schema-pin', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ id, gepinde_positie })
+  });
+}
+
 export async function saveKnikpunten(kast){
   await fetch('/api/topology/knikpunten', {
     method:'POST', headers:{'Content-Type':'application/json'},

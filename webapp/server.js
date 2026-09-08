@@ -315,6 +315,7 @@ const EDITOR_ONLY_PREFIXEN = [
   '/api/topology/positie', // Kalibreren
   '/api/topology/knikpunten', // Kalibreren
   '/api/topology/viewport', // Kalibreren — specs/live-viewport-grote-monitor-plan.md, fase 3
+  '/api/topology/schema-pin', // Schema — specs/schema-raster-layout-plan.md
   '/api/topology/test-data', // Testdata
   '/api/simulator', // Testdata
   '/api/metingen/reset', // Testdata
@@ -1152,6 +1153,29 @@ app.post('/api/topology/knikpunten', (req, res) => {
   res.json({ ok: true, kast });
 });
 
+// ---------- schema-raster: powerplant vastpinnen op een rasterplek (specs/schema-raster-layout-plan.md)
+// alleen top-level powerplants (data.generators), nooit een lid van een groep — het raster herschikt
+// uitsluitend powerplant-kolommen, net zoals /positie hierboven alleen generators/kasten kent en geen
+// leden. Gedeelde topologie-instelling (voor elke kijker hetzelfde), geen per-browser voorkeur.
+app.post('/api/topology/schema-pin', (req, res) => {
+  const { id, gepinde_positie } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id is verplicht' });
+  const data = readTopo();
+  const gen = data.generators.find(g => g.id === id);
+  if (!gen) return res.status(404).json({ error: 'onbekende powerplant-id: ' + id });
+  if (gepinde_positie === null) {
+    gen.gepinde_positie = null;
+  } else {
+    const { rij, kolom } = gepinde_positie || {};
+    if (!Number.isInteger(rij) || rij < 0 || !Number.isInteger(kolom) || kolom < 0) {
+      return res.status(400).json({ error: 'gepinde_positie moet {rij, kolom} (niet-negatieve gehele getallen) zijn, of null' });
+    }
+    gen.gepinde_positie = { rij, kolom };
+  }
+  writeTopo(data);
+  res.json({ ok: true, generator: gen });
+});
+
 // ---------- viewport-kalibratie (specs/live-viewport-grote-monitor-plan.md, fase 3): welk deel van
 // de tekening Live toont — top-level veld op de topologie (net als generators/kasten), niet per node,
 // want dit is een eigenschap van de hele tekening. Server-side (i.p.v. alleen localStorage) omdat
@@ -1264,6 +1288,8 @@ app.post('/api/generators', (req, res) => {
     rating_a: rating_a ? Number(rating_a) : null,
     shelly_ip: shelly_ip ? String(shelly_ip).trim() : null,
     mqtt_topic_prefix: mqttPrefix(id, id),
+    // specs/schema-raster-layout-plan.md: { rij, kolom } | null — vaste rasterplek in de Schema-tab
+    gepinde_positie: null,
   };
   data.generators.push(gen);
   writeTopo(data);

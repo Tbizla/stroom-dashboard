@@ -281,3 +281,27 @@ gelden onderstaande punten allemaal als besproken/geaccordeerd, niet meer als lo
       dagen, terwijl de bridge zelf wél live meetdata doorgeeft) — dus geen Grafana-geschiedenis,
       geen PDF-rapportages, en geen 90%-overbelastingsalerts voor die kasten, ook al toont de
       Live-tab (rechtstreeks via de browser-websocket) mogelijk wél al een waarde.
+- [x] **Schema-tab: powerplants in een raster i.p.v. één rij.** Afgerond — gebouwd conform
+      [specs/schema-raster-layout-plan.md](specs/schema-raster-layout-plan.md). Aanleiding: bij
+      meerdere powerplants legde `computeSchemaLayout()` (`render-schema.js`) ze allemaal op één
+      steeds bredere horizontale rij, waardoor fit-to-screen alles klein terugschaalde terwijl er
+      onder die ene rij nog volop verticale ruimte onbenut bleef. Met Mike afgestemd via twee
+      mockups: "Schema-Carrousel" (continu automatisch wisselen — verworpen) en "Schema-Raster"
+      (statisch raster dat naar de volgende rij wrapt, geaccordeerd).
+      `computeSchemaLayout()` layout't nu per powerplant een eigen, op zichzelf staande subboom
+      (`layoutPlant()`), kiest automatisch het aantal kolommen dat de beschikbare `#schemaWrap`-
+      ruimte het beste benut (`kiesKolomAantal()` — voor elk kandidaat-aantal de resulterende
+      fit-schaal vergelijken, zelfde denkwijze als `fitToScreenSchema()`), en verdeelt de
+      powerplant-kolommen daarna over een uniform raster (`verdeelRasterplekken()`) — een resize
+      herberekent dit (debounced, zelfde patroon als `map-tiles.js`).
+      Nieuw, gedeeld topologie-veld `gepinde_positie` (`{ rij, kolom }` of `null`) op powerplant-
+      niveau, nieuw endpoint `POST /api/topology/schema-pin` (editor-only, zelfde
+      "muteer-sla op-render opnieuw"-patroon als `savePositie()`) en een 📌-knop op elk
+      powerplant-blok, alleen zichtbaar/klikbaar voor een editor-sessie — een viewer ziet de gepinde
+      staat (accent-rand) wel. Bij een ongeldige plek (te weinig kolommen) valt een pin terug op de
+      dichtstbijzijnde vrije cel zonder zelf verloren te gaan.
+      Geverifieerd met een lokale instance (Playwright/Chromium, losse testtopologie met 5
+      powerplants, wisselende viewportgroottes): raster wrapt correct van 1 t/m meerdere kolommen
+      afhankelijk van de daadwerkelijk beschikbare ruimte, pin/ontpin persisteert server-side (ook
+      na een volledige page-reload gecontroleerd), en de pin-knop is bevestigd afwezig voor een
+      apart aangemaakt viewer-account terwijl de accent-rand daar wel zichtbaar bleef.

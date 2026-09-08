@@ -492,6 +492,16 @@ zetten zonder code aan te passen.
   kast (groen/amber/rood) is direct zichtbaar in het schema
 - Dezelfde zoom/pan/fit-to-screen-bediening als het Kalibreren-tabblad; het onthouden zoomniveau
   wordt automatisch ongeldig (en opnieuw gefit) zodra de topologie van grootte verandert
+- Bij meerdere powerplants (top-level generators/groepen) legt het schema ze automatisch in een
+  raster i.p.v. één steeds bredere rij — het aantal kolommen wordt bepaald op basis van wat het
+  beschikbare scherm het beste benut, en past zich aan bij een resize. Elke powerplant-kolom (het
+  generator/groep-blok + alles eronder) blijft één vaste eenheid; niet-gepinde powerplants vullen
+  het raster rij voor rij, volgorde maakt verder niet uit. Een editor kan een powerplant vastpinnen
+  op zijn rasterplek (📌-icoon op het blok, in Beheer/Kalibreren-stijl alleen voor editors klikbaar) —
+  gedeelde topologie-instelling, dus hetzelfde voor iedere kijker; een viewer ziet een gepinde
+  powerplant wel (accent-rand) maar kan niet zelf (ont)pinnen. Valt een pin door minder beschikbare
+  kolommen buiten bereik, dan schuift die powerplant naar de dichtstbijzijnde geldige plek zonder de
+  pin te verliezen.
 
 **Live-monitoring (Live-tabblad)**
 - Rechtstreekse MQTT-verbinding vanuit de browser (via websockets) naar de broker
